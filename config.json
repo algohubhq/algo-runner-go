@@ -1,0 +1,121 @@
+{
+  "endpointOwnerUserName": "itsmarts",
+  "endpointUrlName": "Endpoint-Public",
+  "pipelineOwnerUserName": "itsmarts",
+  "pipelineUrlName": "Pipeline-1",
+  "algoOwnerUserName": "itsmarts",
+  "algoUrlName": "CoreNLP-Sentiment-Analysis",
+  "entrypoint": "java -cp \"*\" edu.stanford.nlp.pipeline.StanfordCoreNLPServer --port 9000 --timeout 10000",
+  "algoParams": [
+    {
+      "sortOrder": 1,
+      "name": "properties",
+      "value": "{\"annotators\": \"sentiment\", \"outputFormat\": \"json\"}",
+      "description": "Set the properties sent to the CoreNLP server.",
+      "dataType": {
+        "name": "string",
+        "regex": null,
+        "precision": null,
+        "scale": null
+      },
+      "options": []
+    }
+  ],
+  "inputs": [
+    {
+      "id": 1,
+      "name": "Text",
+      "description": "Text to analyse",
+      "isRequired": true,
+      "inputDeliveryType": "Http",
+      "parameter": null,
+      "parameterDelimiter": null,
+      "environmentVariable": null,
+      "httpVerb": "POST",
+      "httpPort": 9000,
+      "httpPath": "/",
+      "httpHeaders": null,
+      "mediaTypes": [
+        {
+          "title": "Any Text",
+          "typeName": "text",
+          "subTypeName": "any",
+          "fullTypeName": "text/any",
+          "fileExtension": null,
+          "rfc": null,
+          "rfcUrl": null,
+          "url": null
+        }
+      ]
+    }
+  ],
+  "outputs": [
+    {
+      "id": 1,
+      "name": "json",
+      "description": "JSON output of annotations",
+      "outputDeliveryType": "StdOut",
+      "outputPath": null,
+      "outputFilename": null,
+      "mediaType": {
+        "title": "Any Text",
+        "typeName": "text",
+        "subTypeName": "any",
+        "fullTypeName": "text/any",
+        "fileExtension": null,
+        "rfc": null,
+        "rfcUrl": null,
+        "url": null
+      }
+    }
+  ],
+  "pipelineRoutes": [
+    {
+      "routeType": "EndpointSource",
+      "pipelineEndpointSourceOutputName": "Default",
+      "pipelineDataSourceId": null,
+      "pipelineDataSource": null,
+      "pipelineDataSourceIndex": null,
+      "sourceAlgoOwnerName": null,
+      "sourceAlgoUrlName": null,
+      "sourceAlgoIndex": null,
+      "sourceAlgoOutputId": null,
+      "sourceAlgoOutput": null,
+      "pipelineDataSinkId": null,
+      "pipelineDataSink": null,
+      "pipelineDataSinkIndex": null,
+      "destAlgoOwnerName": "itsmarts",
+      "destAlgoUrlName": "CoreNLP-Sentiment-Analysis",
+      "destAlgoIndex": 1,
+      "destAlgoInputId": 1,
+      "destAlgoInput": {
+        "id": 1,
+        "name": "Text",
+        "description": "Text to analyse",
+        "isRequired": true,
+        "inputDeliveryType": "Http",
+        "parameter": null,
+        "parameterDelimiter": null,
+        "environmentVariable": null,
+        "httpVerb": "POST",
+        "httpPort": 9000,
+        "httpPath": "/",
+        "httpHeaders": null,
+        "mediaTypes": [
+          {
+            "title": "Any Text",
+            "typeName": "text",
+            "subTypeName": "any",
+            "fullTypeName": "text/any",
+            "fileExtension": null,
+            "rfc": null,
+            "rfcUrl": null,
+            "url": null
+          }
+        ]
+      }
+    }
+  ],
+  "gpuEnabled": false,
+  "timeoutSeconds": 60
+}

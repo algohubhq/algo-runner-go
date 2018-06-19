@@ -1,0 +1,8 @@
+hash: 8e5695fdbfd7d8265040e01d61fe689d28773e57e33637c04f763a6effaab5af
+updated: 2018-06-18T15:20:12.708733193-07:00
+imports:
+- name: github.com/confluentinc/confluent-kafka-go
+  version: 5e4d04e05fc319ce5996a867aafef29059f26862
+  subpackages:
+  - kafka
+testImports: []
