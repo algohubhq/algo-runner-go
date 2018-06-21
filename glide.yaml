@@ -4,3 +4,5 @@ import:
   version: ^0.11.4
   subpackages:
   - kafka
+- package: github.com/fsnotify/fsnotify
+  version: ^1.4.7

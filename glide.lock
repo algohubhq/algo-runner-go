@@ -1,8 +1,14 @@
-hash: 8e5695fdbfd7d8265040e01d61fe689d28773e57e33637c04f763a6effaab5af
-updated: 2018-06-18T15:20:12.708733193-07:00
+hash: 714deaab9995d821a57e20472f64017198ecf90a4550e294bbdf3864190c2e82
+updated: 2018-06-21T12:48:24.313097177-07:00
 imports:
 - name: github.com/confluentinc/confluent-kafka-go
   version: 5e4d04e05fc319ce5996a867aafef29059f26862
   subpackages:
   - kafka
+- name: github.com/fsnotify/fsnotify
+  version: c2828203cd70a50dcccfb2761f8b1f8ceef9a8e9
+- name: golang.org/x/sys
+  version: ad87a3a340fa7f3bed189293fbfa7a9b7e021ae1
+  subpackages:
+  - unix
 testImports: []
