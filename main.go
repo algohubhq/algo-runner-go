@@ -30,6 +30,14 @@ func main() {
 
 	config := loadConfig(*configFilePtr)
 
+	// Launch the server if not started
+	if config.Serverless == false {
+
+		serverCmd := strings.Split(config.Entrypoint, " ")
+		startServer(serverCmd)
+
+	}
+
 	c, err := kafka.NewConsumer(&kafka.ConfigMap{
 		"bootstrap.servers":               *kafkaServersPtr,
 		"group.id":                        "myGroup",
@@ -47,20 +55,7 @@ func main() {
 
 	topicRoutes := make(map[string]swagger.PipelineRouteModel)
 
-	var isServerStarted bool
-
 	for _, route := range config.PipelineRoutes {
-
-		// Launch the server if not started
-		if (route.DestAlgoInput.InputDeliveryType == "Http" ||
-			route.DestAlgoInput.InputDeliveryType == "Https") &&
-			!isServerStarted {
-
-			serverCmd := strings.Split(config.Entrypoint, " ")
-			startServer(serverCmd)
-			isServerStarted = true
-
-		}
 
 		if route.DestAlgoOwnerName == config.AlgoOwnerUserName &&
 			route.DestAlgoUrlName == config.AlgoUrlName {
@@ -68,37 +63,37 @@ func main() {
 			switch routeType := route.RouteType; routeType {
 			case "Algo":
 
-				topic := fmt.Sprintf("algorun.%s.%s.algo.%s.%s",
+				topic := strings.ToLower(fmt.Sprintf("algorun.%s.%s.algo.%s.%s",
 					config.EndpointOwnerUserName,
 					config.EndpointUrlName,
 					route.SourceAlgoOwnerName,
-					route.SourceAlgoUrlName)
+					route.SourceAlgoUrlName))
 
 				topicRoutes[topic] = route
 
-				err = c.Subscribe(strings.ToLower(topic), nil)
+				err = c.Subscribe(topic, nil)
 
 			case "DataSource":
 
-				topic := fmt.Sprintf("algorun.%s.%s.connector.%s",
+				topic := strings.ToLower(fmt.Sprintf("algorun.%s.%s.connector.%s",
 					config.EndpointOwnerUserName,
 					config.EndpointUrlName,
-					route.PipelineDataSource.DataConnector.Name)
+					route.PipelineDataSource.DataConnector.Name))
 
 				topicRoutes[topic] = route
 
-				err = c.Subscribe(strings.ToLower(topic), nil)
+				err = c.Subscribe(topic, nil)
 
 			case "EndpointSource":
 
-				topic := fmt.Sprintf("algorun.%s.%s.output.%s",
+				topic := strings.ToLower(fmt.Sprintf("algorun.%s.%s.output.%s",
 					config.EndpointOwnerUserName,
 					config.EndpointUrlName,
-					route.PipelineEndpointSourceOutputName)
+					route.PipelineEndpointSourceOutputName))
 
 				topicRoutes[topic] = route
 
-				err = c.Subscribe(strings.ToLower(topic), nil)
+				err = c.Subscribe(topic, nil)
 
 			}
 
@@ -106,7 +101,7 @@ func main() {
 
 	}
 
-	data := make(map[string]InputMap)
+	data := make(map[string]map[*swagger.AlgoInputModel][]InputData)
 
 	run := true
 
@@ -124,10 +119,17 @@ func main() {
 
 				route := topicRoutes[*e.TopicPartition.Topic]
 				runID, inputData, run := processMessage(e, route, config)
-				data[runID].inputs[route.DestAlgoInput] = append(data[runID].inputs[route.DestAlgoInput], inputData)
+
+				inputMap := make(map[*swagger.AlgoInputModel][]InputData)
+
+				inputMap[route.DestAlgoInput] = append(inputMap[route.DestAlgoInput], inputData)
+
+				data[runID] = inputMap
 
 				if run {
 					runExec(config, data[runID])
+
+					delete(data, runID)
 				}
 
 			case kafka.AssignedPartitions:
@@ -218,7 +220,7 @@ func getEnvironment(config swagger.RunnerConfig) []string {
 }
 
 func runExec(config swagger.RunnerConfig,
-	inputMap InputMap) {
+	inputMap map[*swagger.AlgoInputModel][]InputData) {
 
 	startTime := time.Now()
 
@@ -264,7 +266,7 @@ func runExec(config swagger.RunnerConfig,
 		}()
 	}
 
-	for input, inputData := range inputMap.inputs {
+	for input, inputData := range inputMap {
 
 		switch inputDeliveryType := input.InputDeliveryType; inputDeliveryType {
 		case "StdIn":

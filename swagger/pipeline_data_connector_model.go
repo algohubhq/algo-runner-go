@@ -15,6 +15,7 @@ import (
 )
 
 type PipelineDataConnectorModel struct {
+
 	DataConnector *DataConnectorModel `json:"dataConnector,omitempty"`
 
 	Index int32 `json:"index,omitempty"`

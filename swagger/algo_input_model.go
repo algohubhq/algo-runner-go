@@ -14,8 +14,8 @@ import (
 	"time"
 )
 
-// AlgoInputModel Describes the input
 type AlgoInputModel struct {
+
 	Id int32 `json:"id,omitempty"`
 
 	Name string `json:"name"`

@@ -36,4 +36,6 @@ type RunnerConfig struct {
 	GpuEnabled bool `json:"gpuEnabled,omitempty"`
 
 	TimeoutSeconds int32 `json:"timeoutSeconds,omitempty"`
+
+	Serverless bool `json:"serverless,omitempty"`
 }
