@@ -5,21 +5,8 @@
   "pipelineUrlName": "Pipeline-1",
   "algoOwnerUserName": "itsmarts",
   "algoUrlName": "CoreNLP-Sentiment-Analysis",
-  "entrypoint": "java -cp \"*\" edu.stanford.nlp.pipeline.StanfordCoreNLPServer --port 9000 --timeout 10000",
+  "entrypoint": "cat",
   "algoParams": [
-    {
-      "sortOrder": 1,
-      "name": "properties",
-      "value": "{\"annotators\": \"sentiment\", \"outputFormat\": \"json\"}",
-      "description": "Set the properties sent to the CoreNLP server.",
-      "dataType": {
-        "name": "string",
-        "regex": null,
-        "precision": null,
-        "scale": null
-      },
-      "options": []
-    }
   ],
   "inputs": [
     {
@@ -27,8 +14,8 @@
       "name": "Text",
       "description": "Text to analyse",
       "isRequired": true,
-      "inputDeliveryType": "Http",
-      "parameter": null,
+      "inputDeliveryType": "Parameter",
+      "parameter": "",
       "parameterDelimiter": null,
       "environmentVariable": null,
       "httpVerb": "POST",
@@ -93,8 +80,8 @@
         "name": "Text",
         "description": "Text to analyse",
         "isRequired": true,
-        "inputDeliveryType": "Http",
-        "parameter": null,
+        "inputDeliveryType": "Parameter",
+        "parameter": "",
         "parameterDelimiter": null,
         "environmentVariable": null,
         "httpVerb": "POST",
@@ -117,5 +104,6 @@
     }
   ],
   "gpuEnabled": false,
-  "timeoutSeconds": 60
+  "timeoutSeconds": 60,
+  "serverless": true
 }

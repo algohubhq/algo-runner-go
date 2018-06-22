@@ -184,6 +184,9 @@ func processMessage(msg *kafka.Message,
 	} else {
 
 		inputData.isFile = true
+		if _, err := os.Stat("/data"); os.IsNotExist(err) {
+			os.MkdirAll("/data", os.ModePerm)
+		}
 		file := fmt.Sprintf("/data/%s", fileName)
 		err := ioutil.WriteFile(file, msg.Value, 0644)
 		if err != nil {
@@ -234,11 +237,11 @@ func runExec(config swagger.RunnerConfig,
 	}
 
 	var out []byte
-	var err error
+	var cmdErr error
 
 	var wg sync.WaitGroup
 
-	wgCount := 2
+	wgCount := 1
 
 	// TODO: Write to the topic as error if no value
 	// if inputMap == nil {
@@ -275,6 +278,8 @@ func runExec(config swagger.RunnerConfig,
 				// get the writer for stdin
 				writer, _ := targetCmd.StdinPipe()
 
+				wg.Add(1)
+
 				// Write to pipe in separate go-routine to prevent blocking
 				go func() {
 					defer wg.Done()
@@ -286,7 +291,9 @@ func runExec(config swagger.RunnerConfig,
 
 		case "Parameter":
 
-			targetCmd.Args = append(targetCmd.Args, input.Parameter)
+			if input.Parameter != "" {
+				targetCmd.Args = append(targetCmd.Args, input.Parameter)
+			}
 			for _, data := range inputData {
 				targetCmd.Args = append(targetCmd.Args, string(data.data))
 			}
@@ -294,13 +301,17 @@ func runExec(config swagger.RunnerConfig,
 		case "RepeatedParameter":
 
 			for _, data := range inputData {
-				targetCmd.Args = append(targetCmd.Args, input.Parameter)
+				if input.Parameter != "" {
+					targetCmd.Args = append(targetCmd.Args, input.Parameter)
+				}
 				targetCmd.Args = append(targetCmd.Args, string(data.data))
 			}
 
 		case "DelimitedParameter":
 
-			targetCmd.Args = append(targetCmd.Args, input.Parameter)
+			if input.Parameter != "" {
+				targetCmd.Args = append(targetCmd.Args, input.Parameter)
+			}
 			var buffer bytes.Buffer
 			for i := 0; i < len(inputData); i++ {
 				buffer.WriteString(string(inputData[i].data))
@@ -318,7 +329,7 @@ func runExec(config swagger.RunnerConfig,
 
 		defer wg.Done()
 
-		out, err = targetCmd.Output()
+		out, cmdErr = targetCmd.Output()
 		if b.Len() > 0 {
 			fmt.Printf("stderr: %s", b.Bytes())
 		}
@@ -331,9 +342,9 @@ func runExec(config swagger.RunnerConfig,
 		timer.Stop()
 	}
 
-	if err != nil {
+	if cmdErr != nil {
 
-		fmt.Printf("Success=%t, Error=%s\n", targetCmd.ProcessState.Success(), err.Error())
+		fmt.Printf("Success=%t, Error=%s\n", targetCmd.ProcessState.Success(), cmdErr.Error())
 		fmt.Printf("Out=%s\n", out)
 
 		// TODO: Write error to output topic
@@ -343,7 +354,7 @@ func runExec(config swagger.RunnerConfig,
 
 	var bytesWritten string
 	// if config.writeDebug == true {
-	// 	os.Stdout.Write(out)
+	os.Stdout.Write(out)
 	// } else {
 	bytesWritten = fmt.Sprintf("Wrote %d Bytes", len(out))
 	//}
