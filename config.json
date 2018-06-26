@@ -5,7 +5,7 @@
   "pipelineUrlName": "Pipeline-1",
   "algoOwnerUserName": "itsmarts",
   "algoUrlName": "CoreNLP-Sentiment-Analysis",
-  "entrypoint": "cat",
+  "entrypoint": "cat /bin/znew",
   "algoParams": [
   ],
   "inputs": [
@@ -105,5 +105,5 @@
   ],
   "gpuEnabled": false,
   "timeoutSeconds": 60,
-  "serverless": true
+  "serverless": false
 }

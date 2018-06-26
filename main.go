@@ -6,7 +6,6 @@ import (
 	"flag"
 	"fmt"
 	"github.com/confluentinc/confluent-kafka-go/kafka"
-	"io"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -25,7 +24,7 @@ func main() {
 
 	flag.Parse()
 
-	sigchan := make(chan os.Signal, 1)
+	sigchan := make(chan os.Signal)
 	signal.Notify(sigchan, syscall.SIGINT, syscall.SIGTERM)
 
 	config := loadConfig(*configFilePtr)
@@ -33,8 +32,13 @@ func main() {
 	// Launch the server if not started
 	if config.Serverless == false {
 
-		serverCmd := strings.Split(config.Entrypoint, " ")
-		startServer(serverCmd)
+		var serverTerminated bool
+		go func() {
+			serverTerminated = startServer(config, kafkaServersPtr)
+			if serverTerminated {
+				os.Exit(1)
+			}
+		}()
 
 	}
 
@@ -103,17 +107,18 @@ func main() {
 
 	data := make(map[string]map[*swagger.AlgoInputModel][]InputData)
 
-	run := true
+	waiting := true
 
-	for run == true {
+	for waiting == true {
 		select {
 		case sig := <-sigchan:
 			fmt.Printf("Caught signal %v: terminating\n", sig)
-			run = false
+			waiting = false
 
 		case ev := <-c.Events():
 			switch e := ev.(type) {
 			case *kafka.Message:
+
 				fmt.Printf("%% Message on %s:\n%s\n",
 					e.TopicPartition, string(e.Value))
 
@@ -142,7 +147,7 @@ func main() {
 				fmt.Printf("%% Reached %v\n", e)
 			case kafka.Error:
 				fmt.Fprintf(os.Stderr, "%% Error: %v\n", e)
-				run = false
+				waiting = false
 			}
 		}
 	}
@@ -231,6 +236,20 @@ func runExec(config swagger.RunnerConfig,
 
 	targetCmd := exec.Command(command[0], command[1:]...)
 
+	sigchan := make(chan os.Signal)
+	signal.Notify(sigchan, syscall.SIGINT, syscall.SIGTERM)
+	// setup termination on kill signals
+	go func() {
+		sig := <-sigchan
+		fmt.Printf("Caught signal %v. Killing server process: %s\n", sig, config.Entrypoint)
+		if targetCmd != nil && targetCmd.Process != nil {
+			val := targetCmd.Process.Kill()
+			if val != nil {
+				fmt.Printf("Killed algo process: %s - error %s\n", config.Entrypoint, val.Error())
+			}
+		}
+	}()
+
 	envs := getEnvironment(config)
 	if len(envs) > 0 {
 		//targetCmd.Env = envs
@@ -241,15 +260,11 @@ func runExec(config swagger.RunnerConfig,
 
 	var wg sync.WaitGroup
 
-	wgCount := 1
-
 	// TODO: Write to the topic as error if no value
 	// if inputMap == nil {
 
 	// 	return
 	// }
-
-	wg.Add(wgCount)
 
 	var timer *time.Timer
 
@@ -281,12 +296,12 @@ func runExec(config swagger.RunnerConfig,
 				wg.Add(1)
 
 				// Write to pipe in separate go-routine to prevent blocking
-				go func() {
+				go func(stdInData []byte) {
 					defer wg.Done()
 
-					writer.Write(data.data)
+					writer.Write(stdInData)
 					writer.Close()
-				}()
+				}(data.data)
 			}
 
 		case "Parameter":
@@ -322,6 +337,8 @@ func runExec(config swagger.RunnerConfig,
 			targetCmd.Args = append(targetCmd.Args, buffer.String())
 		}
 	}
+
+	wg.Add(1)
 
 	go func() {
 		var b bytes.Buffer
@@ -368,41 +385,5 @@ func runExec(config swagger.RunnerConfig,
 	} else {
 		fmt.Printf("Duration: %f seconds", execDuration)
 	}
-
-}
-
-func startServer(serverCmd []string) {
-
-	var stdoutBuf, stderrBuf bytes.Buffer
-	cmd := exec.Command(serverCmd[0], serverCmd[1:]...)
-
-	stdoutIn, _ := cmd.StdoutPipe()
-	stderrIn, _ := cmd.StderrPipe()
-
-	var errStdout, errStderr error
-	stdout := io.MultiWriter(os.Stdout, &stdoutBuf)
-	stderr := io.MultiWriter(os.Stderr, &stderrBuf)
-	err := cmd.Start()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Server cmd.Start() failed with '%s'\n", err)
-	}
-
-	go func() {
-		_, errStdout = io.Copy(stdout, stdoutIn)
-	}()
-
-	go func() {
-		_, errStderr = io.Copy(stderr, stderrIn)
-	}()
-
-	err = cmd.Wait()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Server cmd.Run() failed with %s\n", err)
-	}
-	if errStdout != nil || errStderr != nil {
-		fmt.Fprintf(os.Stderr, "Server failed to capture stdout or stderr\n")
-	}
-	outStr, errStr := string(stdoutBuf.Bytes()), string(stderrBuf.Bytes())
-	fmt.Printf("\nout:\n%s\nerr:\n%s\n", outStr, errStr)
 
 }

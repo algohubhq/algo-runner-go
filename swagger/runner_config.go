@@ -23,6 +23,8 @@ type RunnerConfig struct {
 
 	AlgoUrlName string `json:"algoUrlName,omitempty"`
 
+	AlgoVersionTag string `json:"algoVersionTag,omitempty"`
+
 	Entrypoint string `json:"entrypoint,omitempty"`
 
 	AlgoParams []AlgoParamModel `json:"algoParams,omitempty"`

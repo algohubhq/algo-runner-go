@@ -12,14 +12,15 @@
             "remotePath": "",
             "port": 2345,
             "host": "127.0.0.1",
-            "program": "${fileDirname}",
+            "program": "${workspaceFolder}",
             "env": {},
             "args": [
                 "--config", "./config.json",
                 "--kafka-servers", "172.22.238.110:32768"
             ],
             "cwd": "${workspaceRoot}",
-            "showLog": true
+            "showLog": true,
+            //"trace": "verbose"
         }
     ]
 }
