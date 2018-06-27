@@ -7,6 +7,19 @@
   "algoUrlName": "CoreNLP-Sentiment-Analysis",
   "entrypoint": "cat /bin/znew",
   "algoParams": [
+    {
+      "sortOrder": 1,
+      "name": "properties",
+      "value": "{\"annotators\": \"sentiment\", \"outputFormat\": \"json\"}",
+      "description": "Set the properties sent to the CoreNLP server.",
+      "dataType": {
+        "name": "string",
+        "regex": null,
+        "precision": null,
+        "scale": null
+      },
+      "options": []
+    }
   ],
   "inputs": [
     {
@@ -14,8 +27,8 @@
       "name": "Text",
       "description": "Text to analyse",
       "isRequired": true,
-      "inputDeliveryType": "Parameter",
-      "parameter": "",
+      "inputDeliveryType": "Http",
+      "parameter": null,
       "parameterDelimiter": null,
       "environmentVariable": null,
       "httpVerb": "POST",
@@ -80,8 +93,8 @@
         "name": "Text",
         "description": "Text to analyse",
         "isRequired": true,
-        "inputDeliveryType": "Parameter",
-        "parameter": "",
+        "inputDeliveryType": "Http",
+        "parameter": null,
         "parameterDelimiter": null,
         "environmentVariable": null,
         "httpVerb": "POST",

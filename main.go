@@ -39,7 +39,7 @@ func main() {
 		go func() {
 			serverTerminated = startServer(config, kafkaServersPtr)
 			if serverTerminated {
-				os.Exit(1)
+				//	os.Exit(1)
 			}
 		}()
 
@@ -418,11 +418,11 @@ func runHTTP(config swagger.RunnerConfig,
 
 	for input, inputData := range inputMap {
 
-		u, _ := url.Parse("http://localhost")
+		u, _ := url.Parse("localhost")
 
 		u.Scheme = strings.ToLower(input.InputDeliveryType)
 		if input.HttpPort > 0 {
-			u.Host = fmt.Sprintf("http://localhost:%d", input.HttpPort)
+			u.Host = fmt.Sprintf("localhost:%d", input.HttpPort)
 		}
 		u.Path = input.HttpPath
 
@@ -433,9 +433,9 @@ func runHTTP(config swagger.RunnerConfig,
 		u.RawQuery = q.Encode()
 
 		for _, data := range inputData {
-			request, err := http.NewRequest(strings.ToLower(input.HttpVerb), u.String(), bytes.NewReader(data.data))
-			if err != nil {
-
+			request, reqErr := http.NewRequest(strings.ToLower(input.HttpVerb), u.String(), bytes.NewReader(data.data))
+			if reqErr != nil {
+				fmt.Fprintf(os.Stderr, "Error building request: %s\n", reqErr)
 			}
 			response, err := netClient.Do(request)
 			if err != nil {
@@ -452,7 +452,7 @@ func runHTTP(config swagger.RunnerConfig,
 				for key, value := range hdr {
 					fmt.Println("   ", key, ":", value)
 				}
-				fmt.Println(contents)
+				fmt.Println(string(contents))
 			}
 		}
 		fmt.Println(u)
@@ -473,11 +473,11 @@ func runHTTP(config swagger.RunnerConfig,
 
 func produceLogMessage(topic string, kafkaServers *string, logMessage swagger.LogMessage) {
 
-	topic = strings.ToLower(fmt.Sprintf("algorun.%s.%s.algo.%s.%s",
-		logMessage.EndpointOwnerUserName,
-		logMessage.EndpointUrlName,
-		logMessage.AlgoOwnerUserName,
-		logMessage.AlgoUrlName))
+	// topic = strings.ToLower(fmt.Sprintf("algorun.%s.%s.algo.%s.%s",
+	// 	logMessage.EndpointOwnerUserName,
+	// 	logMessage.EndpointUrlName,
+	// 	logMessage.AlgoOwnerUserName,
+	// 	logMessage.AlgoUrlName))
 
 	p, err := kafka.NewProducer(&kafka.ConfigMap{"bootstrap.servers": *kafkaServers})
 
