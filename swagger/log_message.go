@@ -10,7 +10,11 @@
 
 package swagger
 
-type ServerLogModel struct {
+type LogMessage struct {
+	LogMessageType string `json:"logMessageType,omitempty"`
+
+	LogSource string `json:"logSource,omitempty"`
+
 	EndpointOwnerUserName string `json:"endpointOwnerUserName,omitempty"`
 
 	EndpointUrlName string `json:"endpointUrlName,omitempty"`
@@ -23,7 +27,9 @@ type ServerLogModel struct {
 
 	Status string `json:"status,omitempty"`
 
-	StdErr string `json:"stdErr,omitempty"`
+	CompletionPercent float64 `json:"completionPercent,omitempty"`
 
-	StdOut string `json:"stdOut,omitempty"`
+	RuntimeMs int64 `json:"runtimeMs,omitempty"`
+
+	Log string `json:"log,omitempty"`
 }

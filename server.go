@@ -2,9 +2,7 @@ package main
 
 import (
 	"algo-runner-go/swagger"
-	"encoding/json"
 	"fmt"
-	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"io"
 	"os"
 	"os/exec"
@@ -49,7 +47,8 @@ func startServer(config swagger.RunnerConfig, kafkaServers *string) (terminated 
 	}
 
 	// Create the base message
-	serverLog := swagger.ServerLogModel{
+	serverLog := swagger.LogMessage{
+		LogMessageType:        "Server",
 		EndpointOwnerUserName: config.EndpointOwnerUserName,
 		EndpointUrlName:       config.EndpointUrlName,
 		AlgoOwnerUserName:     config.AlgoOwnerUserName,
@@ -62,13 +61,15 @@ func startServer(config swagger.RunnerConfig, kafkaServers *string) (terminated 
 	wg.Add(2)
 
 	go func() {
-		stdout, errStdout = logToOrchestrator("stdout", serverLog, kafkaServers, os.Stdout, stdoutIn)
+		serverLog.LogSource = "stdout"
+		stdout, errStdout = logToOrchestrator(serverLog, kafkaServers, os.Stdout, stdoutIn)
 		wg.Done()
 	}()
 
 	go func() {
+		serverLog.LogSource = "stderr"
 		serverLog.Status = "Failed"
-		stderr, errStderr = logToOrchestrator("stderr", serverLog, kafkaServers, os.Stderr, stderrIn)
+		stderr, errStderr = logToOrchestrator(serverLog, kafkaServers, os.Stderr, stderrIn)
 		wg.Done()
 	}()
 
@@ -76,9 +77,10 @@ func startServer(config swagger.RunnerConfig, kafkaServers *string) (terminated 
 
 	errWait := cmd.Wait()
 	if err != nil {
+		serverLog.LogSource = "stderr"
 		serverLog.Status = "Failed"
-		serverLog.StdErr = fmt.Sprintf("Server start failed with %s\n", errWait)
-		produceMessage(serverLog, kafkaServers)
+		serverLog.Log = fmt.Sprintf("Server start failed with %s\n", errWait)
+		produceLogMessage(getLogTopic(), kafkaServers, serverLog)
 	}
 	if errStdout != nil || errStderr != nil {
 		fmt.Fprintf(os.Stderr, "failed to capture stdout or stderr\n")
@@ -86,18 +88,19 @@ func startServer(config swagger.RunnerConfig, kafkaServers *string) (terminated 
 
 	// If this is reached, the server has terminated (bad)
 	terminated = true
-	outStr, errStr := string(stdout), string(stderr)
+	outBytes := append(stderr, stdout...)
+
 	serverLog.Status = "Terminated"
-	serverLog.StdOut = outStr
-	serverLog.StdErr = errStr
-	produceMessage(serverLog, kafkaServers)
+	serverLog.Log = string(outBytes)
+
+	produceLogMessage(getLogTopic(), kafkaServers, serverLog)
 
 	fmt.Fprintf(os.Stderr, "Server Terminated unexpectedly!\n")
 
 	return
 }
 
-func logToOrchestrator(logType string, serverLog swagger.ServerLogModel, kafkaServers *string, w io.Writer, r io.Reader) ([]byte, error) {
+func logToOrchestrator(serverLog swagger.LogMessage, kafkaServers *string, w io.Writer, r io.Reader) ([]byte, error) {
 
 	var out []byte
 	buf := make([]byte, 1024, 1024)
@@ -109,13 +112,9 @@ func logToOrchestrator(logType string, serverLog swagger.ServerLogModel, kafkaSe
 
 			// deliver at 100K blocks for large messages
 			if len(out) >= 102400 {
-				if logType == "stdout" && len(out) > 0 {
-					serverLog.StdOut = string(out)
-					produceMessage(serverLog, kafkaServers)
-				}
-				if logType == "stderr" && len(out) > 0 {
-					serverLog.StdErr = string(out)
-					produceMessage(serverLog, kafkaServers)
+				if len(out) > 0 {
+					serverLog.Log = string(out)
+					produceLogMessage(getLogTopic(), kafkaServers, serverLog)
 				}
 
 				out = nil
@@ -124,13 +123,9 @@ func logToOrchestrator(logType string, serverLog swagger.ServerLogModel, kafkaSe
 			_, err := w.Write(d)
 			if err != nil {
 
-				if logType == "stdout" && len(out) > 0 {
-					serverLog.StdOut = string(out)
-					produceMessage(serverLog, kafkaServers)
-				}
-				if logType == "stderr" && len(out) > 0 {
-					serverLog.StdErr = string(out)
-					produceMessage(serverLog, kafkaServers)
+				if len(out) > 0 {
+					serverLog.Log = string(out)
+					produceLogMessage(getLogTopic(), kafkaServers, serverLog)
 				}
 
 				return out, err
@@ -142,13 +137,9 @@ func logToOrchestrator(logType string, serverLog swagger.ServerLogModel, kafkaSe
 				err = nil
 			}
 
-			if logType == "stdout" && len(out) > 0 {
-				serverLog.StdOut = string(out)
-				produceMessage(serverLog, kafkaServers)
-			}
-			if logType == "stderr" && len(out) > 0 {
-				serverLog.StdErr = string(out)
-				produceMessage(serverLog, kafkaServers)
+			if len(out) > 0 {
+				serverLog.Log = string(out)
+				produceLogMessage(getLogTopic(), kafkaServers, serverLog)
 			}
 
 			return out, err
@@ -159,47 +150,6 @@ func logToOrchestrator(logType string, serverLog swagger.ServerLogModel, kafkaSe
 
 }
 
-func produceMessage(serverLog swagger.ServerLogModel, kafkaServers *string) {
-
-	topic := "algorun.orchestrator.servers"
-
-	p, err := kafka.NewProducer(&kafka.ConfigMap{"bootstrap.servers": *kafkaServers})
-
-	if err != nil {
-		fmt.Printf("Failed to create server message producer: %s\n", err)
-		os.Exit(1)
-	}
-
-	doneChan := make(chan bool)
-
-	go func() {
-		defer close(doneChan)
-		for e := range p.Events() {
-			switch ev := e.(type) {
-			case *kafka.Message:
-				m := ev
-				if m.TopicPartition.Error != nil {
-					fmt.Printf("Delivery failed: %v\n", m.TopicPartition.Error)
-				} else {
-					fmt.Printf("Delivered message to topic %s [%d] at offset %v\n",
-						*m.TopicPartition.Topic, m.TopicPartition.Partition, m.TopicPartition.Offset)
-				}
-				return
-
-			default:
-				fmt.Printf("Ignored event: %s\n", ev)
-			}
-		}
-	}()
-
-	serverLogBytes, err := json.Marshal(serverLog)
-
-	p.ProduceChannel() <- &kafka.Message{TopicPartition: kafka.TopicPartition{Topic: &topic, Partition: kafka.PartitionAny},
-		Value: serverLogBytes}
-
-	// wait for delivery report goroutine to finish
-	_ = <-doneChan
-
-	p.Close()
-
+func getLogTopic() string {
+	return "algorun.orchestrator.logs"
 }

@@ -3,10 +3,13 @@ package main
 import (
 	"algo-runner-go/swagger"
 	"bytes"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"io/ioutil"
+	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -132,7 +135,12 @@ func main() {
 				data[runID] = inputMap
 
 				if run {
-					runExec(config, data[runID])
+
+					if config.Serverless {
+						runExec(config, data[runID])
+					} else {
+						runHTTP(config, data[runID])
+					}
 
 					delete(data, runID)
 				}
@@ -261,10 +269,10 @@ func runExec(config swagger.RunnerConfig,
 	var wg sync.WaitGroup
 
 	// TODO: Write to the topic as error if no value
-	// if inputMap == nil {
+	if inputMap == nil {
 
-	// 	return
-	// }
+		// 	return
+	}
 
 	var timer *time.Timer
 
@@ -385,5 +393,129 @@ func runExec(config swagger.RunnerConfig,
 	} else {
 		fmt.Printf("Duration: %f seconds", execDuration)
 	}
+
+}
+
+func runHTTP(config swagger.RunnerConfig,
+	inputMap map[*swagger.AlgoInputModel][]InputData) {
+
+	startTime := time.Now()
+
+	// TODO: Write to the topic as error if no value
+	if inputMap == nil {
+
+		// 	return
+	}
+
+	var netClient = &http.Client{
+		Timeout: time.Second * 10,
+	}
+
+	// Set the timeout routine
+	if config.TimeoutSeconds > 0 {
+		netClient.Timeout = time.Second * time.Duration(config.TimeoutSeconds)
+	}
+
+	for input, inputData := range inputMap {
+
+		u, _ := url.Parse("http://localhost")
+
+		u.Scheme = strings.ToLower(input.InputDeliveryType)
+		if input.HttpPort > 0 {
+			u.Host = fmt.Sprintf("http://localhost:%d", input.HttpPort)
+		}
+		u.Path = input.HttpPath
+
+		q := u.Query()
+		for _, param := range config.AlgoParams {
+			q.Set(param.Name, param.Value)
+		}
+		u.RawQuery = q.Encode()
+
+		for _, data := range inputData {
+			request, err := http.NewRequest(strings.ToLower(input.HttpVerb), u.String(), bytes.NewReader(data.data))
+			if err != nil {
+
+			}
+			response, err := netClient.Do(request)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error getting response from http server: %s\n", err)
+			} else {
+				defer response.Body.Close()
+				contents, err := ioutil.ReadAll(response.Body)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "Error reading response from http server: %s\n", err)
+				}
+				fmt.Println("The calculated length is:", len(string(contents)), "for the url:", u.String())
+				fmt.Println("   ", response.StatusCode)
+				hdr := response.Header
+				for key, value := range hdr {
+					fmt.Println("   ", key, ":", value)
+				}
+				fmt.Println(contents)
+			}
+		}
+		fmt.Println(u)
+
+	}
+
+	execDuration := time.Since(startTime).Seconds()
+
+	// TODO: Write to output topic
+
+	//if len(bytesWritten) > 0 {
+	//		fmt.Printf("%s - Duration: %f seconds", bytesWritten, execDuration)
+	//	} else {
+	fmt.Printf("Duration: %f seconds", execDuration)
+	//	}
+
+}
+
+func produceLogMessage(topic string, kafkaServers *string, logMessage swagger.LogMessage) {
+
+	topic = strings.ToLower(fmt.Sprintf("algorun.%s.%s.algo.%s.%s",
+		logMessage.EndpointOwnerUserName,
+		logMessage.EndpointUrlName,
+		logMessage.AlgoOwnerUserName,
+		logMessage.AlgoUrlName))
+
+	p, err := kafka.NewProducer(&kafka.ConfigMap{"bootstrap.servers": *kafkaServers})
+
+	if err != nil {
+		fmt.Printf("Failed to create server message producer: %s\n", err)
+		os.Exit(1)
+	}
+
+	doneChan := make(chan bool)
+
+	go func() {
+		defer close(doneChan)
+		for e := range p.Events() {
+			switch ev := e.(type) {
+			case *kafka.Message:
+				m := ev
+				if m.TopicPartition.Error != nil {
+					fmt.Printf("Delivery failed: %v\n", m.TopicPartition.Error)
+				} else {
+					fmt.Printf("Delivered message to topic %s [%d] at offset %v\n",
+						*m.TopicPartition.Topic, m.TopicPartition.Partition, m.TopicPartition.Offset)
+				}
+				return
+
+			default:
+				fmt.Printf("Ignored event: %s\n", ev)
+			}
+		}
+	}()
+
+	logMessageBytes, err := json.Marshal(logMessage)
+
+	p.ProduceChannel() <- &kafka.Message{TopicPartition: kafka.TopicPartition{Topic: &topic, Partition: kafka.PartitionAny},
+		Value: logMessageBytes}
+
+	// wait for delivery report goroutine to finish
+	_ = <-doneChan
+
+	p.Close()
 
 }
