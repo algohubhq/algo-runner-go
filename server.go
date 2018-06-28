@@ -12,7 +12,7 @@ import (
 	"syscall"
 )
 
-func startServer(config swagger.RunnerConfig, kafkaServers *string) (terminated bool) {
+func startServer(config swagger.RunnerConfig, kafkaServers string) (terminated bool) {
 
 	terminated = false
 
@@ -100,7 +100,7 @@ func startServer(config swagger.RunnerConfig, kafkaServers *string) (terminated 
 	return
 }
 
-func logToOrchestrator(serverLog swagger.LogMessage, kafkaServers *string, w io.Writer, r io.Reader) ([]byte, error) {
+func logToOrchestrator(serverLog swagger.LogMessage, kafkaServers string, w io.Writer, r io.Reader) ([]byte, error) {
 
 	var out []byte
 	buf := make([]byte, 1024, 1024)
