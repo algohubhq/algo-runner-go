@@ -71,6 +71,17 @@ func runExec(config swagger.RunnerConfig,
 	runID string,
 	inputMap map[*swagger.AlgoInputModel][]InputData) {
 
+	// Create the base message
+	algoLog := swagger.LogMessage{
+		LogMessageType:        "Algo",
+		EndpointOwnerUserName: config.EndpointOwnerUserName,
+		EndpointUrlName:       config.EndpointUrlName,
+		AlgoOwnerUserName:     config.AlgoOwnerUserName,
+		AlgoUrlName:           config.AlgoUrlName,
+		AlgoVersionTag:        config.AlgoVersionTag,
+		Status:                "Started",
+	}
+
 	startTime := time.Now()
 
 	command := getCommand(config)
@@ -96,7 +107,8 @@ func runExec(config swagger.RunnerConfig,
 		//targetCmd.Env = envs
 	}
 
-	var out []byte
+	var stdout []byte
+	var stderr []byte
 	var cmdErr error
 
 	var wg sync.WaitGroup
@@ -189,7 +201,8 @@ func runExec(config swagger.RunnerConfig,
 		for {
 			select {
 			case event := <-w.Event:
-				fmt.Println(event) // Print the event's info.
+				fmt.Println(event)
+
 			case err := <-w.Error:
 				fmt.Printf("Error watching output file/folder: %s/n", err)
 			case <-w.Closed:
@@ -198,18 +211,26 @@ func runExec(config swagger.RunnerConfig,
 		}
 	}()
 
-	for _, output := range config.Outputs {
+	var sendStdOut bool
 
-		switch outputDeliveryType := output.OutputDeliveryType; outputDeliveryType {
-		case "File":
-			// Watch for a specific file.
-			if err := w.AddRecursive(output.OutputFilename); err != nil {
-				// TODO: Log the error
-			}
-		case "Folder":
-			// Watch folder recursively for changes.
-			if err := w.AddRecursive(output.OutputPath); err != nil {
-				// TODO: Log the error
+	for _, route := range config.PipelineRoutes {
+
+		if route.SourceAlgoOwnerName == config.AlgoOwnerUserName &&
+			route.SourceAlgoUrlName == config.AlgoUrlName {
+
+			switch outputDeliveryType := route.SourceAlgoOutput.OutputDeliveryType; strings.ToLower(outputDeliveryType) {
+			case "file":
+				// Watch for a specific file.
+				if err := w.AddRecursive(route.SourceAlgoOutput.OutputFilename); err != nil {
+					// TODO: Log the error
+				}
+			case "folder":
+				// Watch folder recursively for changes.
+				if err := w.AddRecursive(route.SourceAlgoOutput.OutputPath); err != nil {
+					// TODO: Log the error
+				}
+			case "stdout":
+				sendStdOut = true
 			}
 		}
 
@@ -221,9 +242,9 @@ func runExec(config swagger.RunnerConfig,
 
 		defer wg.Done()
 
-		out, cmdErr = targetCmd.Output()
+		stdout, cmdErr = targetCmd.Output()
 		if b.Len() > 0 {
-			fmt.Printf("stderr: %s", b.Bytes())
+			stderr = b.Bytes()
 		}
 		b.Reset()
 	}()
@@ -236,30 +257,35 @@ func runExec(config swagger.RunnerConfig,
 
 	if cmdErr != nil {
 
-		fmt.Printf("Success=%t, Error=%s\n", targetCmd.ProcessState.Success(), cmdErr.Error())
-		fmt.Printf("Out=%s\n", out)
+		outBytes := append(stderr, stdout...)
+		algoLog.Status = "Failed"
+		algoLog.Log = string(outBytes)
 
-		// TODO: Write error to output topic
+		produceLogMessage(getLogTopic(), kafkaServers, algoLog)
 
 		return
 	}
 
-	var bytesWritten string
-	// if config.writeDebug == true {
-	os.Stdout.Write(out)
-	// } else {
-	bytesWritten = fmt.Sprintf("Wrote %d Bytes", len(out))
-	//}
+	execDuration := time.Since(startTime)
 
-	execDuration := time.Since(startTime).Seconds()
+	if sendStdOut {
+		stdoutTopic := strings.ToLower(fmt.Sprintf("algorun.%s.%s.algo.%s.%s.output.stdout",
+			config.EndpointOwnerUserName,
+			config.EndpointUrlName,
+			config.AlgoOwnerUserName,
+			config.AlgoUrlName))
 
-	// TODO: Write to output topic
-
-	if len(bytesWritten) > 0 {
-		fmt.Printf("%s - Duration: %f seconds", bytesWritten, execDuration)
-	} else {
-		fmt.Printf("Duration: %f seconds", execDuration)
+		// Write to stdout output topic
+		fileName, _ := uuid.NewV4()
+		produceOutputMessage(runID, fileName.String(), stdoutTopic, kafkaServers, stdout)
 	}
+
+	// Write completion to log topic
+	algoLog.Status = "Success"
+	algoLog.RuntimeMs = int64(execDuration / time.Millisecond)
+	algoLog.Log = string(stdout)
+
+	produceLogMessage(getLogTopic(), kafkaServers, algoLog)
 
 }
 
