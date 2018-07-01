@@ -120,9 +120,9 @@ func waitForMessages(config swagger.RunnerConfig, c *kafka.Consumer, kafkaServer
 
 				if run {
 
-					if config.Serverless {
+					if strings.ToLower(config.ServerType) == "serverless" {
 						runExec(config, kafkaServers, runID, data[runID])
-					} else {
+					} else if strings.ToLower(config.ServerType) == "http" {
 						runHTTP(config, kafkaServers, runID, data[runID])
 					}
 

@@ -21,34 +21,6 @@
       "options": []
     }
   ],
-  "inputs": [
-    {
-      "id": 1,
-      "name": "Text",
-      "description": "Text to analyse",
-      "isRequired": true,
-      "inputDeliveryType": "Http",
-      "parameter": null,
-      "parameterDelimiter": null,
-      "environmentVariable": null,
-      "httpVerb": "POST",
-      "httpPort": 9000,
-      "httpPath": "/",
-      "httpHeaders": null,
-      "mediaTypes": [
-        {
-          "title": "Any Text",
-          "typeName": "text",
-          "subTypeName": "any",
-          "fullTypeName": "text/any",
-          "fileExtension": null,
-          "rfc": null,
-          "rfcUrl": null,
-          "url": null
-        }
-      ]
-    }
-  ],
   "outputs": [
     {
       "id": 1,

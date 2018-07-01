@@ -27,9 +27,11 @@ type RunnerConfig struct {
 
 	Entrypoint string `json:"entrypoint,omitempty"`
 
+	ServerType string `json:"serverType,omitempty"`
+
 	AlgoParams []AlgoParamModel `json:"algoParams,omitempty"`
 
-	Inputs []AlgoInputModel `json:"inputs,omitempty"`
+	WriteAllOutputs bool `json:"writeAllOutputs,omitempty"`
 
 	Outputs []AlgoOutputModel `json:"outputs,omitempty"`
 
@@ -38,6 +40,4 @@ type RunnerConfig struct {
 	GpuEnabled bool `json:"gpuEnabled,omitempty"`
 
 	TimeoutSeconds int32 `json:"timeoutSeconds,omitempty"`
-
-	Serverless bool `json:"serverless,omitempty"`
 }

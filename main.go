@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"os"
+	"strings"
 )
 
 func main() {
@@ -15,7 +16,7 @@ func main() {
 	config := loadConfig(*configFilePtr)
 
 	// Launch the server if not started
-	if config.Serverless == false {
+	if strings.ToLower(config.ServerType) != "serverless" {
 
 		var serverTerminated bool
 		go func() {
