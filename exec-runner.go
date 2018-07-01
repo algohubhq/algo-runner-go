@@ -146,10 +146,27 @@ func runExec(config swagger.RunnerConfig,
 	w := watcher.New()
 	w.SetMaxEvents(1)
 
+	outputFiles := make(map[string]*swagger.AlgoOutputModel)
+
 	go func() {
 		for {
 			select {
 			case event := <-w.Event:
+				// TODO: Test what happens when folder is monitored.
+				// Determine how to get the output (remove the filename from the path?)
+				algoOutput := outputFiles[event.Name()]
+
+				fileOutputTopic := strings.ToLower(fmt.Sprintf("algorun.%s.%s.algo.%s.%s.output.%s",
+					config.EndpointOwnerUserName,
+					config.EndpointUrlName,
+					config.AlgoOwnerUserName,
+					config.AlgoUrlName,
+					algoOutput.Name))
+
+				// Write to stdout output topic
+				fileName := event.Name()
+				produceOutputMessage(runID, fileName, fileOutputTopic, kafkaServers, stdout)
+
 				fmt.Println(event)
 
 			case err := <-w.Error:
@@ -172,11 +189,15 @@ func runExec(config swagger.RunnerConfig,
 				// Watch for a specific file.
 				if err := w.AddRecursive(route.SourceAlgoOutput.OutputFilename); err != nil {
 					// TODO: Log the error
+				} else {
+					outputFiles[route.SourceAlgoOutput.OutputFilename] = route.SourceAlgoOutput
 				}
 			case "folder":
 				// Watch folder recursively for changes.
 				if err := w.AddRecursive(route.SourceAlgoOutput.OutputPath); err != nil {
 					// TODO: Log the error
+				} else {
+					outputFiles[route.SourceAlgoOutput.OutputPath] = route.SourceAlgoOutput
 				}
 			case "stdout":
 				sendStdOut = true
