@@ -22,8 +22,8 @@ func startConsumer() {
 		"group.id":                        "myGroup",
 		"client.id":                       "algo-runner-go-client",
 		"enable.auto.commit":              false,
-		"enable.auto.offset.store":        false,
-		"auto.offset.reset":               "earliest",
+		"enable.auto.offset.store":        true,
+		"auto.offset.reset":               "latest",
 		"go.events.channel.enable":        true,
 		"go.application.rebalance.enable": true,
 	})
@@ -132,7 +132,6 @@ func waitForMessages(c *kafka.Consumer, topicRoutes TopicRoutes) {
 					delete(data, runID)
 
 					// Store the offset and commit
-					c.StoreOffsets([]kafka.TopicPartition{e.TopicPartition})
 					c.Commit()
 
 				} else {
