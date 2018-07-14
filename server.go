@@ -12,7 +12,7 @@ import (
 	"syscall"
 )
 
-func startServer(config swagger.RunnerConfig, kafkaServers string) (terminated bool) {
+func startServer() (terminated bool) {
 
 	terminated = false
 
@@ -62,14 +62,14 @@ func startServer(config swagger.RunnerConfig, kafkaServers string) (terminated b
 
 	go func() {
 		serverLog.LogSource = "stdout"
-		stdout, errStdout = logToOrchestrator(serverLog, kafkaServers, os.Stdout, stdoutIn)
+		stdout, errStdout = logToOrchestrator(serverLog, os.Stdout, stdoutIn)
 		wg.Done()
 	}()
 
 	go func() {
 		serverLog.LogSource = "stderr"
 		serverLog.Status = "Failed"
-		stderr, errStderr = logToOrchestrator(serverLog, kafkaServers, os.Stderr, stderrIn)
+		stderr, errStderr = logToOrchestrator(serverLog, os.Stderr, stderrIn)
 		wg.Done()
 	}()
 
@@ -80,7 +80,7 @@ func startServer(config swagger.RunnerConfig, kafkaServers string) (terminated b
 		serverLog.LogSource = "stderr"
 		serverLog.Status = "Failed"
 		serverLog.Log = fmt.Sprintf("Server start failed with %s\n", errWait)
-		produceLogMessage(getLogTopic(), kafkaServers, serverLog)
+		produceLogMessage(logTopic, serverLog)
 	}
 	if errStdout != nil || errStderr != nil {
 		fmt.Fprintf(os.Stderr, "failed to capture stdout or stderr\n")
@@ -93,14 +93,14 @@ func startServer(config swagger.RunnerConfig, kafkaServers string) (terminated b
 	serverLog.Status = "Terminated"
 	serverLog.Log = string(outBytes)
 
-	produceLogMessage(getLogTopic(), kafkaServers, serverLog)
+	produceLogMessage(logTopic, serverLog)
 
 	fmt.Fprintf(os.Stderr, "Server Terminated unexpectedly!\n")
 
 	return
 }
 
-func logToOrchestrator(serverLog swagger.LogMessage, kafkaServers string, w io.Writer, r io.Reader) ([]byte, error) {
+func logToOrchestrator(serverLog swagger.LogMessage, w io.Writer, r io.Reader) ([]byte, error) {
 
 	var out []byte
 	buf := make([]byte, 1024, 1024)
@@ -114,7 +114,7 @@ func logToOrchestrator(serverLog swagger.LogMessage, kafkaServers string, w io.W
 			if len(out) >= 102400 {
 				if len(out) > 0 {
 					serverLog.Log = string(out)
-					produceLogMessage(getLogTopic(), kafkaServers, serverLog)
+					produceLogMessage(logTopic, serverLog)
 				}
 
 				out = nil
@@ -125,7 +125,7 @@ func logToOrchestrator(serverLog swagger.LogMessage, kafkaServers string, w io.W
 
 				if len(out) > 0 {
 					serverLog.Log = string(out)
-					produceLogMessage(getLogTopic(), kafkaServers, serverLog)
+					produceLogMessage(logTopic, serverLog)
 				}
 
 				return out, err
@@ -139,7 +139,7 @@ func logToOrchestrator(serverLog swagger.LogMessage, kafkaServers string, w io.W
 
 			if len(out) > 0 {
 				serverLog.Log = string(out)
-				produceLogMessage(getLogTopic(), kafkaServers, serverLog)
+				produceLogMessage(logTopic, serverLog)
 			}
 
 			return out, err
@@ -148,8 +148,4 @@ func logToOrchestrator(serverLog swagger.LogMessage, kafkaServers string, w io.W
 
 	// never reached
 
-}
-
-func getLogTopic() string {
-	return "algorun.orchestrator.logs"
 }

@@ -15,11 +15,14 @@ import (
 
 type TopicRoutes map[string]swagger.PipelineRouteModel
 
-func startConsumer(config swagger.RunnerConfig, kafkaServers string) {
+func startConsumer() {
 
 	c, err := kafka.NewConsumer(&kafka.ConfigMap{
 		"bootstrap.servers":               kafkaServers,
 		"group.id":                        "myGroup",
+		"client.id":                       "algo-runner-go-client",
+		"enable.auto.commit":              false,
+		"enable.auto.offset.store":        false,
 		"auto.offset.reset":               "earliest",
 		"go.events.channel.enable":        true,
 		"go.application.rebalance.enable": true,
@@ -80,14 +83,14 @@ func startConsumer(config swagger.RunnerConfig, kafkaServers string) {
 
 	}
 
-	waitForMessages(config, c, kafkaServers, topicRoutes)
+	waitForMessages(c, topicRoutes)
 
 	fmt.Printf("Closing consumer\n")
 	c.Close()
 
 }
 
-func waitForMessages(config swagger.RunnerConfig, c *kafka.Consumer, kafkaServers string, topicRoutes TopicRoutes) {
+func waitForMessages(c *kafka.Consumer, topicRoutes TopicRoutes) {
 
 	sigchan := make(chan os.Signal)
 	signal.Notify(sigchan, syscall.SIGINT, syscall.SIGTERM)
@@ -110,7 +113,7 @@ func waitForMessages(config swagger.RunnerConfig, c *kafka.Consumer, kafkaServer
 					e.TopicPartition, string(e.Value))
 
 				route := topicRoutes[*e.TopicPartition.Topic]
-				runID, inputData, run := processMessage(e, route, config)
+				runID, inputData, run := processMessage(e, route)
 
 				inputMap := make(map[*swagger.AlgoInputModel][]InputData)
 
@@ -121,12 +124,21 @@ func waitForMessages(config swagger.RunnerConfig, c *kafka.Consumer, kafkaServer
 				if run {
 
 					if strings.ToLower(config.ServerType) == "serverless" {
-						runExec(config, kafkaServers, runID, data[runID])
+						runExec(runID, data[runID])
 					} else if strings.ToLower(config.ServerType) == "http" {
-						runHTTP(config, kafkaServers, runID, data[runID])
+						runHTTP(runID, data[runID])
 					}
 
 					delete(data, runID)
+
+					// Store the offset and commit
+					c.StoreOffsets([]kafka.TopicPartition{e.TopicPartition})
+					c.Commit()
+
+				} else {
+					// Store the offset for the data that was only saved
+					// Will be committed after successful run
+					c.StoreOffsets([]kafka.TopicPartition{e.TopicPartition})
 				}
 
 			case kafka.AssignedPartitions:
@@ -146,8 +158,7 @@ func waitForMessages(config swagger.RunnerConfig, c *kafka.Consumer, kafkaServer
 }
 
 func processMessage(msg *kafka.Message,
-	route swagger.PipelineRouteModel,
-	config swagger.RunnerConfig) (runID string, inputData InputData, run bool) {
+	route swagger.PipelineRouteModel) (runID string, inputData InputData, run bool) {
 
 	// Parse the headers
 	var fileName string
@@ -194,7 +205,7 @@ func processMessage(msg *kafka.Message,
 
 }
 
-func produceOutputMessage(runID string, fileName string, topic string, kafkaServers string, data []byte) {
+func produceOutputMessage(runID string, fileName string, topic string, data []byte) {
 
 	p, err := kafka.NewProducer(&kafka.ConfigMap{"bootstrap.servers": kafkaServers})
 
@@ -241,7 +252,7 @@ func produceOutputMessage(runID string, fileName string, topic string, kafkaServ
 
 }
 
-func produceLogMessage(topic string, kafkaServers string, logMessage swagger.LogMessage) {
+func produceLogMessage(topic string, logMessage swagger.LogMessage) {
 
 	p, err := kafka.NewProducer(&kafka.ConfigMap{"bootstrap.servers": kafkaServers})
 

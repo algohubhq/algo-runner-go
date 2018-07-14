@@ -12,9 +12,7 @@ import (
 	"time"
 )
 
-func runHTTP(config swagger.RunnerConfig,
-	kafkaServers string,
-	runID string,
+func runHTTP(runID string,
 	inputMap map[*swagger.AlgoInputModel][]InputData) {
 
 	startTime := time.Now()
@@ -72,40 +70,43 @@ func runHTTP(config swagger.RunnerConfig,
 			if reqErr != nil {
 				algoLog.Status = "Failed"
 				algoLog.Log = fmt.Sprintf("Error building request: %s\n", reqErr)
-				produceLogMessage(getLogTopic(), kafkaServers, algoLog)
+				produceLogMessage(logTopic, algoLog)
 				continue
 			}
 			response, errReq := netClient.Do(request)
 			if errReq != nil {
 				algoLog.Status = "Failed"
 				algoLog.Log = fmt.Sprintf("Error getting response from http server: %s\n", errReq)
-				produceLogMessage(getLogTopic(), kafkaServers, algoLog)
+				produceLogMessage(logTopic, algoLog)
 				continue
 			} else {
 				defer response.Body.Close()
+				// TODO: Get the content type and parse the contents
+				// For example if multipart-form, get each file and load into kafka separately
 				contents, errRead := ioutil.ReadAll(response.Body)
+				fmt.Printf("%s", contents)
 				if errRead != nil {
 					algoLog.Status = "Failed"
 					algoLog.Log = fmt.Sprintf("Error reading response from http server: %s\n", errRead)
-					produceLogMessage(getLogTopic(), kafkaServers, algoLog)
+					produceLogMessage(logTopic, algoLog)
 					continue
 				}
 				if response.StatusCode == 200 {
 					// Send to output topic
 					reqDuration := time.Since(startTime)
 					fileName, _ := uuid.NewV4()
-					produceOutputMessage(runID, fileName.String(), outputTopic, kafkaServers, contents)
+					produceOutputMessage(runID, fileName.String(), outputTopic, contents)
 
 					algoLog.Status = "Success"
 					algoLog.RuntimeMs = int64(reqDuration / time.Millisecond)
 					algoLog.Log = string(contents)
 
-					produceLogMessage(getLogTopic(), kafkaServers, algoLog)
+					produceLogMessage(logTopic, algoLog)
 				} else {
 					// Produce the error to the log
 					algoLog.Status = "Failed"
 					algoLog.Log = fmt.Sprintf("Server returned non-success http status code: %d\n%s\n", response.StatusCode, contents)
-					produceLogMessage(getLogTopic(), kafkaServers, algoLog)
+					produceLogMessage(logTopic, algoLog)
 				}
 
 			}

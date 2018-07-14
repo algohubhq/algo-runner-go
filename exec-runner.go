@@ -15,9 +15,7 @@ import (
 	"time"
 )
 
-func runExec(config swagger.RunnerConfig,
-	kafkaServers string,
-	runID string,
+func runExec(runID string,
 	inputMap map[*swagger.AlgoInputModel][]InputData) {
 
 	// Create the base message
@@ -165,7 +163,7 @@ func runExec(config swagger.RunnerConfig,
 
 				// Write to stdout output topic
 				fileName := event.Name()
-				produceOutputMessage(runID, fileName, fileOutputTopic, kafkaServers, stdout)
+				produceOutputMessage(runID, fileName, fileOutputTopic, stdout)
 
 				fmt.Println(event)
 
@@ -231,7 +229,7 @@ func runExec(config swagger.RunnerConfig,
 		algoLog.Status = "Failed"
 		algoLog.Log = string(outBytes)
 
-		produceLogMessage(getLogTopic(), kafkaServers, algoLog)
+		produceLogMessage(logTopic, algoLog)
 
 		return
 	}
@@ -247,7 +245,7 @@ func runExec(config swagger.RunnerConfig,
 
 		// Write to stdout output topic
 		fileName, _ := uuid.NewV4()
-		produceOutputMessage(runID, fileName.String(), stdoutTopic, kafkaServers, stdout)
+		produceOutputMessage(runID, fileName.String(), stdoutTopic, stdout)
 	}
 
 	// Write completion to log topic
@@ -255,7 +253,7 @@ func runExec(config swagger.RunnerConfig,
 	algoLog.RuntimeMs = int64(execDuration / time.Millisecond)
 	algoLog.Log = string(stdout)
 
-	produceLogMessage(getLogTopic(), kafkaServers, algoLog)
+	produceLogMessage(logTopic, algoLog)
 
 }
 
