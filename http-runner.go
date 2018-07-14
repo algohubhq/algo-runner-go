@@ -84,7 +84,6 @@ func runHTTP(runID string,
 				// TODO: Get the content type and parse the contents
 				// For example if multipart-form, get each file and load into kafka separately
 				contents, errRead := ioutil.ReadAll(response.Body)
-				fmt.Printf("%s", contents)
 				if errRead != nil {
 					algoLog.Status = "Failed"
 					algoLog.Log = fmt.Sprintf("Error reading response from http server: %s\n", errRead)
