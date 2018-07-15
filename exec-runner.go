@@ -86,8 +86,8 @@ func runExec(runID string,
 
 	for input, inputData := range inputMap {
 
-		switch inputDeliveryType := input.InputDeliveryType; inputDeliveryType {
-		case "StdIn":
+		switch inputDeliveryType := strings.ToLower(input.InputDeliveryType); inputDeliveryType {
+		case "stdin":
 			for _, data := range inputData {
 
 				// get the writer for stdin
@@ -104,7 +104,7 @@ func runExec(runID string,
 				}(data.data)
 			}
 
-		case "Parameter":
+		case "parameter":
 
 			if input.Parameter != "" {
 				targetCmd.Args = append(targetCmd.Args, input.Parameter)
@@ -113,7 +113,7 @@ func runExec(runID string,
 				targetCmd.Args = append(targetCmd.Args, string(data.data))
 			}
 
-		case "RepeatedParameter":
+		case "repeatedparameter":
 
 			for _, data := range inputData {
 				if input.Parameter != "" {
@@ -122,7 +122,7 @@ func runExec(runID string,
 				targetCmd.Args = append(targetCmd.Args, string(data.data))
 			}
 
-		case "DelimitedParameter":
+		case "delimitedparameter":
 
 			if input.Parameter != "" {
 				targetCmd.Args = append(targetCmd.Args, input.Parameter)
@@ -177,31 +177,57 @@ func runExec(runID string,
 
 	var sendStdOut bool
 
-	for _, route := range config.PipelineRoutes {
+	if config.WriteAllOutputs {
 
-		if route.SourceAlgoOwnerName == config.AlgoOwnerUserName &&
-			route.SourceAlgoUrlName == config.AlgoUrlName {
-
-			switch outputDeliveryType := route.SourceAlgoOutput.OutputDeliveryType; strings.ToLower(outputDeliveryType) {
+		for _, output := range config.Outputs {
+			switch outputDeliveryType := output.OutputDeliveryType; strings.ToLower(outputDeliveryType) {
 			case "file":
 				// Watch for a specific file.
-				if err := w.AddRecursive(route.SourceAlgoOutput.OutputFilename); err != nil {
+				if err := w.AddRecursive(output.OutputFilename); err != nil {
 					// TODO: Log the error
 				} else {
-					outputFiles[route.SourceAlgoOutput.OutputFilename] = route.SourceAlgoOutput
+					outputFiles[output.OutputFilename] = &output
 				}
 			case "folder":
 				// Watch folder recursively for changes.
-				if err := w.AddRecursive(route.SourceAlgoOutput.OutputPath); err != nil {
+				if err := w.AddRecursive(output.OutputPath); err != nil {
 					// TODO: Log the error
 				} else {
-					outputFiles[route.SourceAlgoOutput.OutputPath] = route.SourceAlgoOutput
+					outputFiles[output.OutputPath] = &output
 				}
 			case "stdout":
 				sendStdOut = true
 			}
 		}
 
+	} else {
+
+		for _, route := range config.PipelineRoutes {
+
+			if route.SourceAlgoOwnerName == config.AlgoOwnerUserName &&
+				route.SourceAlgoUrlName == config.AlgoUrlName {
+
+				switch outputDeliveryType := route.SourceAlgoOutput.OutputDeliveryType; strings.ToLower(outputDeliveryType) {
+				case "file":
+					// Watch for a specific file.
+					if err := w.AddRecursive(route.SourceAlgoOutput.OutputFilename); err != nil {
+						// TODO: Log the error
+					} else {
+						outputFiles[route.SourceAlgoOutput.OutputFilename] = route.SourceAlgoOutput
+					}
+				case "folder":
+					// Watch folder recursively for changes.
+					if err := w.AddRecursive(route.SourceAlgoOutput.OutputPath); err != nil {
+						// TODO: Log the error
+					} else {
+						outputFiles[route.SourceAlgoOutput.OutputPath] = route.SourceAlgoOutput
+					}
+				case "stdout":
+					sendStdOut = true
+				}
+			}
+
+		}
 	}
 
 	go func() {
@@ -210,6 +236,7 @@ func runExec(runID string,
 
 		defer wg.Done()
 
+		fmt.Printf("%s", targetCmd.Args)
 		stdout, cmdErr = targetCmd.Output()
 		if b.Len() > 0 {
 			stderr = b.Bytes()
@@ -225,9 +252,8 @@ func runExec(runID string,
 
 	if cmdErr != nil {
 
-		outBytes := append(stderr, stdout...)
 		algoLog.Status = "Failed"
-		algoLog.Log = string(outBytes)
+		algoLog.Log = fmt.Sprintf("%s\nStdout: %s\nStderr: %s", cmdErr, stdout, stderr)
 
 		produceLogMessage(logTopic, algoLog)
 

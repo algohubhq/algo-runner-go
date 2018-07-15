@@ -15,7 +15,7 @@
             "program": "${workspaceFolder}",
             "env": {},
             "args": [
-                "--config", "./config.json",
+                "--config", "../algo-test-go/config-text-stdin.json",
                 "--kafka-servers", "172.22.238.110:32768"
             ],
             "cwd": "${workspaceRoot}",
