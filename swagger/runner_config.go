@@ -31,9 +31,11 @@ type RunnerConfig struct {
 
 	AlgoParams []AlgoParamModel `json:"algoParams,omitempty"`
 
-	WriteAllOutputs bool `json:"writeAllOutputs,omitempty"`
+	Inputs []AlgoInputModel `json:"inputs,omitempty"`
 
 	Outputs []AlgoOutputModel `json:"outputs,omitempty"`
+
+	WriteAllOutputs bool `json:"writeAllOutputs,omitempty"`
 
 	PipelineRoutes []PipelineRouteModel `json:"pipelineRoutes,omitempty"`
 

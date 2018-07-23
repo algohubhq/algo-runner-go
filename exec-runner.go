@@ -177,9 +177,24 @@ func runExec(runID string,
 
 	var sendStdOut bool
 
-	if config.WriteAllOutputs {
+	for _, output := range config.Outputs {
 
-		for _, output := range config.Outputs {
+		writeOutput := false
+		// Check to see if there are any mapped routes for this output
+		if !config.WriteAllOutputs {
+			for i := range config.PipelineRoutes {
+				if config.PipelineRoutes[i].SourceAlgoOwnerName == config.AlgoOwnerUserName &&
+					config.PipelineRoutes[i].SourceAlgoUrlName == config.AlgoUrlName {
+					writeOutput = true
+					break
+				}
+			}
+		} else {
+			writeOutput = true
+		}
+
+		if writeOutput {
+
 			switch outputDeliveryType := output.OutputDeliveryType; strings.ToLower(outputDeliveryType) {
 			case "file":
 				// Watch for a specific file.
@@ -198,35 +213,6 @@ func runExec(runID string,
 			case "stdout":
 				sendStdOut = true
 			}
-		}
-
-	} else {
-
-		for _, route := range config.PipelineRoutes {
-
-			if route.SourceAlgoOwnerName == config.AlgoOwnerUserName &&
-				route.SourceAlgoUrlName == config.AlgoUrlName {
-
-				switch outputDeliveryType := route.SourceAlgoOutput.OutputDeliveryType; strings.ToLower(outputDeliveryType) {
-				case "file":
-					// Watch for a specific file.
-					if err := w.AddRecursive(route.SourceAlgoOutput.OutputFilename); err != nil {
-						// TODO: Log the error
-					} else {
-						outputFiles[route.SourceAlgoOutput.OutputFilename] = route.SourceAlgoOutput
-					}
-				case "folder":
-					// Watch folder recursively for changes.
-					if err := w.AddRecursive(route.SourceAlgoOutput.OutputPath); err != nil {
-						// TODO: Log the error
-					} else {
-						outputFiles[route.SourceAlgoOutput.OutputPath] = route.SourceAlgoOutput
-					}
-				case "stdout":
-					sendStdOut = true
-				}
-			}
-
 		}
 	}
 

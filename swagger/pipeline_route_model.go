@@ -15,14 +15,11 @@ import (
 )
 
 type PipelineRouteModel struct {
-
 	RouteType string `json:"routeType,omitempty"`
 
 	PipelineEndpointSourceOutputName string `json:"pipelineEndpointSourceOutputName,omitempty"`
 
-	PipelineDataSourceId int32 `json:"pipelineDataSourceId,omitempty"`
-
-	PipelineDataSource *PipelineDataConnectorModel `json:"pipelineDataSource,omitempty"`
+	PipelineDataSourceName string `json:"pipelineDataSourceName,omitempty"`
 
 	PipelineDataSourceIndex int32 `json:"pipelineDataSourceIndex,omitempty"`
 
@@ -32,13 +29,9 @@ type PipelineRouteModel struct {
 
 	SourceAlgoIndex int32 `json:"sourceAlgoIndex,omitempty"`
 
-	SourceAlgoOutputId int32 `json:"sourceAlgoOutputId,omitempty"`
+	SourceAlgoOutputName string `json:"sourceAlgoOutputName,omitempty"`
 
-	SourceAlgoOutput *AlgoOutputModel `json:"sourceAlgoOutput,omitempty"`
-
-	PipelineDataSinkId int32 `json:"pipelineDataSinkId,omitempty"`
-
-	PipelineDataSink *PipelineDataConnectorModel `json:"pipelineDataSink,omitempty"`
+	PipelineDataSinkName string `json:"pipelineDataSinkName,omitempty"`
 
 	PipelineDataSinkIndex int32 `json:"pipelineDataSinkIndex,omitempty"`
 
@@ -48,9 +41,7 @@ type PipelineRouteModel struct {
 
 	DestAlgoIndex int32 `json:"destAlgoIndex,omitempty"`
 
-	DestAlgoInputId int32 `json:"destAlgoInputId,omitempty"`
-
-	DestAlgoInput *AlgoInputModel `json:"destAlgoInput,omitempty"`
+	DestAlgoInputName string `json:"destAlgoInputName,omitempty"`
 
 	CreatedTimestamp time.Time `json:"createdTimestamp,omitempty"`
 

@@ -13,7 +13,7 @@ import (
 	"syscall"
 )
 
-type TopicRoutes map[string]swagger.PipelineRouteModel
+type TopicInputs map[string]*swagger.AlgoInputModel
 
 func startConsumer() {
 
@@ -35,12 +35,21 @@ func startConsumer() {
 
 	fmt.Printf("Created Consumer %v\n", c)
 
-	topicRoutes := make(TopicRoutes)
+	topicInputs := make(TopicInputs)
 
 	for _, route := range config.PipelineRoutes {
 
 		if route.DestAlgoOwnerName == config.AlgoOwnerUserName &&
 			route.DestAlgoUrlName == config.AlgoUrlName {
+
+			var input swagger.AlgoInputModel
+			// Get the input associated with this route
+			for i := range config.Inputs {
+				if config.Inputs[i].Name == route.DestAlgoInputName {
+					input = config.Inputs[i]
+					break
+				}
+			}
 
 			switch routeType := route.RouteType; routeType {
 			case "Algo":
@@ -51,7 +60,7 @@ func startConsumer() {
 					route.SourceAlgoOwnerName,
 					route.SourceAlgoUrlName))
 
-				topicRoutes[topic] = route
+				topicInputs[topic] = &input
 
 				err = c.Subscribe(topic, nil)
 
@@ -60,9 +69,9 @@ func startConsumer() {
 				topic := strings.ToLower(fmt.Sprintf("algorun.%s.%s.connector.%s",
 					config.EndpointOwnerUserName,
 					config.EndpointUrlName,
-					route.PipelineDataSource.DataConnector.Name))
+					route.PipelineDataSourceName))
 
-				topicRoutes[topic] = route
+				topicInputs[topic] = &input
 
 				err = c.Subscribe(topic, nil)
 
@@ -73,7 +82,7 @@ func startConsumer() {
 					config.EndpointUrlName,
 					route.PipelineEndpointSourceOutputName))
 
-				topicRoutes[topic] = route
+				topicInputs[topic] = &input
 
 				err = c.Subscribe(topic, nil)
 
@@ -83,14 +92,14 @@ func startConsumer() {
 
 	}
 
-	waitForMessages(c, topicRoutes)
+	waitForMessages(c, topicInputs)
 
 	fmt.Printf("Closing consumer\n")
 	c.Close()
 
 }
 
-func waitForMessages(c *kafka.Consumer, topicRoutes TopicRoutes) {
+func waitForMessages(c *kafka.Consumer, topicInputs TopicInputs) {
 
 	sigchan := make(chan os.Signal)
 	signal.Notify(sigchan, syscall.SIGINT, syscall.SIGTERM)
@@ -112,12 +121,12 @@ func waitForMessages(c *kafka.Consumer, topicRoutes TopicRoutes) {
 				fmt.Printf("%% Message on %s:\n%s\n",
 					e.TopicPartition, string(e.Value))
 
-				route := topicRoutes[*e.TopicPartition.Topic]
-				runID, inputData, run := processMessage(e, route)
+				input := topicInputs[*e.TopicPartition.Topic]
+				runID, inputData, run := processMessage(e, input)
 
 				inputMap := make(map[*swagger.AlgoInputModel][]InputData)
 
-				inputMap[route.DestAlgoInput] = append(inputMap[route.DestAlgoInput], inputData)
+				inputMap[input] = append(inputMap[input], inputData)
 
 				data[runID] = inputMap
 
@@ -157,7 +166,7 @@ func waitForMessages(c *kafka.Consumer, topicRoutes TopicRoutes) {
 }
 
 func processMessage(msg *kafka.Message,
-	route swagger.PipelineRouteModel) (runID string, inputData InputData, run bool) {
+	input *swagger.AlgoInputModel) (runID string, inputData InputData, run bool) {
 
 	// Parse the headers
 	var fileName string
@@ -177,9 +186,9 @@ func processMessage(msg *kafka.Message,
 	// Save the data based on the delivery type
 	inputData = InputData{}
 
-	if route.DestAlgoInput.InputDeliveryType == "StdIn" ||
-		route.DestAlgoInput.InputDeliveryType == "Http" ||
-		route.DestAlgoInput.InputDeliveryType == "Https" {
+	if input.InputDeliveryType == "StdIn" ||
+		input.InputDeliveryType == "Http" ||
+		input.InputDeliveryType == "Https" {
 
 		inputData.isFile = false
 		inputData.data = msg.Value
