@@ -3,6 +3,7 @@ package main
 import (
 	"algo-runner-go/swagger"
 	"bytes"
+	"errors"
 	"fmt"
 	"github.com/nu7hatch/gouuid"
 	"io/ioutil"
@@ -13,7 +14,7 @@ import (
 )
 
 func runHTTP(runID string,
-	inputMap map[*swagger.AlgoInputModel][]InputData) {
+	inputMap map[*swagger.AlgoInputModel][]InputData) (err error) {
 
 	startTime := time.Now()
 
@@ -98,19 +99,25 @@ func runHTTP(runID string,
 
 					algoLog.Status = "Success"
 					algoLog.RuntimeMs = int64(reqDuration / time.Millisecond)
-					algoLog.Log = string(contents)
+					//algoLog.Log = string(contents)
 
 					produceLogMessage(logTopic, algoLog)
-				} else {
-					// Produce the error to the log
-					algoLog.Status = "Failed"
-					algoLog.Log = fmt.Sprintf("Server returned non-success http status code: %d\n%s\n", response.StatusCode, contents)
-					produceLogMessage(logTopic, algoLog)
+
+					return nil
 				}
+
+				// Produce the error to the log
+				algoLog.Status = "Failed"
+				algoLog.Log = fmt.Sprintf("Server returned non-success http status code: %d\n%s\n", response.StatusCode, contents)
+				produceLogMessage(logTopic, algoLog)
+
+				return errors.New(algoLog.Log)
 
 			}
 		}
 
 	}
+
+	return errors.New(algoLog.Log)
 
 }

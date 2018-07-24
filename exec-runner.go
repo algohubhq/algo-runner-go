@@ -16,7 +16,7 @@ import (
 )
 
 func runExec(runID string,
-	inputMap map[*swagger.AlgoInputModel][]InputData) {
+	inputMap map[*swagger.AlgoInputModel][]InputData) (err error) {
 
 	// Create the base message
 	algoLog := swagger.LogMessage{
@@ -88,21 +88,14 @@ func runExec(runID string,
 
 		switch inputDeliveryType := strings.ToLower(input.InputDeliveryType); inputDeliveryType {
 		case "stdin":
+
+			// get the writer for stdin
+			writer, _ := targetCmd.StdinPipe()
 			for _, data := range inputData {
-
-				// get the writer for stdin
-				writer, _ := targetCmd.StdinPipe()
-
-				wg.Add(1)
-
-				// Write to pipe in separate go-routine to prevent blocking
-				go func(stdInData []byte) {
-					defer wg.Done()
-
-					writer.Write(stdInData)
-					writer.Close()
-				}(data.data)
+				// Write to stdin pipe
+				writer.Write(data.data)
 			}
+			writer.Close()
 
 		case "parameter":
 
@@ -243,7 +236,7 @@ func runExec(runID string,
 
 		produceLogMessage(logTopic, algoLog)
 
-		return
+		return cmdErr
 	}
 
 	execDuration := time.Since(startTime)
@@ -266,6 +259,8 @@ func runExec(runID string,
 	algoLog.Log = string(stdout)
 
 	produceLogMessage(logTopic, algoLog)
+
+	return nil
 
 }
 

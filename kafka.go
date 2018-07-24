@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/confluentinc/confluent-kafka-go/kafka"
+	"github.com/nu7hatch/gouuid"
 	"io/ioutil"
 	"os"
 	"os/signal"
@@ -22,7 +23,7 @@ func startConsumer() {
 		"group.id":                        "myGroup",
 		"client.id":                       "algo-runner-go-client",
 		"enable.auto.commit":              false,
-		"enable.auto.offset.store":        true,
+		"enable.auto.offset.store":        false,
 		"auto.offset.reset":               "latest",
 		"go.events.channel.enable":        true,
 		"go.application.rebalance.enable": true,
@@ -106,6 +107,8 @@ func waitForMessages(c *kafka.Consumer, topicInputs TopicInputs) {
 
 	data := make(map[string]map[*swagger.AlgoInputModel][]InputData)
 
+	offsets := make(map[string]kafka.TopicPartition)
+
 	waiting := true
 
 	for waiting == true {
@@ -118,35 +121,61 @@ func waitForMessages(c *kafka.Consumer, topicInputs TopicInputs) {
 			switch e := ev.(type) {
 			case *kafka.Message:
 
-				fmt.Printf("%% Message on %s:\n%s\n",
-					e.TopicPartition, string(e.Value))
+				fmt.Printf("%% Message received on %s\n",
+					e.TopicPartition)
 
 				input := topicInputs[*e.TopicPartition.Topic]
 				runID, inputData, run := processMessage(e, input)
 
-				inputMap := make(map[*swagger.AlgoInputModel][]InputData)
+				if data[runID] == nil {
+					data[runID] = make(map[*swagger.AlgoInputModel][]InputData)
+				}
 
-				inputMap[input] = append(inputMap[input], inputData)
-
-				data[runID] = inputMap
+				data[runID][input] = append(data[runID][input], inputData)
 
 				if run {
 
+					var runError error
 					if strings.ToLower(config.ServerType) == "serverless" {
-						runExec(runID, data[runID])
+						runError = runExec(runID, data[runID])
 					} else if strings.ToLower(config.ServerType) == "http" {
-						runHTTP(runID, data[runID])
+						runError = runHTTP(runID, data[runID])
 					}
 
-					delete(data, runID)
+					if runError == nil {
 
-					// Store the offset and commit
-					c.Commit()
+						// Increment the offset
+						// Store the offset and commit
+						offsetCommit := kafka.TopicPartition{
+							Topic:     e.TopicPartition.Topic,
+							Partition: e.TopicPartition.Partition,
+							Offset:    e.TopicPartition.Offset + 1,
+						}
+
+						offsets[runID] = offsetCommit
+
+						fmt.Printf("%s", offsets[runID])
+						_, offsetErr := c.StoreOffsets([]kafka.TopicPartition{offsets[runID]})
+						if offsetErr != nil {
+							// TODO: Log the error
+						}
+
+						_, commitErr := c.Commit()
+						if commitErr != nil {
+							// TODO: Log the error
+						}
+
+						delete(data, runID)
+						delete(offsets, runID)
+
+					} else {
+						fmt.Fprintf(os.Stderr, "%s", runError)
+					}
 
 				} else {
-					// Store the offset for the data that was only saved
+					// Save the offset for the data that was only stored but not executed
 					// Will be committed after successful run
-					c.StoreOffsets([]kafka.TopicPartition{e.TopicPartition})
+					offsets[runID] = e.TopicPartition
 				}
 
 			case kafka.AssignedPartitions:
@@ -168,23 +197,34 @@ func waitForMessages(c *kafka.Consumer, topicInputs TopicInputs) {
 func processMessage(msg *kafka.Message,
 	input *swagger.AlgoInputModel) (runID string, inputData InputData, run bool) {
 
+	// runID is the message key
+	runID = string(msg.Key)
+
 	// Parse the headers
+	var contentType string
 	var fileName string
 	for _, header := range msg.Headers {
-		if header.Key == "runId" {
-			runID = string(header.Value)
-		}
-		if header.Key == "fileName" {
+		switch header.Key {
+		case "contentType":
+			contentType = string(header.Value)
+		case "fileName":
 			fileName = string(header.Value)
-		}
-		if header.Key == "run" {
+		case "run":
 			b, _ := strconv.ParseBool(string(header.Value))
 			run = b
 		}
 	}
 
+	if runID == "" {
+		uuidRunID, _ := uuid.NewV4()
+		runID = strings.Replace(uuidRunID.String(), "-", "", -1)
+	}
+
+	// TODO: Validate the content type
+
 	// Save the data based on the delivery type
 	inputData = InputData{}
+	inputData.contentType = contentType
 
 	if input.InputDeliveryType == "StdIn" ||
 		input.InputDeliveryType == "Http" ||
