@@ -135,6 +135,9 @@ func waitForMessages(c *kafka.Consumer, topicInputs TopicInputs) {
 
 				if run {
 
+					// TODO: iterate over inputs to be sure at least one has data!
+					// Can check to be sure all required inputs are fulfilled as well
+
 					var runError error
 					if strings.ToLower(config.ServerType) == "serverless" {
 						runError = runExec(runID, data[runID])
@@ -218,6 +221,11 @@ func processMessage(msg *kafka.Message,
 	if runID == "" {
 		uuidRunID, _ := uuid.NewV4()
 		runID = strings.Replace(uuidRunID.String(), "-", "", -1)
+	}
+
+	// Check if the content is empty then this message is to trigger a run only
+	if run && len(msg.Value) < 1 {
+		return
 	}
 
 	// TODO: Validate the content type
