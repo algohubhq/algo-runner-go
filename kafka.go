@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/signal"
+	"path"
 	"strconv"
 	"strings"
 	"syscall"
@@ -205,6 +206,7 @@ func processMessage(msg *kafka.Message,
 
 	// Parse the headers
 	var contentType string
+	var messageDataType string
 	var fileName string
 	for _, header := range msg.Headers {
 		switch header.Key {
@@ -212,6 +214,8 @@ func processMessage(msg *kafka.Message,
 			contentType = string(header.Value)
 		case "fileName":
 			fileName = string(header.Value)
+		case "messageDataType":
+			messageDataType = string(header.Value)
 		case "run":
 			b, _ := strconv.ParseBool(string(header.Value))
 			run = b
@@ -238,23 +242,67 @@ func processMessage(msg *kafka.Message,
 		input.InputDeliveryType == "Http" ||
 		input.InputDeliveryType == "Https" {
 
-		inputData.isFile = false
-		inputData.data = msg.Value
+		// If messageDataType is file reference then load file
+		if messageDataType == "FileReference" {
+			// Try to read the json
+			var fileReference FileReference
+			jsonErr := json.Unmarshal(msg.Value, &fileReference)
+
+			if jsonErr != nil {
+				fmt.Println(jsonErr.Error())
+			}
+
+			// Read the file
+			fullPathFile := path.Join(fileReference.FilePath, fileReference.FileName)
+			fileBytes, err := ioutil.ReadFile(fullPathFile)
+			if err != nil {
+				fmt.Println(err.Error())
+			}
+
+			inputData.isFileReference = false
+			inputData.data = fileBytes
+
+		} else {
+			// If the data is embedded then copy the message value
+			inputData.isFileReference = false
+			inputData.data = msg.Value
+		}
 
 	} else {
 
-		inputData.isFile = true
-		if _, err := os.Stat("/data"); os.IsNotExist(err) {
-			os.MkdirAll("/data", os.ModePerm)
-		}
-		file := fmt.Sprintf("/data/%s", fileName)
-		err := ioutil.WriteFile(file, msg.Value, 0644)
-		if err != nil {
-			// TODO: Log error
-		}
+		// If messageDataType is file reference then ensure file exists and convert to container path
+		if messageDataType == "FileReference" {
 
-		inputData.data = []byte(file)
+			// Try to read the json
+			var fileReference FileReference
+			jsonErr := json.Unmarshal(msg.Value, &fileReference)
 
+			if jsonErr != nil {
+				fmt.Println(jsonErr.Error())
+			}
+			// Check if the file exists
+			fullPathFile := path.Join(fileReference.FilePath, fileReference.FileName)
+			if _, err := os.Stat(fullPathFile); os.IsNotExist(err) {
+				// TODO: Log error, File doesn't exist!
+			}
+			inputData.data = []byte(fullPathFile)
+
+		} else {
+
+			// The data is embedded so write the file locally as the algo expects a file
+			inputData.isFileReference = true
+			localFolder := fmt.Sprintf("~/data/%s/", runID)
+			if _, err := os.Stat(localFolder); os.IsNotExist(err) {
+				os.MkdirAll(localFolder, os.ModePerm)
+			}
+			fullPathFile := path.Join(localFolder, fileName)
+			err := ioutil.WriteFile(fullPathFile, msg.Value, 0644)
+			if err != nil {
+				// TODO: Log error
+			}
+
+			inputData.data = []byte(fullPathFile)
+		}
 	}
 
 	return
