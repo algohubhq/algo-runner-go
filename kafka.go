@@ -25,7 +25,7 @@ func startConsumer() {
 		"client.id":                       "algo-runner-go-client",
 		"enable.auto.commit":              false,
 		"enable.auto.offset.store":        false,
-		"auto.offset.reset":               "latest",
+		"auto.offset.reset":               "earliest",
 		"go.events.channel.enable":        true,
 		"go.application.rebalance.enable": true,
 	})

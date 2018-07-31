@@ -15,12 +15,15 @@
             "program": "${workspaceFolder}",
             "env": {},
             "args": [
-                "--config", "../algo-test-go/config-text-stdin.json",
+                "--config", "../algo-test-go/config-text-transform-stdin.json",
+                // "--config", "../algo-test-go/config-text-transform-http.json",
+                // "--config", "../algo-test-go/config-image-resize-stdin.json",
+                // "--config", "../algo-test-go/config-image-resize-http.json",
                 "--kafka-servers", "172.22.238.110:32768"
             ],
             "cwd": "${workspaceRoot}",
             "showLog": true,
-            //"trace": "verbose"
+            // "trace": "verbose"
         }
     ]
 }
