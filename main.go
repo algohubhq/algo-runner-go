@@ -49,6 +49,6 @@ func main() {
 
 	}
 
-	startConsumer()
+	startConsumers()
 
 }

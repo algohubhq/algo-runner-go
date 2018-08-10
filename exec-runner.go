@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"path/filepath"
 	"strings"
 	"sync"
 	"syscall"
@@ -143,22 +144,34 @@ func runExec(runID string,
 		for {
 			select {
 			case event := <-w.Event:
-				// TODO: Test what happens when folder is monitored.
-				// Determine how to get the output (remove the filename from the path?)
-				algoOutput := outputFiles[event.Name()]
+
+				fmt.Println(event)
+
+				var algoOutput *swagger.AlgoOutputModel
+				// Check to match the output by the filename
+				if output, ok := outputFiles[event.Path]; ok {
+					// the output matched the full file name
+					algoOutput = output
+				} else {
+					// split the path from the filename to get the output associated with the path
+					dir := filepath.Dir(event.Path) + "/"
+					algoOutput = outputFiles[dir]
+				}
+
+				outputName := strings.Replace(algoOutput.Name, " ", "", -1)
 
 				fileOutputTopic := strings.ToLower(fmt.Sprintf("algorun.%s.%s.algo.%s.%s.output.%s",
 					config.EndpointOwnerUserName,
 					config.EndpointUrlName,
 					config.AlgoOwnerUserName,
 					config.AlgoUrlName,
-					algoOutput.Name))
+					outputName))
+
+				fmt.Println(fileOutputTopic)
 
 				// Write to stdout output topic
 				fileName := event.Name()
 				produceOutputMessage(runID, fileName, fileOutputTopic, stdout)
-
-				fmt.Println(event)
 
 			case err := <-w.Error:
 				fmt.Printf("Error watching output file/folder: %s/n", err)
@@ -210,6 +223,12 @@ func runExec(runID string,
 	}
 
 	go func() {
+		if err := w.Start(time.Millisecond * 1); err != nil {
+			// TODO: Log the error
+		}
+	}()
+
+	go func() {
 		var b bytes.Buffer
 		targetCmd.Stderr = &b
 
@@ -217,6 +236,7 @@ func runExec(runID string,
 
 		fmt.Printf("%s", targetCmd.Args)
 		stdout, cmdErr = targetCmd.Output()
+
 		if b.Len() > 0 {
 			stderr = b.Bytes()
 		}
@@ -224,6 +244,10 @@ func runExec(runID string,
 	}()
 
 	wg.Wait()
+
+	if w != nil {
+		w.Close()
+	}
 
 	if timer != nil {
 		timer.Stop()

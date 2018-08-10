@@ -17,7 +17,7 @@ import (
 
 type TopicInputs map[string]*swagger.AlgoInputModel
 
-func startConsumer() {
+func startConsumers() {
 
 	c, err := kafka.NewConsumer(&kafka.ConfigMap{
 		"bootstrap.servers":               kafkaServers,
