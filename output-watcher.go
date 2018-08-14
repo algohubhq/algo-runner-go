@@ -2,6 +2,7 @@ package main
 
 import (
 	"algo-runner-go/swagger"
+	"encoding/json"
 	"fmt"
 	"github.com/radovskyb/watcher"
 	"io/ioutil"
@@ -56,16 +57,21 @@ func (outputWatcher *OutputWatcher) start() {
 			select {
 			case event := <-outputWatcher.fileWatcher.Event:
 
+				fileName := event.Name()
+
+				var output *output
 				var algoOutput *swagger.AlgoOutputModel
+				dir := filepath.Dir(event.Path)
 				// Check to match the output by the filename
-				if output, ok := outputWatcher.outputs[event.Path]; ok {
+				if matchedOutput, ok := outputWatcher.outputs[event.Path]; ok {
 					// the output matched the full file name
-					algoOutput = output.algoOutput
+					output = matchedOutput
+					algoOutput = matchedOutput.algoOutput
 				} else {
 					// split the path from the filename to get the output associated with the path
-					dir := filepath.Dir(event.Path)
-					if output, ok := outputWatcher.outputs[dir]; ok {
-						algoOutput = output.algoOutput
+					if matchedOutput, ok := outputWatcher.outputs[dir]; ok {
+						output = matchedOutput
+						algoOutput = matchedOutput.algoOutput
 					}
 				}
 
@@ -81,17 +87,30 @@ func (outputWatcher *OutputWatcher) start() {
 				fmt.Println(fileOutputTopic)
 
 				// Write to output topic
-				// TODO: Check if the output should be embedded or file reference
-				// outputMessageDataType
+				// Check if the output should be embedded or file reference
+				// TODO: Test if you can watch a file in a network path
+				if output.outputMessageDataType == "FileReference" {
 
-				fileName := event.Name()
+					// Try to read the json
+					fileReference := FileReference{FilePath: dir, FileName: fileName}
+					jsonBytes, jsonErr := json.Marshal(fileReference)
 
-				fileBytes, err := ioutil.ReadFile(event.Path)
-				if err != nil {
-					fmt.Println(err.Error())
+					if jsonErr != nil {
+						fmt.Println(jsonErr.Error())
+					}
+
+					produceOutputMessage(runID, fileName, fileOutputTopic, jsonBytes)
+
+				} else {
+
+					fileBytes, err := ioutil.ReadFile(event.Path)
+					if err != nil {
+						fmt.Println(err.Error())
+					}
+
+					produceOutputMessage(runID, fileName, fileOutputTopic, fileBytes)
+
 				}
-
-				produceOutputMessage(runID, fileName, fileOutputTopic, fileBytes)
 
 			case err := <-outputWatcher.fileWatcher.Error:
 				fmt.Printf("Error watching output file/folder: %s/n", err)
