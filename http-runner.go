@@ -14,7 +14,8 @@ import (
 )
 
 func runHTTP(runID string,
-	inputMap map[*swagger.AlgoInputModel][]InputData) (err error) {
+	inputMap map[*swagger.AlgoInputModel][]InputData,
+	algoIndex int32) (err error) {
 
 	startTime := time.Now()
 
@@ -26,6 +27,7 @@ func runHTTP(runID string,
 		AlgoOwnerUserName:     config.AlgoOwnerUserName,
 		AlgoName:              config.AlgoName,
 		AlgoVersionTag:        config.AlgoVersionTag,
+		AlgoIndex:             algoIndex,
 		Status:                "Started",
 	}
 
@@ -44,11 +46,12 @@ func runHTTP(runID string,
 		netClient.Timeout = time.Second * time.Duration(config.TimeoutSeconds)
 	}
 
-	outputTopic := strings.ToLower(fmt.Sprintf("algorun.%s.%s.algo.%s.%s.output.default",
+	outputTopic := strings.ToLower(fmt.Sprintf("algorun.%s.%s.algo.%s.%s.%d.output.default",
 		config.EndpointOwnerUserName,
 		config.EndpointName,
 		config.AlgoOwnerUserName,
-		config.AlgoName))
+		config.AlgoName,
+		algoIndex))
 
 	for input, inputData := range inputMap {
 

@@ -9,40 +9,50 @@ import (
 	"io/ioutil"
 	"os"
 	"os/signal"
+	"os/user"
 	"path"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 )
 
-type TopicInputs map[string]*swagger.AlgoInputModel
+type topicInputs map[string]*swagger.AlgoInputModel
 
 func startConsumers() {
 
-	c, err := kafka.NewConsumer(&kafka.ConfigMap{
-		"bootstrap.servers":               kafkaServers,
-		"group.id":                        "myGroup",
-		"client.id":                       "algo-runner-go-client",
-		"enable.auto.commit":              false,
-		"enable.auto.offset.store":        false,
-		"auto.offset.reset":               "earliest",
-		"go.events.channel.enable":        true,
-		"go.application.rebalance.enable": true,
-	})
-
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to create consumer: %s\n", err)
-		os.Exit(1)
-	}
-
-	fmt.Printf("Created Consumer %v\n", c)
-
-	topicInputs := make(TopicInputs)
+	var wg sync.WaitGroup
 
 	for _, route := range config.PipelineRoutes {
 
 		if route.DestAlgoOwnerName == config.AlgoOwnerUserName &&
 			route.DestAlgoName == config.AlgoName {
+
+			groupID := fmt.Sprintf("%s-%s-%s-%s",
+				config.EndpointOwnerUserName,
+				config.EndpointName,
+				config.AlgoOwnerUserName,
+				config.AlgoName)
+
+			c, err := kafka.NewConsumer(&kafka.ConfigMap{
+				"bootstrap.servers":               kafkaServers,
+				"group.id":                        groupID,
+				"client.id":                       "algo-runner-go-client",
+				"enable.auto.commit":              false,
+				"enable.auto.offset.store":        false,
+				"auto.offset.reset":               "earliest",
+				"go.events.channel.enable":        true,
+				"go.application.rebalance.enable": true,
+			})
+
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Failed to create consumer: %s\n", err)
+				os.Exit(1)
+			}
+
+			fmt.Printf("Created Consumer %v\n", c)
+
+			topicInputs := make(topicInputs)
 
 			var input swagger.AlgoInputModel
 			// Get the input associated with this route
@@ -56,11 +66,13 @@ func startConsumers() {
 			switch routeType := route.RouteType; routeType {
 			case "Algo":
 
-				topic := strings.ToLower(fmt.Sprintf("algorun.%s.%s.algo.%s.%s",
+				topic := strings.ToLower(fmt.Sprintf("algorun.%s.%s.algo.%s.%s.%d.output.%s",
 					config.EndpointOwnerUserName,
 					config.EndpointName,
 					route.SourceAlgoOwnerName,
-					route.SourceAlgoName))
+					route.SourceAlgoName,
+					route.SourceAlgoIndex,
+					route.SourceAlgoOutputName))
 
 				topicInputs[topic] = &input
 
@@ -68,10 +80,11 @@ func startConsumers() {
 
 			case "DataSource":
 
-				topic := strings.ToLower(fmt.Sprintf("algorun.%s.%s.connector.%s",
+				topic := strings.ToLower(fmt.Sprintf("algorun.%s.%s.connector.%s.%d",
 					config.EndpointOwnerUserName,
 					config.EndpointName,
-					route.PipelineDataSourceName))
+					route.PipelineDataSourceName,
+					route.PipelineDataSourceIndex))
 
 				topicInputs[topic] = &input
 
@@ -90,18 +103,22 @@ func startConsumers() {
 
 			}
 
+			go waitForMessages(&wg, c, topicInputs, route.DestAlgoIndex)
+
+			wg.Add(1)
+
 		}
 
 	}
 
-	waitForMessages(c, topicInputs)
-
-	fmt.Printf("Closing consumer\n")
-	c.Close()
+	wg.Wait()
 
 }
 
-func waitForMessages(c *kafka.Consumer, topicInputs TopicInputs) {
+func waitForMessages(wg *sync.WaitGroup, c *kafka.Consumer, topicInputs topicInputs, algoIndex int32) {
+
+	defer c.Close()
+	defer wg.Done()
 
 	sigchan := make(chan os.Signal)
 	signal.Notify(sigchan, syscall.SIGINT, syscall.SIGTERM)
@@ -141,9 +158,9 @@ func waitForMessages(c *kafka.Consumer, topicInputs TopicInputs) {
 
 					var runError error
 					if strings.ToLower(config.ServerType) == "serverless" {
-						runError = runExec(runID, data[runID])
+						runError = runExec(runID, data[runID], algoIndex)
 					} else if strings.ToLower(config.ServerType) == "http" {
-						runError = runHTTP(runID, data[runID])
+						runError = runHTTP(runID, data[runID], algoIndex)
 					}
 
 					if runError == nil {
@@ -291,11 +308,15 @@ func processMessage(msg *kafka.Message,
 
 			// The data is embedded so write the file locally as the algo expects a file
 			inputData.isFileReference = true
-			localFolder := path.Join("~", "data", runID)
-			if _, err := os.Stat(localFolder); os.IsNotExist(err) {
-				os.MkdirAll(localFolder, os.ModePerm)
+
+			usr, _ := user.Current()
+			dir := usr.HomeDir
+
+			folder := path.Join(dir, "algorun", "data", runID, input.Name)
+			if _, err := os.Stat(folder); os.IsNotExist(err) {
+				os.MkdirAll(folder, os.ModePerm)
 			}
-			fullPathFile := path.Join(localFolder, fileName)
+			fullPathFile := path.Join(folder, fileName)
 			err := ioutil.WriteFile(fullPathFile, msg.Value, 0644)
 			if err != nil {
 				// TODO: Log error

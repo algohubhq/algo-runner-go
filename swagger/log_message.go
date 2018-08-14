@@ -11,7 +11,6 @@
 package swagger
 
 type LogMessage struct {
-
 	LogMessageType string `json:"logMessageType,omitempty"`
 
 	LogSource string `json:"logSource,omitempty"`
@@ -25,6 +24,8 @@ type LogMessage struct {
 	AlgoName string `json:"algoName,omitempty"`
 
 	AlgoVersionTag string `json:"algoVersionTag,omitempty"`
+
+	AlgoIndex int32 `json:"sourceAlgoIndex,omitempty"`
 
 	Status string `json:"status,omitempty"`
 

@@ -14,6 +14,7 @@ import (
 // OutputWatcher describes a process that watches for new files created by an output.
 type OutputWatcher struct {
 	fileWatcher *watcher.Watcher
+	algoIndex   int32
 	outputs     map[string]*output
 }
 
@@ -33,16 +34,17 @@ func newOutputWatcher() *OutputWatcher {
 	return &OutputWatcher{
 		fileWatcher: fileWatcher,
 		outputs:     make(map[string]*output),
+		algoIndex:   0,
 	}
 
 }
 
-func (outputWatcher *OutputWatcher) watch(fileFolder string, algoOutput *swagger.AlgoOutputModel, outputMessageDataType string) (err error) {
+func (outputWatcher *OutputWatcher) watch(fileFolder string, algoIndex int32, algoOutput *swagger.AlgoOutputModel, outputMessageDataType string) (err error) {
 
 	if err := outputWatcher.fileWatcher.AddRecursive(fileFolder); err != nil {
 		return err
 	}
-
+	outputWatcher.algoIndex = algoIndex
 	outputWatcher.outputs[fileFolder] = &output{algoOutput: algoOutput, outputMessageDataType: outputMessageDataType}
 
 	return nil
@@ -75,11 +77,12 @@ func (outputWatcher *OutputWatcher) start() {
 					}
 				}
 
-				fileOutputTopic := strings.ToLower(fmt.Sprintf("algorun.%s.%s.algo.%s.%s.output.%s",
+				fileOutputTopic := strings.ToLower(fmt.Sprintf("algorun.%s.%s.algo.%s.%s.%d.output.%s",
 					config.EndpointOwnerUserName,
 					config.EndpointName,
 					config.AlgoOwnerUserName,
 					config.AlgoName,
+					outputWatcher.algoIndex,
 					algoOutput.Name))
 
 				fmt.Println(fileOutputTopic)

@@ -17,7 +17,8 @@ import (
 )
 
 func runExec(runID string,
-	inputMap map[*swagger.AlgoInputModel][]InputData) (err error) {
+	inputMap map[*swagger.AlgoInputModel][]InputData,
+	algoIndex int32) (err error) {
 
 	// Create the base message
 	algoLog := swagger.LogMessage{
@@ -164,7 +165,7 @@ func runExec(runID string,
 				usr, _ := user.Current()
 				dir := usr.HomeDir
 
-				folder := path.Join(dir, "algorun", "data", runID)
+				folder := path.Join(dir, "algorun", "data", runID, output.Name)
 				fileFolder := path.Join(folder, fileID)
 				if _, err := os.Stat(folder); os.IsNotExist(err) {
 					os.MkdirAll(folder, os.ModePerm)
@@ -176,13 +177,13 @@ func runExec(runID string,
 				}
 
 				// Watch for a specific file.
-				outputWatcher.watch(fileFolder, &output, outputMessageDataType)
+				outputWatcher.watch(fileFolder, algoIndex, &output, outputMessageDataType)
 
 			case "folderparameter":
 				// Watch folder for changes.
 				usr, _ := user.Current()
 				dir := usr.HomeDir
-				folder := path.Join(dir, "algorun", "data", runID)
+				folder := path.Join(dir, "algorun", "data", runID, output.Name)
 				if _, err := os.Stat(folder); os.IsNotExist(err) {
 					os.MkdirAll(folder, os.ModePerm)
 				}
@@ -193,7 +194,7 @@ func runExec(runID string,
 				}
 
 				// Watch for a specific file.
-				outputWatcher.watch(folder, &output, outputMessageDataType)
+				outputWatcher.watch(folder, algoIndex, &output, outputMessageDataType)
 
 			case "stdout":
 				sendStdOut = true
@@ -240,11 +241,12 @@ func runExec(runID string,
 	execDuration := time.Since(startTime)
 
 	if sendStdOut {
-		stdoutTopic := strings.ToLower(fmt.Sprintf("algorun.%s.%s.algo.%s.%s.output.stdout",
+		stdoutTopic := strings.ToLower(fmt.Sprintf("algorun.%s.%s.algo.%s.%s.%d.output.stdout",
 			config.EndpointOwnerUserName,
 			config.EndpointName,
 			config.AlgoOwnerUserName,
-			config.AlgoName))
+			config.AlgoName,
+			algoIndex))
 
 		// Write to stdout output topic
 		fileName, _ := uuid.NewV4()
