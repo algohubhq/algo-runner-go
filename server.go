@@ -80,7 +80,7 @@ func startServer() (terminated bool) {
 		serverLog.LogSource = "stderr"
 		serverLog.Status = "Failed"
 		serverLog.Log = fmt.Sprintf("Server start failed with %s\n", errWait)
-		produceLogMessage(logTopic, serverLog)
+		produceLogMessage(runID, logTopic, serverLog)
 	}
 	if errStdout != nil || errStderr != nil {
 		fmt.Fprintf(os.Stderr, "failed to capture stdout or stderr\n")
@@ -93,7 +93,7 @@ func startServer() (terminated bool) {
 	serverLog.Status = "Terminated"
 	serverLog.Log = string(outBytes)
 
-	produceLogMessage(logTopic, serverLog)
+	produceLogMessage(runID, logTopic, serverLog)
 
 	fmt.Fprintf(os.Stderr, "Server Terminated unexpectedly!\n")
 
@@ -114,7 +114,7 @@ func logToOrchestrator(serverLog swagger.LogMessage, w io.Writer, r io.Reader) (
 			if len(out) >= 102400 {
 				if len(out) > 0 {
 					serverLog.Log = string(out)
-					produceLogMessage(logTopic, serverLog)
+					produceLogMessage(runID, logTopic, serverLog)
 				}
 
 				out = nil
@@ -125,7 +125,7 @@ func logToOrchestrator(serverLog swagger.LogMessage, w io.Writer, r io.Reader) (
 
 				if len(out) > 0 {
 					serverLog.Log = string(out)
-					produceLogMessage(logTopic, serverLog)
+					produceLogMessage(runID, logTopic, serverLog)
 				}
 
 				return out, err
@@ -139,7 +139,7 @@ func logToOrchestrator(serverLog swagger.LogMessage, w io.Writer, r io.Reader) (
 
 			if len(out) > 0 {
 				serverLog.Log = string(out)
-				produceLogMessage(logTopic, serverLog)
+				produceLogMessage(runID, logTopic, serverLog)
 			}
 
 			return out, err

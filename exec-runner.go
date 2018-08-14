@@ -5,11 +5,11 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/nu7hatch/gouuid"
-	"github.com/radovskyb/watcher"
 	"os"
 	"os/exec"
 	"os/signal"
-	"path/filepath"
+	"os/user"
+	"path"
 	"strings"
 	"sync"
 	"syscall"
@@ -85,6 +85,7 @@ func runExec(runID string,
 		}()
 	}
 
+	// Write the stdin data or set the arguments for the input
 	for input, inputData := range inputMap {
 
 		switch inputDeliveryType := strings.ToLower(input.InputDeliveryType); inputDeliveryType {
@@ -132,101 +133,78 @@ func runExec(runID string,
 		}
 	}
 
-	wg.Add(1)
-
-	// TODO: Setup all output file watchers
-	w := watcher.New()
-	w.SetMaxEvents(1)
-
-	outputFiles := make(map[string]*swagger.AlgoOutputModel)
-
-	go func() {
-		for {
-			select {
-			case event := <-w.Event:
-
-				fmt.Println(event)
-
-				var algoOutput *swagger.AlgoOutputModel
-				// Check to match the output by the filename
-				if output, ok := outputFiles[event.Path]; ok {
-					// the output matched the full file name
-					algoOutput = output
-				} else {
-					// split the path from the filename to get the output associated with the path
-					dir := filepath.Dir(event.Path) + "/"
-					algoOutput = outputFiles[dir]
-				}
-
-				outputName := strings.Replace(algoOutput.Name, " ", "", -1)
-
-				fileOutputTopic := strings.ToLower(fmt.Sprintf("algorun.%s.%s.algo.%s.%s.output.%s",
-					config.EndpointOwnerUserName,
-					config.EndpointUrlName,
-					config.AlgoOwnerUserName,
-					config.AlgoUrlName,
-					outputName))
-
-				fmt.Println(fileOutputTopic)
-
-				// Write to stdout output topic
-				fileName := event.Name()
-				produceOutputMessage(runID, fileName, fileOutputTopic, stdout)
-
-			case err := <-w.Error:
-				fmt.Printf("Error watching output file/folder: %s/n", err)
-			case <-w.Closed:
-				return
-			}
-		}
-	}()
-
 	var sendStdOut bool
 
+	outputWatcher := newOutputWatcher()
+
+	// Set the arguments for the output
 	for _, output := range config.Outputs {
 
-		writeOutput := false
-		// Check to see if there are any mapped routes for this output
-		if !config.WriteAllOutputs {
-			for i := range config.PipelineRoutes {
-				if config.PipelineRoutes[i].SourceAlgoOwnerName == config.AlgoOwnerUserName &&
-					config.PipelineRoutes[i].SourceAlgoUrlName == config.AlgoUrlName {
-					writeOutput = true
-					break
-				}
+		handleOutput := config.WriteAllOutputs
+		outputMessageDataType := "Embedded"
+
+		// Check to see if there are any mapped routes for this output and get the message data type
+		for i := range config.PipelineRoutes {
+			if config.PipelineRoutes[i].SourceAlgoOwnerName == config.AlgoOwnerUserName &&
+				config.PipelineRoutes[i].SourceAlgoUrlName == config.AlgoUrlName {
+				handleOutput = true
+				outputMessageDataType = config.PipelineRoutes[i].SourceAlgoOutputMessageDataType
+				break
 			}
-		} else {
-			writeOutput = true
 		}
 
-		if writeOutput {
+		if handleOutput {
 
 			switch outputDeliveryType := output.OutputDeliveryType; strings.ToLower(outputDeliveryType) {
-			case "file":
+			case "fileparameter":
+
+				fileUUID, _ := uuid.NewV4()
+				fileID := strings.Replace(fileUUID.String(), "-", "", -1)
+
+				usr, _ := user.Current()
+				dir := usr.HomeDir
+
+				folder := path.Join(dir, "algorun", "data", runID)
+				fileFolder := path.Join(folder, fileID)
+				if _, err := os.Stat(folder); os.IsNotExist(err) {
+					os.MkdirAll(folder, os.ModePerm)
+				}
+				// Set the output parameter
+				if output.Parameter != "" {
+					targetCmd.Args = append(targetCmd.Args, output.Parameter)
+					targetCmd.Args = append(targetCmd.Args, fileFolder)
+				}
+
 				// Watch for a specific file.
-				if err := w.AddRecursive(output.OutputFilename); err != nil {
-					// TODO: Log the error
-				} else {
-					outputFiles[output.OutputFilename] = &output
+				outputWatcher.watch(fileFolder, &output, outputMessageDataType)
+
+			case "folderparameter":
+				// Watch folder for changes.
+				usr, _ := user.Current()
+				dir := usr.HomeDir
+				folder := path.Join(dir, "algorun", "data", runID)
+				if _, err := os.Stat(folder); os.IsNotExist(err) {
+					os.MkdirAll(folder, os.ModePerm)
 				}
-			case "folder":
-				// Watch folder recursively for changes.
-				if err := w.AddRecursive(output.OutputPath); err != nil {
-					// TODO: Log the error
-				} else {
-					outputFiles[output.OutputPath] = &output
+				// Set the output parameter
+				if output.Parameter != "" {
+					targetCmd.Args = append(targetCmd.Args, output.Parameter)
+					targetCmd.Args = append(targetCmd.Args, folder)
 				}
+
+				// Watch for a specific file.
+				outputWatcher.watch(folder, &output, outputMessageDataType)
+
 			case "stdout":
 				sendStdOut = true
 			}
+
 		}
 	}
 
-	go func() {
-		if err := w.Start(time.Millisecond * 1); err != nil {
-			// TODO: Log the error
-		}
-	}()
+	outputWatcher.start()
+
+	wg.Add(1)
 
 	go func() {
 		var b bytes.Buffer
@@ -245,10 +223,6 @@ func runExec(runID string,
 
 	wg.Wait()
 
-	if w != nil {
-		w.Close()
-	}
-
 	if timer != nil {
 		timer.Stop()
 	}
@@ -258,7 +232,7 @@ func runExec(runID string,
 		algoLog.Status = "Failed"
 		algoLog.Log = fmt.Sprintf("%s\nStdout: %s\nStderr: %s", cmdErr, stdout, stderr)
 
-		produceLogMessage(logTopic, algoLog)
+		produceLogMessage(runID, logTopic, algoLog)
 
 		return cmdErr
 	}
@@ -282,7 +256,9 @@ func runExec(runID string,
 	algoLog.RuntimeMs = int64(execDuration / time.Millisecond)
 	algoLog.Log = string(stdout)
 
-	produceLogMessage(logTopic, algoLog)
+	produceLogMessage(runID, logTopic, algoLog)
+
+	outputWatcher.closeOutputWatcher()
 
 	return nil
 

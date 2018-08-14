@@ -18,11 +18,11 @@ type MediaTypeModel struct {
 
 	Title string `json:"title,omitempty"`
 
-	TypeName string `json:"typeName,omitempty"`
+	Name string `json:"name,omitempty"`
+
+	GroupName string `json:"groupName,omitempty"`
 
 	SubTypeName string `json:"subTypeName,omitempty"`
-
-	FullTypeName string `json:"fullTypeName,omitempty"`
 
 	FileExtension string `json:"fileExtension,omitempty"`
 

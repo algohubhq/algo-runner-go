@@ -126,7 +126,7 @@ func waitForMessages(c *kafka.Consumer, topicInputs TopicInputs) {
 					e.TopicPartition)
 
 				input := topicInputs[*e.TopicPartition.Topic]
-				runID, inputData, run := processMessage(e, input)
+				inputData, run := processMessage(e, input)
 
 				if data[runID] == nil {
 					data[runID] = make(map[*swagger.AlgoInputModel][]InputData)
@@ -199,7 +199,7 @@ func waitForMessages(c *kafka.Consumer, topicInputs TopicInputs) {
 }
 
 func processMessage(msg *kafka.Message,
-	input *swagger.AlgoInputModel) (runID string, inputData InputData, run bool) {
+	input *swagger.AlgoInputModel) (inputData InputData, run bool) {
 
 	// runID is the message key
 	runID = string(msg.Key)
@@ -291,7 +291,7 @@ func processMessage(msg *kafka.Message,
 
 			// The data is embedded so write the file locally as the algo expects a file
 			inputData.isFileReference = true
-			localFolder := fmt.Sprintf("~/data/%s/", runID)
+			localFolder := path.Join("~", "data", runID)
 			if _, err := os.Stat(localFolder); os.IsNotExist(err) {
 				os.MkdirAll(localFolder, os.ModePerm)
 			}
@@ -342,12 +342,11 @@ func produceOutputMessage(runID string, fileName string, topic string, data []by
 
 	// Create the headers
 	var headers []kafka.Header
-	headers = append(headers, kafka.Header{Key: "runId", Value: []byte(runID)})
 	headers = append(headers, kafka.Header{Key: "fileName", Value: []byte(fileName)})
 	headers = append(headers, kafka.Header{Key: "run", Value: []byte("true")})
 
 	p.ProduceChannel() <- &kafka.Message{TopicPartition: kafka.TopicPartition{Topic: &topic, Partition: kafka.PartitionAny},
-		Value: data}
+		Key: []byte(runID), Value: data}
 
 	// wait for delivery report goroutine to finish
 	_ = <-doneChan
@@ -356,7 +355,7 @@ func produceOutputMessage(runID string, fileName string, topic string, data []by
 
 }
 
-func produceLogMessage(topic string, logMessage swagger.LogMessage) {
+func produceLogMessage(runID string, topic string, logMessage swagger.LogMessage) {
 
 	p, err := kafka.NewProducer(&kafka.ConfigMap{"bootstrap.servers": kafkaServers})
 
@@ -390,7 +389,7 @@ func produceLogMessage(topic string, logMessage swagger.LogMessage) {
 	logMessageBytes, err := json.Marshal(logMessage)
 
 	p.ProduceChannel() <- &kafka.Message{TopicPartition: kafka.TopicPartition{Topic: &topic, Partition: kafka.PartitionAny},
-		Value: logMessageBytes}
+		Key: []byte(runID), Value: logMessageBytes}
 
 	// wait for delivery report goroutine to finish
 	_ = <-doneChan

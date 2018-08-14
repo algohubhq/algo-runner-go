@@ -11,6 +11,7 @@
 package swagger
 
 type LogMessage struct {
+
 	LogMessageType string `json:"logMessageType,omitempty"`
 
 	LogSource string `json:"logSource,omitempty"`

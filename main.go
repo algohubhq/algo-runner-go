@@ -13,6 +13,8 @@ var kafkaServers string
 var config swagger.RunnerConfig
 var logTopic string
 
+var runID string
+
 func main() {
 
 	logTopic = "algorun.orchestrator.logs"

@@ -24,9 +24,7 @@ type AlgoOutputModel struct {
 
 	OutputDeliveryType string `json:"outputDeliveryType,omitempty"`
 
-	OutputPath string `json:"outputPath,omitempty"`
-
-	OutputFilename string `json:"outputFilename,omitempty"`
+	Parameter string `json:"parameter,omitempty"`
 
 	MediaType *MediaTypeModel `json:"mediaType"`
 

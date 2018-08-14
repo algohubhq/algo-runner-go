@@ -15,6 +15,7 @@ import (
 )
 
 type PipelineRouteModel struct {
+
 	RouteType string `json:"routeType,omitempty"`
 
 	PipelineEndpointSourceOutputName string `json:"pipelineEndpointSourceOutputName,omitempty"`
@@ -30,6 +31,8 @@ type PipelineRouteModel struct {
 	SourceAlgoIndex int32 `json:"sourceAlgoIndex,omitempty"`
 
 	SourceAlgoOutputName string `json:"sourceAlgoOutputName,omitempty"`
+
+	SourceAlgoOutputMessageDataType string `json:"sourceAlgoOutputMessageDataType,omitempty"`
 
 	PipelineDataSinkName string `json:"pipelineDataSinkName,omitempty"`
 

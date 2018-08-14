@@ -71,14 +71,14 @@ func runHTTP(runID string,
 			if reqErr != nil {
 				algoLog.Status = "Failed"
 				algoLog.Log = fmt.Sprintf("Error building request: %s\n", reqErr)
-				produceLogMessage(logTopic, algoLog)
+				produceLogMessage(runID, logTopic, algoLog)
 				continue
 			}
 			response, errReq := netClient.Do(request)
 			if errReq != nil {
 				algoLog.Status = "Failed"
 				algoLog.Log = fmt.Sprintf("Error getting response from http server: %s\n", errReq)
-				produceLogMessage(logTopic, algoLog)
+				produceLogMessage(runID, logTopic, algoLog)
 				continue
 			} else {
 				defer response.Body.Close()
@@ -88,7 +88,7 @@ func runHTTP(runID string,
 				if errRead != nil {
 					algoLog.Status = "Failed"
 					algoLog.Log = fmt.Sprintf("Error reading response from http server: %s\n", errRead)
-					produceLogMessage(logTopic, algoLog)
+					produceLogMessage(runID, logTopic, algoLog)
 					continue
 				}
 				if response.StatusCode == 200 {
@@ -101,7 +101,7 @@ func runHTTP(runID string,
 					algoLog.RuntimeMs = int64(reqDuration / time.Millisecond)
 					//algoLog.Log = string(contents)
 
-					produceLogMessage(logTopic, algoLog)
+					produceLogMessage(runID, logTopic, algoLog)
 
 					return nil
 				}
@@ -109,7 +109,7 @@ func runHTTP(runID string,
 				// Produce the error to the log
 				algoLog.Status = "Failed"
 				algoLog.Log = fmt.Sprintf("Server returned non-success http status code: %d\n%s\n", response.StatusCode, contents)
-				produceLogMessage(logTopic, algoLog)
+				produceLogMessage(runID, logTopic, algoLog)
 
 				return errors.New(algoLog.Log)
 
