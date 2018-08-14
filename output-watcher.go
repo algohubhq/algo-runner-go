@@ -75,14 +75,12 @@ func (outputWatcher *OutputWatcher) start() {
 					}
 				}
 
-				outputName := strings.Replace(algoOutput.Name, " ", "", -1)
-
 				fileOutputTopic := strings.ToLower(fmt.Sprintf("algorun.%s.%s.algo.%s.%s.output.%s",
 					config.EndpointOwnerUserName,
 					config.EndpointName,
 					config.AlgoOwnerUserName,
 					config.AlgoName,
-					outputName))
+					algoOutput.Name))
 
 				fmt.Println(fileOutputTopic)
 
