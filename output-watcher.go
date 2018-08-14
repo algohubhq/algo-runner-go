@@ -79,9 +79,9 @@ func (outputWatcher *OutputWatcher) start() {
 
 				fileOutputTopic := strings.ToLower(fmt.Sprintf("algorun.%s.%s.algo.%s.%s.output.%s",
 					config.EndpointOwnerUserName,
-					config.EndpointUrlName,
+					config.EndpointName,
 					config.AlgoOwnerUserName,
-					config.AlgoUrlName,
+					config.AlgoName,
 					outputName))
 
 				fmt.Println(fileOutputTopic)

@@ -14,15 +14,15 @@ type RunnerConfig struct {
 
 	EndpointOwnerUserName string `json:"endpointOwnerUserName,omitempty"`
 
-	EndpointUrlName string `json:"endpointUrlName,omitempty"`
+	EndpointName string `json:"endpointName,omitempty"`
 
 	PipelineOwnerUserName string `json:"pipelineOwnerUserName,omitempty"`
 
-	PipelineUrlName string `json:"pipelineUrlName,omitempty"`
+	PipelineName string `json:"pipelineName,omitempty"`
 
 	AlgoOwnerUserName string `json:"algoOwnerUserName,omitempty"`
 
-	AlgoUrlName string `json:"algoUrlName,omitempty"`
+	AlgoName string `json:"algoName,omitempty"`
 
 	AlgoVersionTag string `json:"algoVersionTag,omitempty"`
 

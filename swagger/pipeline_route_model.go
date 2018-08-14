@@ -26,7 +26,7 @@ type PipelineRouteModel struct {
 
 	SourceAlgoOwnerName string `json:"sourceAlgoOwnerName,omitempty"`
 
-	SourceAlgoUrlName string `json:"sourceAlgoUrlName,omitempty"`
+	SourceAlgoName string `json:"sourceAlgoName,omitempty"`
 
 	SourceAlgoIndex int32 `json:"sourceAlgoIndex,omitempty"`
 
@@ -40,7 +40,7 @@ type PipelineRouteModel struct {
 
 	DestAlgoOwnerName string `json:"destAlgoOwnerName,omitempty"`
 
-	DestAlgoUrlName string `json:"destAlgoUrlName,omitempty"`
+	DestAlgoName string `json:"destAlgoName,omitempty"`
 
 	DestAlgoIndex int32 `json:"destAlgoIndex,omitempty"`
 

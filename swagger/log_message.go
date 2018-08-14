@@ -18,11 +18,11 @@ type LogMessage struct {
 
 	EndpointOwnerUserName string `json:"endpointOwnerUserName,omitempty"`
 
-	EndpointUrlName string `json:"endpointUrlName,omitempty"`
+	EndpointName string `json:"endpointName,omitempty"`
 
 	AlgoOwnerUserName string `json:"algoOwnerUserName,omitempty"`
 
-	AlgoUrlName string `json:"algoUrlName,omitempty"`
+	AlgoName string `json:"algoName,omitempty"`
 
 	AlgoVersionTag string `json:"algoVersionTag,omitempty"`
 

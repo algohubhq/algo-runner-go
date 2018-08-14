@@ -22,9 +22,9 @@ func runHTTP(runID string,
 	algoLog := swagger.LogMessage{
 		LogMessageType:        "Algo",
 		EndpointOwnerUserName: config.EndpointOwnerUserName,
-		EndpointUrlName:       config.EndpointUrlName,
+		EndpointName:          config.EndpointName,
 		AlgoOwnerUserName:     config.AlgoOwnerUserName,
-		AlgoUrlName:           config.AlgoUrlName,
+		AlgoName:              config.AlgoName,
 		AlgoVersionTag:        config.AlgoVersionTag,
 		Status:                "Started",
 	}
@@ -46,9 +46,9 @@ func runHTTP(runID string,
 
 	outputTopic := strings.ToLower(fmt.Sprintf("algorun.%s.%s.algo.%s.%s.output.default",
 		config.EndpointOwnerUserName,
-		config.EndpointUrlName,
+		config.EndpointName,
 		config.AlgoOwnerUserName,
-		config.AlgoUrlName))
+		config.AlgoName))
 
 	for input, inputData := range inputMap {
 

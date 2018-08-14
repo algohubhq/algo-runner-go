@@ -16,8 +16,6 @@ import (
 
 type AlgoInputModel struct {
 
-	Id int32 `json:"id,omitempty"`
-
 	Name string `json:"name"`
 
 	Description string `json:"description,omitempty"`

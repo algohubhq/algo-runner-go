@@ -50,9 +50,9 @@ func startServer() (terminated bool) {
 	serverLog := swagger.LogMessage{
 		LogMessageType:        "Server",
 		EndpointOwnerUserName: config.EndpointOwnerUserName,
-		EndpointUrlName:       config.EndpointUrlName,
+		EndpointName:          config.EndpointName,
 		AlgoOwnerUserName:     config.AlgoOwnerUserName,
-		AlgoUrlName:           config.AlgoUrlName,
+		AlgoName:              config.AlgoName,
 		AlgoVersionTag:        config.AlgoVersionTag,
 		Status:                "Started",
 	}

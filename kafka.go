@@ -42,7 +42,7 @@ func startConsumers() {
 	for _, route := range config.PipelineRoutes {
 
 		if route.DestAlgoOwnerName == config.AlgoOwnerUserName &&
-			route.DestAlgoUrlName == config.AlgoUrlName {
+			route.DestAlgoName == config.AlgoName {
 
 			var input swagger.AlgoInputModel
 			// Get the input associated with this route
@@ -58,9 +58,9 @@ func startConsumers() {
 
 				topic := strings.ToLower(fmt.Sprintf("algorun.%s.%s.algo.%s.%s",
 					config.EndpointOwnerUserName,
-					config.EndpointUrlName,
+					config.EndpointName,
 					route.SourceAlgoOwnerName,
-					route.SourceAlgoUrlName))
+					route.SourceAlgoName))
 
 				topicInputs[topic] = &input
 
@@ -70,7 +70,7 @@ func startConsumers() {
 
 				topic := strings.ToLower(fmt.Sprintf("algorun.%s.%s.connector.%s",
 					config.EndpointOwnerUserName,
-					config.EndpointUrlName,
+					config.EndpointName,
 					route.PipelineDataSourceName))
 
 				topicInputs[topic] = &input
@@ -81,7 +81,7 @@ func startConsumers() {
 
 				topic := strings.ToLower(fmt.Sprintf("algorun.%s.%s.output.%s",
 					config.EndpointOwnerUserName,
-					config.EndpointUrlName,
+					config.EndpointName,
 					route.PipelineEndpointSourceOutputName))
 
 				topicInputs[topic] = &input

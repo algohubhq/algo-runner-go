@@ -23,9 +23,9 @@ func runExec(runID string,
 	algoLog := swagger.LogMessage{
 		LogMessageType:        "Algo",
 		EndpointOwnerUserName: config.EndpointOwnerUserName,
-		EndpointUrlName:       config.EndpointUrlName,
+		EndpointName:          config.EndpointName,
 		AlgoOwnerUserName:     config.AlgoOwnerUserName,
-		AlgoUrlName:           config.AlgoUrlName,
+		AlgoName:              config.AlgoName,
 		AlgoVersionTag:        config.AlgoVersionTag,
 		Status:                "Started",
 	}
@@ -146,7 +146,7 @@ func runExec(runID string,
 		// Check to see if there are any mapped routes for this output and get the message data type
 		for i := range config.PipelineRoutes {
 			if config.PipelineRoutes[i].SourceAlgoOwnerName == config.AlgoOwnerUserName &&
-				config.PipelineRoutes[i].SourceAlgoUrlName == config.AlgoUrlName {
+				config.PipelineRoutes[i].SourceAlgoName == config.AlgoName {
 				handleOutput = true
 				outputMessageDataType = config.PipelineRoutes[i].SourceAlgoOutputMessageDataType
 				break
@@ -242,9 +242,9 @@ func runExec(runID string,
 	if sendStdOut {
 		stdoutTopic := strings.ToLower(fmt.Sprintf("algorun.%s.%s.algo.%s.%s.output.stdout",
 			config.EndpointOwnerUserName,
-			config.EndpointUrlName,
+			config.EndpointName,
 			config.AlgoOwnerUserName,
-			config.AlgoUrlName))
+			config.AlgoName))
 
 		// Write to stdout output topic
 		fileName, _ := uuid.NewV4()
