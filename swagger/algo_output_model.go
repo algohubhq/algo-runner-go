@@ -20,7 +20,7 @@ type AlgoOutputModel struct {
 
 	Description string `json:"description,omitempty"`
 
-	OutputDeliveryType string `json:"outputDeliveryType,omitempty"`
+	OutputDeliveryType string `json:"outputDeliveryType"`
 
 	Parameter string `json:"parameter,omitempty"`
 

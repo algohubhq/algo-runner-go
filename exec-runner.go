@@ -31,7 +31,7 @@ func runExec(runID string,
 		Status:                "Started",
 	}
 
-	startTime := time.Now()
+	startTime := time.Now().UTC()
 
 	command := getCommand(config)
 
@@ -228,17 +228,18 @@ func runExec(runID string,
 		timer.Stop()
 	}
 
+	execDuration := time.Since(startTime)
+
 	if cmdErr != nil {
 
 		algoLog.Status = "Failed"
 		algoLog.Log = fmt.Sprintf("%s\nStdout: %s\nStderr: %s", cmdErr, stdout, stderr)
+		algoLog.RuntimeMs = int64(execDuration / time.Millisecond)
 
 		produceLogMessage(runID, logTopic, algoLog)
 
 		return cmdErr
 	}
-
-	execDuration := time.Since(startTime)
 
 	if sendStdOut {
 		stdoutTopic := strings.ToLower(fmt.Sprintf("algorun.%s.%s.algo.%s.%s.%d.output.stdout",

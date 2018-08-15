@@ -20,9 +20,9 @@ type AlgoInputModel struct {
 
 	Description string `json:"description,omitempty"`
 
-	IsRequired bool `json:"isRequired,omitempty"`
+	IsRequired bool `json:"isRequired"`
 
-	InputDeliveryType string `json:"inputDeliveryType,omitempty"`
+	InputDeliveryType string `json:"inputDeliveryType"`
 
 	Parameter string `json:"parameter,omitempty"`
 

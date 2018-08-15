@@ -15,6 +15,7 @@ import (
 	"strings"
 	"sync"
 	"syscall"
+	"time"
 )
 
 type topicInputs map[string]*swagger.AlgoInputModel
@@ -406,6 +407,8 @@ func produceLogMessage(runID string, topic string, logMessage swagger.LogMessage
 			}
 		}
 	}()
+
+	logMessage.LogTimestamp = time.Now().UTC()
 
 	logMessageBytes, err := json.Marshal(logMessage)
 

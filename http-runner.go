@@ -78,6 +78,10 @@ func runHTTP(runID string,
 				continue
 			}
 			response, errReq := netClient.Do(request)
+
+			reqDuration := time.Since(startTime)
+			algoLog.RuntimeMs = int64(reqDuration / time.Millisecond)
+
 			if errReq != nil {
 				algoLog.Status = "Failed"
 				algoLog.Log = fmt.Sprintf("Error getting response from http server: %s\n", errReq)
@@ -96,12 +100,10 @@ func runHTTP(runID string,
 				}
 				if response.StatusCode == 200 {
 					// Send to output topic
-					reqDuration := time.Since(startTime)
 					fileName, _ := uuid.NewV4()
 					produceOutputMessage(runID, fileName.String(), outputTopic, contents)
 
 					algoLog.Status = "Success"
-					algoLog.RuntimeMs = int64(reqDuration / time.Millisecond)
 					//algoLog.Log = string(contents)
 
 					produceLogMessage(runID, logTopic, algoLog)

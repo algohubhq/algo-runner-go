@@ -10,10 +10,17 @@
 
 package swagger
 
+import (
+	"time"
+)
+
 type LogMessage struct {
+
 	LogMessageType string `json:"logMessageType,omitempty"`
 
 	LogSource string `json:"logSource,omitempty"`
+
+	LogTimestamp time.Time `json:"logTimestamp,omitempty"`
 
 	EndpointOwnerUserName string `json:"endpointOwnerUserName,omitempty"`
 
@@ -25,7 +32,7 @@ type LogMessage struct {
 
 	AlgoVersionTag string `json:"algoVersionTag,omitempty"`
 
-	AlgoIndex int32 `json:"sourceAlgoIndex,omitempty"`
+	AlgoIndex int32 `json:"algoIndex,omitempty"`
 
 	Status string `json:"status,omitempty"`
 
