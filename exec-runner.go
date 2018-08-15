@@ -28,6 +28,7 @@ func runExec(runID string,
 		AlgoOwnerUserName:     config.AlgoOwnerUserName,
 		AlgoName:              config.AlgoName,
 		AlgoVersionTag:        config.AlgoVersionTag,
+		AlgoIndex:             algoIndex,
 		Status:                "Started",
 	}
 
