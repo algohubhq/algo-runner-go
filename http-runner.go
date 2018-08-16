@@ -21,7 +21,8 @@ func runHTTP(runID string,
 
 	// Create the base message
 	algoLog := swagger.LogMessage{
-		LogMessageType:        "Algo",
+		LogMessageType: "Algo",
+		RunId:          runID,
 		EndpointOwnerUserName: config.EndpointOwnerUserName,
 		EndpointName:          config.EndpointName,
 		AlgoOwnerUserName:     config.AlgoOwnerUserName,

@@ -15,12 +15,13 @@ import (
 )
 
 type LogMessage struct {
-
 	LogMessageType string `json:"logMessageType,omitempty"`
 
 	LogSource string `json:"logSource,omitempty"`
 
 	LogTimestamp time.Time `json:"logTimestamp,omitempty"`
+
+	RunId string `json:"runId,omitempty"`
 
 	EndpointOwnerUserName string `json:"endpointOwnerUserName,omitempty"`
 
