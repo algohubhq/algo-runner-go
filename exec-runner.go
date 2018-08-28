@@ -21,7 +21,7 @@ func runExec(runID string,
 	algoIndex int32) (err error) {
 
 	// Create the base message
-	algoLog := swagger.LogMessage{
+	algoLog := logMessage{
 		LogMessageType: "Algo",
 		RunId:          runID,
 		EndpointOwnerUserName: config.EndpointOwnerUserName,
@@ -44,11 +44,13 @@ func runExec(runID string,
 	// setup termination on kill signals
 	go func() {
 		sig := <-sigchan
-		fmt.Printf("Caught signal %v. Killing server process: %s\n", sig, config.Entrypoint)
+
+		algoLog.log("Terminated", fmt.Sprintf("Caught signal %v. Killing algo process: %s\n", sig, config.Entrypoint))
+
 		if targetCmd != nil && targetCmd.Process != nil {
 			val := targetCmd.Process.Kill()
 			if val != nil {
-				fmt.Printf("Killed algo process: %s - error %s\n", config.Entrypoint, val.Error())
+				algoLog.log("Terminated", fmt.Sprintf("Killed algo process: %s - error %s\n", config.Entrypoint, val.Error()))
 			}
 		}
 	}()
@@ -64,10 +66,10 @@ func runExec(runID string,
 
 	var wg sync.WaitGroup
 
-	// TODO: Write to the topic as error if no value
+	// Write to the topic as error if no value
 	if inputMap == nil {
-
-		// 	return
+		algoLog.log("Failed", "Attempted to run but input data is completely empty.")
+		return
 	}
 
 	var timer *time.Timer
@@ -78,11 +80,11 @@ func runExec(runID string,
 
 		go func() {
 			<-timer.C
-			fmt.Printf("Killing process: %s\n", config.Entrypoint)
+			algoLog.log("Timeout", fmt.Sprintf("Algo timed out. Timeout value: %d seconds", config.TimeoutSeconds))
 			if targetCmd != nil && targetCmd.Process != nil {
 				val := targetCmd.Process.Kill()
 				if val != nil {
-					fmt.Printf("Killed process: %s - error %s\n", config.Entrypoint, val.Error())
+					algoLog.log("Timeout", fmt.Sprintf("Killed algo process due to timeout: %s - error %s\n", config.Entrypoint, val.Error()))
 				}
 			}
 		}()
@@ -215,7 +217,6 @@ func runExec(runID string,
 
 		defer wg.Done()
 
-		fmt.Printf("%s", targetCmd.Args)
 		stdout, cmdErr = targetCmd.Output()
 
 		if b.Len() > 0 {
@@ -234,12 +235,8 @@ func runExec(runID string,
 
 	if cmdErr != nil {
 
-		algoLog.Status = "Failed"
-		algoLog.LogSource = "stderr"
-		algoLog.Log = fmt.Sprintf("%s\nStdout: %s\nStderr: %s", cmdErr, stdout, stderr)
 		algoLog.RuntimeMs = int64(execDuration / time.Millisecond)
-
-		produceLogMessage(runID, logTopic, algoLog)
+		algoLog.log("Failed", fmt.Sprintf("%s\nStdout: %s\nStderr: %s", cmdErr, stdout, stderr))
 
 		return cmdErr
 
@@ -255,16 +252,12 @@ func runExec(runID string,
 
 		// Write to stdout output topic
 		fileName, _ := uuid.NewV4()
-		produceOutputMessage(runID, fileName.String(), stdoutTopic, stdout)
+		produceOutputMessage(fileName.String(), stdoutTopic, stdout)
 	}
 
 	// Write completion to log topic
-	algoLog.Status = "Success"
-	algoLog.LogSource = "stdout"
 	algoLog.RuntimeMs = int64(execDuration / time.Millisecond)
-	algoLog.Log = string(stdout)
-
-	produceLogMessage(runID, logTopic, algoLog)
+	algoLog.log("Success", fmt.Sprintf("Stdout: %s\nStderr: %s", stdout, stderr))
 
 	outputWatcher.closeOutputWatcher()
 

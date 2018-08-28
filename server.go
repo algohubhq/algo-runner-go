@@ -1,7 +1,6 @@
 package main
 
 import (
-	"algo-runner-go/swagger"
 	"fmt"
 	"io"
 	"os"
@@ -13,6 +12,17 @@ import (
 )
 
 func startServer() (terminated bool) {
+
+	// Create the base message
+	serverLog := logMessage{
+		LogMessageType:        "Server",
+		EndpointOwnerUserName: config.EndpointOwnerUserName,
+		EndpointName:          config.EndpointName,
+		AlgoOwnerUserName:     config.AlgoOwnerUserName,
+		AlgoName:              config.AlgoName,
+		AlgoVersionTag:        config.AlgoVersionTag,
+		Status:                "Started",
+	}
 
 	terminated = false
 
@@ -26,12 +36,14 @@ func startServer() (terminated bool) {
 
 	go func() {
 		sig := <-sigchan
-		fmt.Printf("Caught signal %v. Killing server process: %s\n", sig, config.Entrypoint)
+
+		serverLog.log("Terminated", fmt.Sprintf("Caught signal %v. Killing server process: %s\n", sig, config.Entrypoint))
+
 		if cmd != nil && cmd.Process != nil {
 			val := cmd.Process.Kill()
 			terminated = true
 			if val != nil {
-				fmt.Printf("Killed server process: %s - error %s\n", config.Entrypoint, val.Error())
+				serverLog.log("Terminated", fmt.Sprintf("Killed server process: %s - error %s\n", config.Entrypoint, val.Error()))
 			}
 		}
 	}()
@@ -43,33 +55,21 @@ func startServer() (terminated bool) {
 	err := cmd.Start()
 
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Server cmd.Start() failed with '%s'\n", err)
-	}
-
-	// Create the base message
-	serverLog := swagger.LogMessage{
-		LogMessageType:        "Server",
-		EndpointOwnerUserName: config.EndpointOwnerUserName,
-		EndpointName:          config.EndpointName,
-		AlgoOwnerUserName:     config.AlgoOwnerUserName,
-		AlgoName:              config.AlgoName,
-		AlgoVersionTag:        config.AlgoVersionTag,
-		Status:                "Started",
+		serverLog.log("Failed", fmt.Sprintf("Server start failed for command '%s' with error '%s'\n", config.Entrypoint, err))
+	} else {
+		serverLog.log("Running", fmt.Sprintf("Server started with command '%s'\n", config.Entrypoint))
 	}
 
 	var wg sync.WaitGroup
 	wg.Add(2)
 
 	go func() {
-		serverLog.LogSource = "stdout"
-		stdout, errStdout = logToOrchestrator(serverLog, os.Stdout, stdoutIn)
+		stdout, errStdout = captureOutput(serverLog, os.Stdout, stdoutIn)
 		wg.Done()
 	}()
 
 	go func() {
-		serverLog.LogSource = "stderr"
-		serverLog.Status = "Failed"
-		stderr, errStderr = logToOrchestrator(serverLog, os.Stderr, stderrIn)
+		stderr, errStderr = captureOutput(serverLog, os.Stderr, stderrIn)
 		wg.Done()
 	}()
 
@@ -77,30 +77,23 @@ func startServer() (terminated bool) {
 
 	errWait := cmd.Wait()
 	if err != nil {
-		serverLog.LogSource = "stderr"
-		serverLog.Status = "Failed"
-		serverLog.Log = fmt.Sprintf("Server start failed with %s\n", errWait)
-		produceLogMessage(runID, logTopic, serverLog)
+		serverLog.log("Failed", fmt.Sprintf("Server start failed with %s\n", errWait))
 	}
 	if errStdout != nil || errStderr != nil {
-		fmt.Fprintf(os.Stderr, "failed to capture stdout or stderr\n")
+		serverLog.log("Failed", fmt.Sprintf("Failed to capture stdout or stderr for the server process.\n"))
 	}
 
 	// If this is reached, the server has terminated (bad)
 	terminated = true
 	outBytes := append(stderr, stdout...)
 
-	serverLog.Status = "Terminated"
-	serverLog.Log = string(outBytes)
-
-	produceLogMessage(runID, logTopic, serverLog)
-
-	fmt.Fprintf(os.Stderr, "Server Terminated unexpectedly!\n")
+	serverLog.log("Terminated", fmt.Sprintf("Server Terminated unexpectedly!\n%s\n", string(outBytes)))
 
 	return
+
 }
 
-func logToOrchestrator(serverLog swagger.LogMessage, w io.Writer, r io.Reader) ([]byte, error) {
+func captureOutput(serverLog logMessage, w io.Writer, r io.Reader) ([]byte, error) {
 
 	var out []byte
 	buf := make([]byte, 1024, 1024)
@@ -113,8 +106,7 @@ func logToOrchestrator(serverLog swagger.LogMessage, w io.Writer, r io.Reader) (
 			// deliver at 100K blocks for large messages
 			if len(out) >= 102400 {
 				if len(out) > 0 {
-					serverLog.Log = string(out)
-					produceLogMessage(runID, logTopic, serverLog)
+					serverLog.log("Running", string(out))
 				}
 
 				out = nil
@@ -124,8 +116,7 @@ func logToOrchestrator(serverLog swagger.LogMessage, w io.Writer, r io.Reader) (
 			if err != nil {
 
 				if len(out) > 0 {
-					serverLog.Log = string(out)
-					produceLogMessage(runID, logTopic, serverLog)
+					serverLog.log("Running", string(out))
 				}
 
 				return out, err
@@ -138,8 +129,7 @@ func logToOrchestrator(serverLog swagger.LogMessage, w io.Writer, r io.Reader) (
 			}
 
 			if len(out) > 0 {
-				serverLog.Log = string(out)
-				produceLogMessage(runID, logTopic, serverLog)
+				serverLog.log("Running", string(out))
 			}
 
 			return out, err

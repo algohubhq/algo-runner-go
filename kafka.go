@@ -15,12 +15,22 @@ import (
 	"strings"
 	"sync"
 	"syscall"
-	"time"
 )
 
 type topicInputs map[string]*swagger.AlgoInputModel
 
 func startConsumers() {
+
+	// Create the base log message
+	runnerLog := logMessage{
+		LogMessageType:        "Runner",
+		EndpointOwnerUserName: config.EndpointOwnerUserName,
+		EndpointName:          config.EndpointName,
+		AlgoOwnerUserName:     config.AlgoOwnerUserName,
+		AlgoName:              config.AlgoName,
+		AlgoVersionTag:        config.AlgoVersionTag,
+		Status:                "Started",
+	}
 
 	var wg sync.WaitGroup
 
@@ -47,11 +57,11 @@ func startConsumers() {
 			})
 
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "Failed to create consumer: %s\n", err)
+				runnerLog.log("Failed", fmt.Sprintf("Failed to create consumer. Fatal: %s\n", err))
 				os.Exit(1)
 			}
 
-			fmt.Printf("Created Consumer %v\n", c)
+			runnerLog.log(runnerLog.Status, fmt.Sprintf("Created Kafka Consumer %v\n", c))
 
 			topicInputs := make(topicInputs)
 
@@ -118,6 +128,17 @@ func startConsumers() {
 
 func waitForMessages(wg *sync.WaitGroup, c *kafka.Consumer, topicInputs topicInputs, algoIndex int32) {
 
+	// Create the base log message
+	runnerLog := logMessage{
+		LogMessageType:        "Runner",
+		EndpointOwnerUserName: config.EndpointOwnerUserName,
+		EndpointName:          config.EndpointName,
+		AlgoOwnerUserName:     config.AlgoOwnerUserName,
+		AlgoName:              config.AlgoName,
+		AlgoVersionTag:        config.AlgoVersionTag,
+		Status:                "Started",
+	}
+
 	defer c.Close()
 	defer wg.Done()
 
@@ -133,15 +154,15 @@ func waitForMessages(wg *sync.WaitGroup, c *kafka.Consumer, topicInputs topicInp
 	for waiting == true {
 		select {
 		case sig := <-sigchan:
-			fmt.Printf("Caught signal %v: terminating\n", sig)
+
+			runnerLog.log("Terminated", fmt.Sprintf("Caught signal %v: terminating the Kafka Consumer process.\n", sig))
 			waiting = false
 
 		case ev := <-c.Events():
 			switch e := ev.(type) {
 			case *kafka.Message:
 
-				fmt.Printf("%% Message received on %s\n",
-					e.TopicPartition)
+				runnerLog.log(runnerLog.Status, fmt.Sprintf("Kafka Message received on %s\n", e.TopicPartition))
 
 				input := topicInputs[*e.TopicPartition.Topic]
 				inputData, run := processMessage(e, input)
@@ -176,22 +197,25 @@ func waitForMessages(wg *sync.WaitGroup, c *kafka.Consumer, topicInputs topicInp
 
 						offsets[runID] = offsetCommit
 
-						fmt.Printf("%s", offsets[runID])
 						_, offsetErr := c.StoreOffsets([]kafka.TopicPartition{offsets[runID]})
 						if offsetErr != nil {
-							// TODO: Log the error
+							runnerLog.log("Failed", fmt.Sprintf("Failed to store offsets for [%v] with error '%s'",
+								[]kafka.TopicPartition{offsets[runID]},
+								offsetErr))
 						}
 
 						_, commitErr := c.Commit()
 						if commitErr != nil {
-							// TODO: Log the error
+							runnerLog.log("Failed", fmt.Sprintf("Failed to commit offsets with error '%s'",
+								commitErr))
 						}
 
 						delete(data, runID)
 						delete(offsets, runID)
 
 					} else {
-						fmt.Fprintf(os.Stderr, "%s", runError)
+						runnerLog.log("Failed", fmt.Sprintf("Failed to run Algo with error '%s'",
+							runError))
 					}
 
 				} else {
@@ -201,15 +225,15 @@ func waitForMessages(wg *sync.WaitGroup, c *kafka.Consumer, topicInputs topicInp
 				}
 
 			case kafka.AssignedPartitions:
-				fmt.Fprintf(os.Stderr, "%% %v\n", e)
+				runnerLog.log(runnerLog.Status, fmt.Sprintf("%v\n", e))
 				c.Assign(e.Partitions)
 			case kafka.RevokedPartitions:
-				fmt.Fprintf(os.Stderr, "%% %v\n", e)
+				runnerLog.log(runnerLog.Status, fmt.Sprintf("%v\n", e))
 				c.Unassign()
 			case kafka.PartitionEOF:
-				fmt.Printf("%% Reached %v\n", e)
+				runnerLog.log(runnerLog.Status, fmt.Sprintf("Reached %v\n", e))
 			case kafka.Error:
-				fmt.Fprintf(os.Stderr, "%% Error: %v\n", e)
+				runnerLog.log("Failed", fmt.Sprintf("Kafka Error: %v\n", e))
 				waiting = false
 			}
 		}
@@ -221,6 +245,18 @@ func processMessage(msg *kafka.Message,
 
 	// runID is the message key
 	runID = string(msg.Key)
+
+	// Create the base log message
+	runnerLog := logMessage{
+		LogMessageType: "Runner",
+		RunId:          runID,
+		EndpointOwnerUserName: config.EndpointOwnerUserName,
+		EndpointName:          config.EndpointName,
+		AlgoOwnerUserName:     config.AlgoOwnerUserName,
+		AlgoName:              config.AlgoName,
+		AlgoVersionTag:        config.AlgoVersionTag,
+		Status:                "Started",
+	}
 
 	// Parse the headers
 	var contentType string
@@ -267,14 +303,14 @@ func processMessage(msg *kafka.Message,
 			jsonErr := json.Unmarshal(msg.Value, &fileReference)
 
 			if jsonErr != nil {
-				fmt.Println(jsonErr.Error())
+				runnerLog.log("Failed", fmt.Sprintf("Failed to parse the FileReference json with error: %v\n", jsonErr.Error()))
 			}
 
 			// Read the file
 			fullPathFile := path.Join(fileReference.FilePath, fileReference.FileName)
 			fileBytes, err := ioutil.ReadFile(fullPathFile)
 			if err != nil {
-				fmt.Println(err.Error())
+				runnerLog.log("Failed", fmt.Sprintf("Failed to read the file reference with error: %v\n", err))
 			}
 
 			inputData.isFileReference = false
@@ -296,12 +332,13 @@ func processMessage(msg *kafka.Message,
 			jsonErr := json.Unmarshal(msg.Value, &fileReference)
 
 			if jsonErr != nil {
-				fmt.Println(jsonErr.Error())
+				runnerLog.log("Failed", fmt.Sprintf("Failed to parse the FileReference json with error: %v\n", jsonErr.Error()))
 			}
 			// Check if the file exists
 			fullPathFile := path.Join(fileReference.FilePath, fileReference.FileName)
 			if _, err := os.Stat(fullPathFile); os.IsNotExist(err) {
-				// TODO: Log error, File doesn't exist!
+				// Log error, File doesn't exist!
+				runnerLog.log("Failed", fmt.Sprintf("The file reference doesn't exist or is not accessible: [%s]\n", fullPathFile))
 			}
 			inputData.data = []byte(fullPathFile)
 
@@ -320,7 +357,7 @@ func processMessage(msg *kafka.Message,
 			fullPathFile := path.Join(folder, fileName)
 			err := ioutil.WriteFile(fullPathFile, msg.Value, 0644)
 			if err != nil {
-				// TODO: Log error
+				runnerLog.log("Failed", fmt.Sprintf("Unable to write the embedded data to file [%s] with error: %v\n", fullPathFile, err))
 			}
 
 			inputData.data = []byte(fullPathFile)
@@ -331,13 +368,26 @@ func processMessage(msg *kafka.Message,
 
 }
 
-func produceOutputMessage(runID string, fileName string, topic string, data []byte) {
+func produceOutputMessage(fileName string, topic string, data []byte) {
+
+	// Create the base log message
+	runnerLog := logMessage{
+		LogMessageType: "Runner",
+		RunId:          runID,
+		EndpointOwnerUserName: config.EndpointOwnerUserName,
+		EndpointName:          config.EndpointName,
+		AlgoOwnerUserName:     config.AlgoOwnerUserName,
+		AlgoName:              config.AlgoName,
+		AlgoVersionTag:        config.AlgoVersionTag,
+		Status:                "Started",
+	}
 
 	p, err := kafka.NewProducer(&kafka.ConfigMap{"bootstrap.servers": kafkaServers})
 
 	if err != nil {
-		fmt.Printf("Failed to create server message producer: %s\n", err)
-		os.Exit(1)
+		runnerLog.LogMessageType = "Local"
+		runnerLog.log("Failed", fmt.Sprintf("Failed to create Kafka message producer: %s\n", err))
+		return
 	}
 
 	doneChan := make(chan bool)
@@ -349,15 +399,18 @@ func produceOutputMessage(runID string, fileName string, topic string, data []by
 			case *kafka.Message:
 				m := ev
 				if m.TopicPartition.Error != nil {
-					fmt.Printf("Delivery failed: %v\n", m.TopicPartition.Error)
+					runnerLog.LogMessageType = "Runner"
+					runnerLog.log("Failed", fmt.Sprintf("Delivery failed for output: %v\n", m.TopicPartition))
 				} else {
-					fmt.Printf("Delivered message to topic %s [%d] at offset %v\n",
-						*m.TopicPartition.Topic, m.TopicPartition.Partition, m.TopicPartition.Offset)
+					runnerLog.LogMessageType = "Runner"
+					runnerLog.log("Success", fmt.Sprintf("Delivered message to topic %s [%d] at offset %v\n",
+						*m.TopicPartition.Topic, m.TopicPartition.Partition, m.TopicPartition.Offset))
 				}
 				return
 
 			default:
-				fmt.Printf("Ignored event: %s\n", ev)
+				runnerLog.LogMessageType = "Local"
+				runnerLog.log(runnerLog.Status, fmt.Sprintf("Ignored event: %s\n", ev))
 			}
 		}
 	}()
@@ -377,13 +430,25 @@ func produceOutputMessage(runID string, fileName string, topic string, data []by
 
 }
 
-func produceLogMessage(runID string, topic string, logMessage swagger.LogMessage) {
+func produceLogMessage(topic string, lm *logMessage) {
+
+	// Create the base log message
+	runnerLog := logMessage{
+		LogMessageType: "Local",
+		RunId:          runID,
+		EndpointOwnerUserName: config.EndpointOwnerUserName,
+		EndpointName:          config.EndpointName,
+		AlgoOwnerUserName:     config.AlgoOwnerUserName,
+		AlgoName:              config.AlgoName,
+		AlgoVersionTag:        config.AlgoVersionTag,
+		Status:                "Started",
+	}
 
 	p, err := kafka.NewProducer(&kafka.ConfigMap{"bootstrap.servers": kafkaServers})
 
 	if err != nil {
-		fmt.Printf("Failed to create server message producer: %s\n", err)
-		os.Exit(1)
+		runnerLog.log("Failed", fmt.Sprintf("Failed to create server message producer: %s\n", err))
+		return
 	}
 
 	doneChan := make(chan bool)
@@ -395,22 +460,20 @@ func produceLogMessage(runID string, topic string, logMessage swagger.LogMessage
 			case *kafka.Message:
 				m := ev
 				if m.TopicPartition.Error != nil {
-					fmt.Printf("Delivery failed: %v\n", m.TopicPartition.Error)
+					runnerLog.log("Failed", fmt.Sprintf("Delivery of log message failed: %v\n", m.TopicPartition))
 				} else {
-					fmt.Printf("Delivered message to topic %s [%d] at offset %v\n",
-						*m.TopicPartition.Topic, m.TopicPartition.Partition, m.TopicPartition.Offset)
+					runnerLog.log("Success", fmt.Sprintf("Delivered message to topic %s [%d] at offset %v\n",
+						*m.TopicPartition.Topic, m.TopicPartition.Partition, m.TopicPartition.Offset))
 				}
 				return
 
 			default:
-				fmt.Printf("Ignored event: %s\n", ev)
+				runnerLog.log(runnerLog.Status, fmt.Sprintf("Ignored event: %s\n", ev))
 			}
 		}
 	}()
 
-	logMessage.LogTimestamp = time.Now().UTC()
-
-	logMessageBytes, err := json.Marshal(logMessage)
+	logMessageBytes, err := json.Marshal(lm)
 
 	p.ProduceChannel() <- &kafka.Message{TopicPartition: kafka.TopicPartition{Topic: &topic, Partition: kafka.PartitionAny},
 		Key: []byte(runID), Value: logMessageBytes}

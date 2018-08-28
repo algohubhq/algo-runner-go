@@ -20,7 +20,7 @@ func runHTTP(runID string,
 	startTime := time.Now()
 
 	// Create the base message
-	algoLog := swagger.LogMessage{
+	algoLog := logMessage{
 		LogMessageType: "Algo",
 		RunId:          runID,
 		EndpointOwnerUserName: config.EndpointOwnerUserName,
@@ -73,10 +73,7 @@ func runHTTP(runID string,
 		for _, data := range inputData {
 			request, reqErr := http.NewRequest(strings.ToLower(input.HttpVerb), u.String(), bytes.NewReader(data.data))
 			if reqErr != nil {
-				algoLog.Status = "Failed"
-				algoLog.LogSource = "stderr"
-				algoLog.Log = fmt.Sprintf("Error building request: %s\n", reqErr)
-				produceLogMessage(runID, logTopic, algoLog)
+				algoLog.log("Failed", fmt.Sprintf("Error building request: %s\n", reqErr))
 				continue
 			}
 			response, errReq := netClient.Do(request)
@@ -85,10 +82,7 @@ func runHTTP(runID string,
 			algoLog.RuntimeMs = int64(reqDuration / time.Millisecond)
 
 			if errReq != nil {
-				algoLog.Status = "Failed"
-				algoLog.LogSource = "stderr"
-				algoLog.Log = fmt.Sprintf("Error getting response from http server: %s\n", errReq)
-				produceLogMessage(runID, logTopic, algoLog)
+				algoLog.log("Failed", fmt.Sprintf("Error getting response from http server: %s\n", errReq))
 				continue
 			} else {
 				defer response.Body.Close()
@@ -96,30 +90,21 @@ func runHTTP(runID string,
 				// For example if multipart-form, get each file and load into kafka separately
 				contents, errRead := ioutil.ReadAll(response.Body)
 				if errRead != nil {
-					algoLog.Status = "Failed"
-					algoLog.LogSource = "stderr"
-					algoLog.Log = fmt.Sprintf("Error reading response from http server: %s\n", errRead)
-					produceLogMessage(runID, logTopic, algoLog)
+					algoLog.log("Failed", fmt.Sprintf("Error reading response from http server: %s\n", errRead))
 					continue
 				}
 				if response.StatusCode == 200 {
 					// Send to output topic
 					fileName, _ := uuid.NewV4()
-					produceOutputMessage(runID, fileName.String(), outputTopic, contents)
+					produceOutputMessage(fileName.String(), outputTopic, contents)
 
-					algoLog.Status = "Success"
-					//algoLog.Log = string(contents)
-
-					produceLogMessage(runID, logTopic, algoLog)
+					algoLog.log("Success", "")
 
 					return nil
 				}
 
 				// Produce the error to the log
-				algoLog.Status = "Failed"
-				algoLog.LogSource = "stderr"
-				algoLog.Log = fmt.Sprintf("Server returned non-success http status code: %d\n%s\n", response.StatusCode, contents)
-				produceLogMessage(runID, logTopic, algoLog)
+				algoLog.log("Failed", fmt.Sprintf("Server returned non-success http status code: %d\n%s\n", response.StatusCode, contents))
 
 				return errors.New(algoLog.Log)
 

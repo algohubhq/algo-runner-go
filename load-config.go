@@ -9,16 +9,22 @@ import (
 
 func loadConfig(fileName string) swagger.RunnerConfig {
 
+	// Create the base log message
+	localLog := logMessage{
+		LogMessageType: "Local",
+		Status:         "Started",
+	}
+
 	raw, err := ioutil.ReadFile(fileName)
 	if err != nil {
-		fmt.Println(err.Error())
+		localLog.log("Failed", fmt.Sprintf("Unable to read the config file [%s] with error: %s\n", fileName, err))
 	}
 
 	var c swagger.RunnerConfig
 	jsonErr := json.Unmarshal(raw, &c)
 
 	if jsonErr != nil {
-		fmt.Println(jsonErr.Error())
+		localLog.log("Failed", fmt.Sprintf("Unable to deserialize the config file [%s] with error: %s\n", fileName, jsonErr))
 	}
 
 	return c
