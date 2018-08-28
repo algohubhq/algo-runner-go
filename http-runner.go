@@ -74,6 +74,7 @@ func runHTTP(runID string,
 			request, reqErr := http.NewRequest(strings.ToLower(input.HttpVerb), u.String(), bytes.NewReader(data.data))
 			if reqErr != nil {
 				algoLog.Status = "Failed"
+				algoLog.LogSource = "stderr"
 				algoLog.Log = fmt.Sprintf("Error building request: %s\n", reqErr)
 				produceLogMessage(runID, logTopic, algoLog)
 				continue
@@ -85,6 +86,7 @@ func runHTTP(runID string,
 
 			if errReq != nil {
 				algoLog.Status = "Failed"
+				algoLog.LogSource = "stderr"
 				algoLog.Log = fmt.Sprintf("Error getting response from http server: %s\n", errReq)
 				produceLogMessage(runID, logTopic, algoLog)
 				continue
@@ -95,6 +97,7 @@ func runHTTP(runID string,
 				contents, errRead := ioutil.ReadAll(response.Body)
 				if errRead != nil {
 					algoLog.Status = "Failed"
+					algoLog.LogSource = "stderr"
 					algoLog.Log = fmt.Sprintf("Error reading response from http server: %s\n", errRead)
 					produceLogMessage(runID, logTopic, algoLog)
 					continue
@@ -114,6 +117,7 @@ func runHTTP(runID string,
 
 				// Produce the error to the log
 				algoLog.Status = "Failed"
+				algoLog.LogSource = "stderr"
 				algoLog.Log = fmt.Sprintf("Server returned non-success http status code: %d\n%s\n", response.StatusCode, contents)
 				produceLogMessage(runID, logTopic, algoLog)
 

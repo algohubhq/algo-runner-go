@@ -235,12 +235,14 @@ func runExec(runID string,
 	if cmdErr != nil {
 
 		algoLog.Status = "Failed"
+		algoLog.LogSource = "stderr"
 		algoLog.Log = fmt.Sprintf("%s\nStdout: %s\nStderr: %s", cmdErr, stdout, stderr)
 		algoLog.RuntimeMs = int64(execDuration / time.Millisecond)
 
 		produceLogMessage(runID, logTopic, algoLog)
 
 		return cmdErr
+
 	}
 
 	if sendStdOut {
@@ -258,6 +260,7 @@ func runExec(runID string,
 
 	// Write completion to log topic
 	algoLog.Status = "Success"
+	algoLog.LogSource = "stdout"
 	algoLog.RuntimeMs = int64(execDuration / time.Millisecond)
 	algoLog.Log = string(stdout)
 
