@@ -22,7 +22,7 @@ func main() {
 		Status:         "Started",
 	}
 
-	logTopic = "algorun.orchestrator.logs"
+	logTopic = "algorun.runner.logs"
 
 	configFilePtr := flag.String("config", "./config.json", "JSON config file to load")
 	kafkaServersPtr := flag.String("kafka-servers", "localhost:9092", "Kafka broker addresses separated by a comma")

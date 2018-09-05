@@ -76,7 +76,7 @@ func startServer() (terminated bool) {
 	wg.Wait()
 
 	errWait := cmd.Wait()
-	if err != nil {
+	if errWait != nil {
 		serverLog.log("Failed", fmt.Sprintf("Server start failed with %s\n", errWait))
 	}
 	if errStdout != nil || errStderr != nil {
