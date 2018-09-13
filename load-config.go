@@ -7,7 +7,7 @@ import (
 	"io/ioutil"
 )
 
-func loadConfig(fileName string) swagger.RunnerConfig {
+func loadConfigFromFile(fileName string) swagger.RunnerConfig {
 
 	// Create the base log message
 	localLog := logMessage{
@@ -25,6 +25,25 @@ func loadConfig(fileName string) swagger.RunnerConfig {
 
 	if jsonErr != nil {
 		localLog.log("Failed", fmt.Sprintf("Unable to deserialize the config file [%s] with error: %s\n", fileName, jsonErr))
+	}
+
+	return c
+
+}
+
+func loadConfigFromString(jsonConfig string) swagger.RunnerConfig {
+
+	// Create the base log message
+	localLog := logMessage{
+		LogMessageType: "Local",
+		Status:         "Started",
+	}
+
+	var c swagger.RunnerConfig
+	jsonErr := json.Unmarshal([]byte(jsonConfig), &c)
+
+	if jsonErr != nil {
+		localLog.log("Failed", fmt.Sprintf("Unable to deserialize the config from string [%s] with error: %s\n", jsonConfig, jsonErr))
 	}
 
 	return c

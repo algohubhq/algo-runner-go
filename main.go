@@ -24,23 +24,38 @@ func main() {
 
 	logTopic = "algorun.runner.logs"
 
-	configFilePtr := flag.String("config", "./config.json", "JSON config file to load")
-	kafkaServersPtr := flag.String("kafka-servers", "localhost:9092", "Kafka broker addresses separated by a comma")
+	configFilePtr := flag.String("config", "", "JSON config file to load")
+	kafkaServersPtr := flag.String("kafka-servers", "", "Kafka broker addresses separated by a comma")
 
 	flag.Parse()
 
 	if *configFilePtr == "" {
-		localLog.log("Failed", "Missing the config file path argument. ( --config=./config.json ) Shutting down...")
-		os.Exit(1)
+		// Try to load from environment variable
+		configEnv := os.Getenv("ALGO-RUNNER-CONFIG")
+		if configEnv != "" {
+			config = loadConfigFromString(configEnv)
+		} else {
+			localLog.log("Failed", "Missing the config file path argument and no environment variable ALGO-RUNNER-CONFIG exists. ( --config=./config.json ) Shutting down...")
+			os.Exit(1)
+		}
+	} else {
+		config = loadConfigFromFile(*configFilePtr)
 	}
 
-	config = loadConfig(*configFilePtr)
+	if *kafkaServersPtr == "" {
 
-	if *kafkaServersPtr != "" {
-		kafkaServers = *kafkaServersPtr
+		// Try to load from environment variable
+		kafkaServerEnv := os.Getenv("KAFKA-SERVERS")
+		if kafkaServerEnv != "" {
+			kafkaServersPtr = &kafkaServerEnv
+			kafkaServers = *kafkaServersPtr
+		} else {
+			localLog.log("Failed", "Missing the Kafka Servers argument and no environment variable KAFKA-SERVERS exists. ( --kafka-servers={broker1,broker2} ) Shutting down...")
+			os.Exit(1)
+		}
+
 	} else {
-		localLog.log("Failed", "Missing the Kafka Servers argument. ( --kafka-servers={broker1,broker2} ) Shutting down...")
-		os.Exit(1)
+		kafkaServers = *kafkaServersPtr
 	}
 
 	// Launch the server if not started
