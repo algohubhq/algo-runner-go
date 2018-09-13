@@ -5,6 +5,7 @@
 *.so
 *.dylib
 algo-runner-go
+debug
 
 # Test binary, build with `go test -c`
 *.test

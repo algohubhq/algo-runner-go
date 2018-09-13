@@ -13,6 +13,7 @@ import (
 
 func startServer() (terminated bool) {
 
+	healthy = false
 	// Create the base message
 	serverLog := logMessage{
 		LogMessageType:        "Server",
@@ -72,6 +73,8 @@ func startServer() (terminated bool) {
 		stderr, errStderr = captureOutput(serverLog, os.Stderr, stderrIn)
 		wg.Done()
 	}()
+
+	healthy = true
 
 	wg.Wait()
 

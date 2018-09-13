@@ -4,8 +4,6 @@ import (
 	"algo-runner-go/swagger"
 	"encoding/json"
 	"fmt"
-	"github.com/confluentinc/confluent-kafka-go/kafka"
-	"github.com/nu7hatch/gouuid"
 	"io/ioutil"
 	"os"
 	"os/signal"
@@ -13,8 +11,10 @@ import (
 	"path"
 	"strconv"
 	"strings"
-	"sync"
 	"syscall"
+
+	"github.com/confluentinc/confluent-kafka-go/kafka"
+	"github.com/nu7hatch/gouuid"
 )
 
 type topicInputs map[string]*swagger.AlgoInputModel
@@ -32,38 +32,14 @@ func startConsumers() {
 		Status:                "Started",
 	}
 
-	var wg sync.WaitGroup
+	topicInputs := make(topicInputs)
+	topicAlgoIndexes := make(map[string]int32)
+	var topics []string
 
 	for _, route := range config.PipelineRoutes {
 
 		if route.DestAlgoOwnerName == config.AlgoOwnerUserName &&
 			route.DestAlgoName == config.AlgoName {
-
-			groupID := fmt.Sprintf("%s-%s-%s-%s",
-				config.EndpointOwnerUserName,
-				config.EndpointName,
-				config.AlgoOwnerUserName,
-				config.AlgoName)
-
-			c, err := kafka.NewConsumer(&kafka.ConfigMap{
-				"bootstrap.servers":               kafkaServers,
-				"group.id":                        groupID,
-				"client.id":                       "algo-runner-go-client",
-				"enable.auto.commit":              false,
-				"enable.auto.offset.store":        false,
-				"auto.offset.reset":               "earliest",
-				"go.events.channel.enable":        true,
-				"go.application.rebalance.enable": true,
-			})
-
-			if err != nil {
-				runnerLog.log("Failed", fmt.Sprintf("Failed to create consumer. Fatal: %s\n", err))
-				os.Exit(1)
-			}
-
-			runnerLog.log(runnerLog.Status, fmt.Sprintf("Created Kafka Consumer %v\n", c))
-
-			topicInputs := make(topicInputs)
 
 			var input swagger.AlgoInputModel
 			// Get the input associated with this route
@@ -74,10 +50,12 @@ func startConsumers() {
 				}
 			}
 
+			var topic string
+
 			switch routeType := route.RouteType; routeType {
 			case "Algo":
 
-				topic := strings.ToLower(fmt.Sprintf("algorun.%s.%s.algo.%s.%s.%d.output.%s",
+				topic = strings.ToLower(fmt.Sprintf("algorun.%s.%s.algo.%s.%s.%d.output.%s",
 					config.EndpointOwnerUserName,
 					config.EndpointName,
 					route.SourceAlgoOwnerName,
@@ -85,48 +63,62 @@ func startConsumers() {
 					route.SourceAlgoIndex,
 					route.SourceAlgoOutputName))
 
-				topicInputs[topic] = &input
-
-				err = c.Subscribe(topic, nil)
-
 			case "DataSource":
 
-				topic := strings.ToLower(fmt.Sprintf("algorun.%s.%s.connector.%s.%d",
+				topic = strings.ToLower(fmt.Sprintf("algorun.%s.%s.connector.%s.%d",
 					config.EndpointOwnerUserName,
 					config.EndpointName,
 					route.PipelineDataSourceName,
 					route.PipelineDataSourceIndex))
 
-				topicInputs[topic] = &input
-
-				err = c.Subscribe(topic, nil)
-
 			case "EndpointSource":
 
-				topic := strings.ToLower(fmt.Sprintf("algorun.%s.%s.output.%s",
+				topic = strings.ToLower(fmt.Sprintf("algorun.%s.%s.output.%s",
 					config.EndpointOwnerUserName,
 					config.EndpointName,
 					route.PipelineEndpointSourceOutputName))
 
-				topicInputs[topic] = &input
-
-				err = c.Subscribe(topic, nil)
-
 			}
 
-			go waitForMessages(&wg, c, topicInputs, route.DestAlgoIndex)
-
-			wg.Add(1)
+			topicInputs[topic] = &input
+			topicAlgoIndexes[topic] = route.DestAlgoIndex
+			topics = append(topics, topic)
 
 		}
 
 	}
 
-	wg.Wait()
+	groupID := fmt.Sprintf("%s-%s-%s-%s",
+		config.EndpointOwnerUserName,
+		config.EndpointName,
+		config.AlgoOwnerUserName,
+		config.AlgoName)
+
+	c, err := kafka.NewConsumer(&kafka.ConfigMap{
+		"bootstrap.servers":               kafkaServers,
+		"group.id":                        groupID,
+		"client.id":                       "algo-runner-go-client",
+		"enable.auto.commit":              false,
+		"enable.auto.offset.store":        false,
+		"auto.offset.reset":               "earliest",
+		"go.events.channel.enable":        true,
+		"go.application.rebalance.enable": true,
+	})
+
+	if err != nil {
+		runnerLog.log("Failed", fmt.Sprintf("Failed to create consumer. Fatal: %s\n", err))
+		os.Exit(1)
+	}
+
+	runnerLog.log(runnerLog.Status, fmt.Sprintf("Created Kafka Consumer %v\n", c))
+
+	err = c.SubscribeTopics(topics, nil)
+
+	waitForMessages(c, topicInputs, topicAlgoIndexes)
 
 }
 
-func waitForMessages(wg *sync.WaitGroup, c *kafka.Consumer, topicInputs topicInputs, algoIndex int32) {
+func waitForMessages(c *kafka.Consumer, topicInputs topicInputs, topicAlgoIndexes map[string]int32) {
 
 	// Create the base log message
 	runnerLog := logMessage{
@@ -140,7 +132,6 @@ func waitForMessages(wg *sync.WaitGroup, c *kafka.Consumer, topicInputs topicInp
 	}
 
 	defer c.Close()
-	defer wg.Done()
 
 	sigchan := make(chan os.Signal)
 	signal.Notify(sigchan, syscall.SIGINT, syscall.SIGTERM)
@@ -151,11 +142,14 @@ func waitForMessages(wg *sync.WaitGroup, c *kafka.Consumer, topicInputs topicInp
 
 	waiting := true
 
+	healthy = true
+
 	for waiting == true {
 		select {
 		case sig := <-sigchan:
 
 			runnerLog.log("Terminated", fmt.Sprintf("Caught signal %v: terminating the Kafka Consumer process.\n", sig))
+			healthy = false
 			waiting = false
 
 		case ev := <-c.Events():
@@ -165,6 +159,7 @@ func waitForMessages(wg *sync.WaitGroup, c *kafka.Consumer, topicInputs topicInp
 				runnerLog.log(runnerLog.Status, fmt.Sprintf("Kafka Message received on %s\n", e.TopicPartition))
 
 				input := topicInputs[*e.TopicPartition.Topic]
+				algoIndex := topicAlgoIndexes[*e.TopicPartition.Topic]
 				inputData, run := processMessage(e, input)
 
 				if data[runID] == nil {
@@ -234,10 +229,15 @@ func waitForMessages(wg *sync.WaitGroup, c *kafka.Consumer, topicInputs topicInp
 				runnerLog.log(runnerLog.Status, fmt.Sprintf("Reached %v\n", e))
 			case kafka.Error:
 				runnerLog.log("Failed", fmt.Sprintf("Kafka Error: %v\n", e))
+				healthy = false
 				waiting = false
+
 			}
 		}
 	}
+
+	healthy = false
+
 }
 
 func processMessage(msg *kafka.Message,
