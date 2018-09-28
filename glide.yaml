@@ -1,9 +1,0 @@
-package: algo-runner-go
-import:
-- package: github.com/confluentinc/confluent-kafka-go
-  version: ^0.11.4
-  subpackages:
-  - kafka
-- package: github.com/radovskyb/watcher
-  version: ^1.0.2
-- package: github.com/nu7hatch/gouuid

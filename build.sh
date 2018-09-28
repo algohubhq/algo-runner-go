@@ -10,7 +10,7 @@ fi
 GIT_COMMIT=$(git rev-list -1 HEAD)
 VERSION=$(git describe --all --exact-match `git rev-parse HEAD` | grep tags | sed 's/tags\///')
 
-docker inspect "algo-runner-go-buildenv:latest" > /dev/null 2>&1 || docker build --no-cache -t algo-runner-go-buildenv -f ./Dockerfile-buildenv .
+docker inspect "algorun-go-buildenv:latest" > /dev/null 2>&1 || docker build --no-cache -t algorun-go-buildenv -f ./Dockerfile-buildenv .
 
 docker build --no-cache --build-arg VERSION=$VERSION --build-arg GIT_COMMIT=$GIT_COMMIT -t algohub/algo-runner-go:build .
 

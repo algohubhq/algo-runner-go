@@ -1,4 +1,4 @@
-FROM algo-runner-go-buildenv
+FROM algorun-go-buildenv
 
 ARG VERSION
 ARG GIT_COMMIT
@@ -8,11 +8,10 @@ WORKDIR /go/src/algo-runner-go
 
 COPY . /go/src/algo-runner-go
 
-RUN glide install
+RUN dep ensure -vendor-only
 
 # Stripping via -ldflags "-s -w" 
-RUN CGO_ENABLED=1 GOOS=linux go build -tags static_all -a \
-        -installsuffix cgo -o algo-runner-go .
+RUN CGO_ENABLED=1 GOOS=linux go build -tags static_all -ldflags "${ldflags}" -a -installsuffix cgo -o algo-runner-go .
 # RUN GOARCH=arm64 CGO_ENABLED=1 GOOS=linux go build -tags static_all -a \
 #        -installsuffix cgo -o algo-runner-go-arm64 .
 # RUN GOOS=windows CGO_ENABLED=1 go build -tags static_all -a \
