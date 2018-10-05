@@ -3,6 +3,7 @@ package main
 import (
 	"algo-runner-go/swagger"
 	"flag"
+	"github.com/nu7hatch/gouuid"
 	"io/ioutil"
 	"log"
 	"os"
@@ -15,6 +16,7 @@ import (
 // Global variables
 var healthy bool
 var healthCheckIntervalSeconds int
+var instanceName string
 var kafkaServers string
 var config swagger.RunnerConfig
 var logTopic string
@@ -35,6 +37,7 @@ func main() {
 
 	configFilePtr := flag.String("config", "", "JSON config file to load")
 	kafkaServersPtr := flag.String("kafka-servers", "", "Kafka broker addresses separated by a comma")
+	instanceNamePtr := flag.String("instance-name", "", "The Algo Instance Name (typically Container ID")
 	healthCheckIntervalSecondsPtr := flag.Int("health-check-interval", 0, "Interval for the health check to write to the health file. (in seconds)")
 
 	flag.Parse()
@@ -81,6 +84,19 @@ func main() {
 
 	} else {
 		kafkaServers = *kafkaServersPtr
+	}
+
+	if *instanceNamePtr == "" {
+
+		// Try to load from environment variable
+		instanceName := os.Getenv("INSTANCE-NAME")
+		if instanceName == "" {
+			instanceNameUUID, _ := uuid.NewV4()
+			instanceName = strings.Replace(instanceNameUUID.String(), "-", "", -1)
+		}
+
+	} else {
+		instanceName = *instanceNamePtr
 	}
 
 	// Launch the server if not started

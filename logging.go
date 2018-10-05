@@ -14,6 +14,7 @@ type logMessage swagger.LogMessage
 
 func (lm *logMessage) log(status string, message string) {
 
+	lm.AlgoInstanceName = instanceName
 	lm.Status = status
 	lm.Log = message
 	lm.LogTimestamp = time.Now().UTC()

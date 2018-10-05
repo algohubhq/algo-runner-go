@@ -21,6 +21,8 @@ type LogMessage struct {
 
 	RunId string `json:"runId,omitempty"`
 
+	AlgoInstanceName string `json:"algoInstanceName,omitempty"`
+
 	EndpointOwnerUserName string `json:"endpointOwnerUserName,omitempty"`
 
 	EndpointName string `json:"endpointName,omitempty"`
