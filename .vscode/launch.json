@@ -22,7 +22,8 @@
                 // "--config", "../algo-test-go/config-test-image-resize-stdin-stdout.json",
                 // "--config", "../algo-test-go/config-test-text-transform-http.json",
                 // "--config", "../algo-test-go/config-test-text-transform-stdin-stdout.json",
-                "--kafka-servers", "172.17.0.1:32768"
+                "--kafka-servers", "172.17.0.1:32768",
+                "--instance-name", "algo-run-debug"
             ],
             "cwd": "${workspaceRoot}",
             "showLog": true,
