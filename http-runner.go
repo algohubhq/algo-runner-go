@@ -22,14 +22,17 @@ func runHTTP(runID string,
 	// Create the base message
 	algoLog := logMessage{
 		LogMessageType: "Algo",
-		RunId:          runID,
-		EndpointOwnerUserName: config.EndpointOwnerUserName,
-		EndpointName:          config.EndpointName,
-		AlgoOwnerUserName:     config.AlgoOwnerUserName,
-		AlgoName:              config.AlgoName,
-		AlgoVersionTag:        config.AlgoVersionTag,
-		AlgoIndex:             algoIndex,
-		Status:                "Started",
+		Status:         "Started",
+		AlgoLogData: &swagger.AlgoLogData{
+			RunId:                 runID,
+			EndpointOwnerUserName: config.EndpointOwnerUserName,
+			EndpointName:          config.EndpointName,
+			AlgoOwnerUserName:     config.AlgoOwnerUserName,
+			AlgoName:              config.AlgoName,
+			AlgoVersionTag:        config.AlgoVersionTag,
+			AlgoIndex:             algoIndex,
+			AlgoInstanceName:      instanceName,
+		},
 	}
 
 	// TODO: Write to the topic as error if no value
@@ -73,16 +76,20 @@ func runHTTP(runID string,
 		for _, data := range inputData {
 			request, reqErr := http.NewRequest(strings.ToLower(input.HttpVerb), u.String(), bytes.NewReader(data.data))
 			if reqErr != nil {
-				algoLog.log("Failed", fmt.Sprintf("Error building request: %s\n", reqErr))
+				algoLog.Status = "Failed"
+				algoLog.AlgoLogData.Log = fmt.Sprintf("Error building request: %s\n", reqErr)
+				algoLog.log()
 				continue
 			}
 			response, errReq := netClient.Do(request)
 
 			reqDuration := time.Since(startTime)
-			algoLog.RuntimeMs = int64(reqDuration / time.Millisecond)
+			algoLog.AlgoLogData.RuntimeMs = int64(reqDuration / time.Millisecond)
 
 			if errReq != nil {
-				algoLog.log("Failed", fmt.Sprintf("Error getting response from http server: %s\n", errReq))
+				algoLog.Status = "Failed"
+				algoLog.AlgoLogData.Log = fmt.Sprintf("Error getting response from http server: %s\n", errReq)
+				algoLog.log()
 				continue
 			} else {
 				defer response.Body.Close()
@@ -90,7 +97,9 @@ func runHTTP(runID string,
 				// For example if multipart-form, get each file and load into kafka separately
 				contents, errRead := ioutil.ReadAll(response.Body)
 				if errRead != nil {
-					algoLog.log("Failed", fmt.Sprintf("Error reading response from http server: %s\n", errRead))
+					algoLog.Status = "Failed"
+					algoLog.AlgoLogData.Log = fmt.Sprintf("Error reading response from http server: %s\n", errRead)
+					algoLog.log()
 					continue
 				}
 				if response.StatusCode == 200 {
@@ -98,21 +107,25 @@ func runHTTP(runID string,
 					fileName, _ := uuid.NewV4()
 					produceOutputMessage(fileName.String(), outputTopic, contents)
 
-					algoLog.log("Success", "")
+					algoLog.Status = "Success"
+					algoLog.AlgoLogData.Log = ""
+					algoLog.log()
 
 					return nil
 				}
 
 				// Produce the error to the log
-				algoLog.log("Failed", fmt.Sprintf("Server returned non-success http status code: %d\n%s\n", response.StatusCode, contents))
+				algoLog.Status = "Failed"
+				algoLog.AlgoLogData.Log = fmt.Sprintf("Server returned non-success http status code: %d\n%s\n", response.StatusCode, contents)
+				algoLog.log()
 
-				return errors.New(algoLog.Log)
+				return errors.New(algoLog.AlgoLogData.Log)
 
 			}
 		}
 
 	}
 
-	return errors.New(algoLog.Log)
+	return errors.New(algoLog.AlgoLogData.Log)
 
 }

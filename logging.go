@@ -2,6 +2,7 @@ package main
 
 import (
 	"algo-runner-go/swagger"
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -12,15 +13,13 @@ import (
 
 type logMessage swagger.LogMessage
 
-func (lm *logMessage) log(status string, message string) {
+func (lm *logMessage) log() {
 
-	lm.AlgoInstanceName = instanceName
-	lm.Status = status
-	lm.Log = message
 	lm.LogTimestamp = time.Now().UTC()
 
 	// Send to local console and file
-	log.Printf("%+v\n", lm)
+	lmBytes, err := json.Marshal(lm)
+	log.Printf("%s\n", string(lmBytes))
 
 	usr, _ := user.Current()
 	dir := usr.HomeDir
@@ -37,14 +36,14 @@ func (lm *logMessage) log(status string, message string) {
 	defer f.Close()
 
 	log.SetOutput(f)
-	log.Printf("%+v\n", lm)
+	log.Printf("%s\n", string(lmBytes))
 
 	log.SetOutput(os.Stderr)
 
 	// Don't send undeliverable kafka errors back to Kafka
 	if lm.LogMessageType != "Local" {
 		// Send to Kafka
-		produceLogMessage(logTopic, lm)
+		produceLogMessage(lmBytes)
 	}
 
 }

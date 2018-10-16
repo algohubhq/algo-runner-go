@@ -10,21 +10,17 @@
 
 package swagger
 
-type RunnerConfig struct {
-
-	EndpointOwnerUserName string `json:"endpointOwnerUserName,omitempty"`
-
-	EndpointName string `json:"endpointName,omitempty"`
-
-	PipelineOwnerUserName string `json:"pipelineOwnerUserName,omitempty"`
-
-	PipelineName string `json:"pipelineName,omitempty"`
+type AlgoConfig struct {
 
 	AlgoOwnerUserName string `json:"algoOwnerUserName,omitempty"`
 
 	AlgoName string `json:"algoName,omitempty"`
 
 	AlgoVersionTag string `json:"algoVersionTag,omitempty"`
+
+	AlgoIndex int32 `json:"algoIndex,omitempty"`
+
+	Container string `json:"container,omitempty"`
 
 	Entrypoint string `json:"entrypoint,omitempty"`
 
@@ -43,4 +39,24 @@ type RunnerConfig struct {
 	GpuEnabled bool `json:"gpuEnabled,omitempty"`
 
 	TimeoutSeconds int32 `json:"timeoutSeconds,omitempty"`
+
+	MemoryRequestBytes int64 `json:"memoryRequestBytes,omitempty"`
+
+	MemoryLimitBytes int64 `json:"memoryLimitBytes,omitempty"`
+
+	CpuRequestUnits int32 `json:"cpuRequestUnits,omitempty"`
+
+	CpuLimitUnits int32 `json:"cpuLimitUnits,omitempty"`
+
+	GpuLimitUnits int32 `json:"gpuLimitUnits,omitempty"`
+
+	Instances int32 `json:"instances,omitempty"`
+
+	AutoScale bool `json:"autoScale,omitempty"`
+
+	MinInstances int32 `json:"minInstances,omitempty"`
+
+	MaxInstances int32 `json:"maxInstances,omitempty"`
+
+	AutoScaleCPUPercent int32 `json:"autoScaleCPUPercent,omitempty"`
 }

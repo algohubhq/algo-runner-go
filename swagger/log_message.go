@@ -15,31 +15,28 @@ import (
 )
 
 type LogMessage struct {
+
+	Key string `json:"key,omitempty"`
+
 	LogMessageType string `json:"logMessageType,omitempty"`
 
 	LogTimestamp time.Time `json:"logTimestamp,omitempty"`
 
-	RunId string `json:"runId,omitempty"`
-
-	AlgoInstanceName string `json:"algoInstanceName,omitempty"`
-
-	EndpointOwnerUserName string `json:"endpointOwnerUserName,omitempty"`
-
-	EndpointName string `json:"endpointName,omitempty"`
-
-	AlgoOwnerUserName string `json:"algoOwnerUserName,omitempty"`
-
-	AlgoName string `json:"algoName,omitempty"`
-
-	AlgoVersionTag string `json:"algoVersionTag,omitempty"`
-
-	AlgoIndex int32 `json:"algoIndex,omitempty"`
-
 	Status string `json:"status,omitempty"`
 
-	CompletionPercent float64 `json:"completionPercent,omitempty"`
+	RunnerLogData *RunnerLogData `json:"runnerLogData,omitempty"`
 
-	RuntimeMs int64 `json:"runtimeMs,omitempty"`
+	ServerLogData *ServerLogData `json:"serverLogData,omitempty"`
 
-	Log string `json:"log,omitempty"`
+	AlgoLogData *AlgoLogData `json:"algoLogData,omitempty"`
+
+	OrchestratorLogData *OrchestratorLogData `json:"orchestratorLogData,omitempty"`
+
+	EndpointLogData *EndpointLogData `json:"endpointLogData,omitempty"`
+
+	DeploymentLogData *DeploymentLogData `json:"deploymentLogData,omitempty"`
+
+	InstanceLogData *InstanceLogData `json:"instanceLogData,omitempty"`
+
+	HasErrors bool `json:"hasErrors,omitempty"`
 }

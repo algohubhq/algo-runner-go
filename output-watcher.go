@@ -55,13 +55,16 @@ func (outputWatcher *OutputWatcher) start() {
 
 	// Create the base log message
 	runnerLog := logMessage{
-		LogMessageType:        "Runner",
-		EndpointOwnerUserName: config.EndpointOwnerUserName,
-		EndpointName:          config.EndpointName,
-		AlgoOwnerUserName:     config.AlgoOwnerUserName,
-		AlgoName:              config.AlgoName,
-		AlgoVersionTag:        config.AlgoVersionTag,
-		Status:                "Running",
+		LogMessageType: "Runner",
+		Status:         "Running",
+		RunnerLogData: &swagger.RunnerLogData{
+			EndpointOwnerUserName: config.EndpointOwnerUserName,
+			EndpointName:          config.EndpointName,
+			AlgoOwnerUserName:     config.AlgoOwnerUserName,
+			AlgoName:              config.AlgoName,
+			AlgoVersionTag:        config.AlgoVersionTag,
+			AlgoInstanceName:      instanceName,
+		},
 	}
 
 	// go routine to handle file changes
@@ -107,7 +110,9 @@ func (outputWatcher *OutputWatcher) start() {
 					jsonBytes, jsonErr := json.Marshal(fileReference)
 
 					if jsonErr != nil {
-						runnerLog.log("Failed", fmt.Sprintf("Unable to create the file reference json with error: %s\n", jsonErr))
+						runnerLog.Status = "Failed"
+						runnerLog.RunnerLogData.Log = fmt.Sprintf("Unable to create the file reference json with error: %s\n", jsonErr)
+						runnerLog.log()
 					}
 
 					produceOutputMessage(fileName, fileOutputTopic, jsonBytes)
@@ -116,7 +121,9 @@ func (outputWatcher *OutputWatcher) start() {
 
 					fileBytes, err := ioutil.ReadFile(event.Path)
 					if err != nil {
-						runnerLog.log("Failed", fmt.Sprintf("Output watcher unable to read the file [%s] from disk with error: %s\n", event.Path, err))
+						runnerLog.Status = "Failed"
+						runnerLog.RunnerLogData.Log = fmt.Sprintf("Output watcher unable to read the file [%s] from disk with error: %s\n", event.Path, err)
+						runnerLog.log()
 					}
 
 					produceOutputMessage(fileName, fileOutputTopic, fileBytes)
@@ -124,7 +131,10 @@ func (outputWatcher *OutputWatcher) start() {
 				}
 
 			case err := <-outputWatcher.fileWatcher.Error:
-				runnerLog.log("Failed", fmt.Sprintf("Output watcher error watching output file/folder: %s/n", err))
+				runnerLog.Status = "Failed"
+				runnerLog.RunnerLogData.Log = fmt.Sprintf("Output watcher error watching output file/folder: %s/n", err)
+				runnerLog.log()
+
 			case <-outputWatcher.fileWatcher.Closed:
 				return
 			}
@@ -133,7 +143,9 @@ func (outputWatcher *OutputWatcher) start() {
 
 	go func() {
 		if err := outputWatcher.fileWatcher.Start(time.Millisecond * 10); err != nil {
-			runnerLog.log("Failed", fmt.Sprintf("Output watcher failed to start with error: %s/n", err))
+			runnerLog.Status = "Failed"
+			runnerLog.RunnerLogData.Log = fmt.Sprintf("Output watcher failed to start with error: %s/n", err)
+			runnerLog.log()
 		}
 	}()
 

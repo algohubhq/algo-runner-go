@@ -23,14 +23,17 @@ func runExec(runID string,
 	// Create the base message
 	algoLog := logMessage{
 		LogMessageType: "Algo",
-		RunId:          runID,
-		EndpointOwnerUserName: config.EndpointOwnerUserName,
-		EndpointName:          config.EndpointName,
-		AlgoOwnerUserName:     config.AlgoOwnerUserName,
-		AlgoName:              config.AlgoName,
-		AlgoVersionTag:        config.AlgoVersionTag,
-		AlgoIndex:             algoIndex,
-		Status:                "Started",
+		Status:         "Started",
+		AlgoLogData: &swagger.AlgoLogData{
+			RunId:                 runID,
+			EndpointOwnerUserName: config.EndpointOwnerUserName,
+			EndpointName:          config.EndpointName,
+			AlgoOwnerUserName:     config.AlgoOwnerUserName,
+			AlgoName:              config.AlgoName,
+			AlgoVersionTag:        config.AlgoVersionTag,
+			AlgoIndex:             algoIndex,
+			AlgoInstanceName:      instanceName,
+		},
 	}
 
 	startTime := time.Now().UTC()
@@ -45,12 +48,16 @@ func runExec(runID string,
 	go func() {
 		sig := <-sigchan
 
-		algoLog.log("Terminated", fmt.Sprintf("Caught signal %v. Killing algo process: %s\n", sig, config.Entrypoint))
+		algoLog.Status = "Terminated"
+		algoLog.AlgoLogData.Log = fmt.Sprintf("Caught signal %v. Killing algo process: %s\n", sig, config.Entrypoint)
+		algoLog.log()
 
 		if targetCmd != nil && targetCmd.Process != nil {
 			val := targetCmd.Process.Kill()
 			if val != nil {
-				algoLog.log("Terminated", fmt.Sprintf("Killed algo process: %s - error %s\n", config.Entrypoint, val.Error()))
+				algoLog.Status = "Terminated"
+				algoLog.AlgoLogData.Log = fmt.Sprintf("Killed algo process: %s - error %s\n", config.Entrypoint, val.Error())
+				algoLog.log()
 			}
 		}
 	}()
@@ -68,7 +75,10 @@ func runExec(runID string,
 
 	// Write to the topic as error if no value
 	if inputMap == nil {
-		algoLog.log("Failed", "Attempted to run but input data is completely empty.")
+		algoLog.Status = "Failed"
+		algoLog.AlgoLogData.Log = "Attempted to run but input data is completely empty."
+		algoLog.log()
+
 		return
 	}
 
@@ -80,11 +90,17 @@ func runExec(runID string,
 
 		go func() {
 			<-timer.C
-			algoLog.log("Timeout", fmt.Sprintf("Algo timed out. Timeout value: %d seconds", config.TimeoutSeconds))
+
+			algoLog.Status = "Timeout"
+			algoLog.AlgoLogData.Log = fmt.Sprintf("Algo timed out. Timeout value: %d seconds", config.TimeoutSeconds)
+			algoLog.log()
+
 			if targetCmd != nil && targetCmd.Process != nil {
 				val := targetCmd.Process.Kill()
 				if val != nil {
-					algoLog.log("Timeout", fmt.Sprintf("Killed algo process due to timeout: %s - error %s\n", config.Entrypoint, val.Error()))
+					algoLog.Status = "Timeout"
+					algoLog.AlgoLogData.Log = fmt.Sprintf("Killed algo process due to timeout: %s - error %s\n", config.Entrypoint, val.Error())
+					algoLog.log()
 				}
 			}
 		}()
@@ -149,11 +165,11 @@ func runExec(runID string,
 		outputMessageDataType := "Embedded"
 
 		// Check to see if there are any mapped routes for this output and get the message data type
-		for i := range config.PipelineRoutes {
-			if config.PipelineRoutes[i].SourceAlgoOwnerName == config.AlgoOwnerUserName &&
-				config.PipelineRoutes[i].SourceAlgoName == config.AlgoName {
+		for i := range config.Pipes {
+			if config.Pipes[i].SourceAlgoOwnerName == config.AlgoOwnerUserName &&
+				config.Pipes[i].SourceAlgoName == config.AlgoName {
 				handleOutput = true
-				outputMessageDataType = config.PipelineRoutes[i].SourceAlgoOutputMessageDataType
+				outputMessageDataType = config.Pipes[i].SourceAlgoOutputMessageDataType
 				break
 			}
 		}
@@ -235,8 +251,10 @@ func runExec(runID string,
 
 	if cmdErr != nil {
 
-		algoLog.RuntimeMs = int64(execDuration / time.Millisecond)
-		algoLog.log("Failed", fmt.Sprintf("%s\nStdout: %s\nStderr: %s", cmdErr, stdout, stderr))
+		algoLog.Status = "Failed"
+		algoLog.AlgoLogData.RuntimeMs = int64(execDuration / time.Millisecond)
+		algoLog.AlgoLogData.Log = fmt.Sprintf("%s\nStdout: %s\nStderr: %s", cmdErr, stdout, stderr)
+		algoLog.log()
 
 		return cmdErr
 
@@ -256,8 +274,10 @@ func runExec(runID string,
 	}
 
 	// Write completion to log topic
-	algoLog.RuntimeMs = int64(execDuration / time.Millisecond)
-	algoLog.log("Success", fmt.Sprintf("Stdout: %s\nStderr: %s", stdout, stderr))
+	algoLog.Status = "Success"
+	algoLog.AlgoLogData.RuntimeMs = int64(execDuration / time.Millisecond)
+	algoLog.AlgoLogData.Log = fmt.Sprintf("Stdout: %s\nStderr: %s", stdout, stderr)
+	algoLog.log()
 
 	outputWatcher.closeOutputWatcher()
 

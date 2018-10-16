@@ -26,6 +26,8 @@ type MediaTypeModel struct {
 
 	FileExtension string `json:"fileExtension,omitempty"`
 
+	Encoding string `json:"encoding,omitempty"`
+
 	Rfc string `json:"rfc,omitempty"`
 
 	RfcUrl string `json:"rfcUrl,omitempty"`

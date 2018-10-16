@@ -1,6 +1,7 @@
 package main
 
 import (
+	"algo-runner-go/swagger"
 	"fmt"
 	"io"
 	"os"
@@ -14,15 +15,19 @@ import (
 func startServer() (terminated bool) {
 
 	healthy = false
-	// Create the base message
+
+	// Create the base log message
 	serverLog := logMessage{
-		LogMessageType:        "Server",
-		EndpointOwnerUserName: config.EndpointOwnerUserName,
-		EndpointName:          config.EndpointName,
-		AlgoOwnerUserName:     config.AlgoOwnerUserName,
-		AlgoName:              config.AlgoName,
-		AlgoVersionTag:        config.AlgoVersionTag,
-		Status:                "Started",
+		LogMessageType: "Server",
+		Status:         "Started",
+		ServerLogData: &swagger.ServerLogData{
+			EndpointOwnerUserName: config.EndpointOwnerUserName,
+			EndpointName:          config.EndpointName,
+			AlgoOwnerUserName:     config.AlgoOwnerUserName,
+			AlgoName:              config.AlgoName,
+			AlgoVersionTag:        config.AlgoVersionTag,
+			AlgoInstanceName:      instanceName,
+		},
 	}
 
 	terminated = false
@@ -38,13 +43,17 @@ func startServer() (terminated bool) {
 	go func() {
 		sig := <-sigchan
 
-		serverLog.log("Terminated", fmt.Sprintf("Caught signal %v. Killing server process: %s\n", sig, config.Entrypoint))
+		serverLog.Status = "Terminated"
+		serverLog.ServerLogData.Log = fmt.Sprintf("Caught signal %v. Killing server process: %s\n", sig, config.Entrypoint)
+		serverLog.log()
 
 		if cmd != nil && cmd.Process != nil {
 			val := cmd.Process.Kill()
 			terminated = true
 			if val != nil {
-				serverLog.log("Terminated", fmt.Sprintf("Killed server process: %s - error %s\n", config.Entrypoint, val.Error()))
+				serverLog.Status = "Terminated"
+				serverLog.ServerLogData.Log = fmt.Sprintf("Killed server process: %s - error %s\n", config.Entrypoint, val.Error())
+				serverLog.log()
 			}
 		}
 	}()
@@ -56,9 +65,13 @@ func startServer() (terminated bool) {
 	err := cmd.Start()
 
 	if err != nil {
-		serverLog.log("Failed", fmt.Sprintf("Server start failed for command '%s' with error '%s'\n", config.Entrypoint, err))
+		serverLog.Status = "Failed"
+		serverLog.ServerLogData.Log = fmt.Sprintf("Server start failed for command '%s' with error '%s'\n", config.Entrypoint, err)
+		serverLog.log()
 	} else {
-		serverLog.log("Running", fmt.Sprintf("Server started with command '%s'\n", config.Entrypoint))
+		serverLog.Status = "Running"
+		serverLog.ServerLogData.Log = fmt.Sprintf("Server started with command '%s'\n", config.Entrypoint)
+		serverLog.log()
 	}
 
 	var wg sync.WaitGroup
@@ -80,17 +93,23 @@ func startServer() (terminated bool) {
 
 	errWait := cmd.Wait()
 	if errWait != nil {
-		serverLog.log("Failed", fmt.Sprintf("Server start failed with %s\n", errWait))
+		serverLog.Status = "Failed"
+		serverLog.ServerLogData.Log = fmt.Sprintf("Server start failed with %s\n", errWait)
+		serverLog.log()
 	}
 	if errStdout != nil || errStderr != nil {
-		serverLog.log("Failed", fmt.Sprintf("Failed to capture stdout or stderr for the server process.\n"))
+		serverLog.Status = "Failed"
+		serverLog.ServerLogData.Log = fmt.Sprintf("Failed to capture stdout or stderr for the server process.\n")
+		serverLog.log()
 	}
 
 	// If this is reached, the server has terminated (bad)
 	terminated = true
 	outBytes := append(stderr, stdout...)
 
-	serverLog.log("Terminated", fmt.Sprintf("Server Terminated unexpectedly!\n%s\n", string(outBytes)))
+	serverLog.Status = "Terminated"
+	serverLog.ServerLogData.Log = fmt.Sprintf("Server Terminated unexpectedly!\n%s\n", string(outBytes))
+	serverLog.log()
 
 	return
 
@@ -109,7 +128,9 @@ func captureOutput(serverLog logMessage, w io.Writer, r io.Reader) ([]byte, erro
 			// deliver at 100K blocks for large messages
 			if len(out) >= 102400 {
 				if len(out) > 0 {
-					serverLog.log("Running", string(out))
+					serverLog.Status = "Running"
+					serverLog.ServerLogData.Log = string(out)
+					serverLog.log()
 				}
 
 				out = nil
@@ -119,7 +140,9 @@ func captureOutput(serverLog logMessage, w io.Writer, r io.Reader) ([]byte, erro
 			if err != nil {
 
 				if len(out) > 0 {
-					serverLog.log("Running", string(out))
+					serverLog.Status = "Running"
+					serverLog.ServerLogData.Log = string(out)
+					serverLog.log()
 				}
 
 				return out, err
@@ -132,7 +155,9 @@ func captureOutput(serverLog logMessage, w io.Writer, r io.Reader) ([]byte, erro
 			}
 
 			if len(out) > 0 {
-				serverLog.log("Running", string(out))
+				serverLog.Status = "Running"
+				serverLog.ServerLogData.Log = string(out)
+				serverLog.log()
 			}
 
 			return out, err

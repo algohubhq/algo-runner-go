@@ -14,11 +14,11 @@ import (
 	"time"
 )
 
-type PipelineRouteModel struct {
+type PipeModel struct {
 
-	RouteType string `json:"routeType,omitempty"`
+	PipeType string `json:"pipeType,omitempty"`
 
-	PipelineEndpointSourceOutputName string `json:"pipelineEndpointSourceOutputName,omitempty"`
+	PipelineEndpointConnectorOutputName string `json:"pipelineEndpointConnectorOutputName,omitempty"`
 
 	PipelineDataSourceName string `json:"pipelineDataSourceName,omitempty"`
 
