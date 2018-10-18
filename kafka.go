@@ -12,7 +12,6 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
-	"time"
 
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/nu7hatch/gouuid"
@@ -107,7 +106,6 @@ func startConsumers() {
 		"auto.offset.reset":               "earliest",
 		"go.events.channel.enable":        true,
 		"go.application.rebalance.enable": true,
-		"statistics.interval.ms":          time.Duration(*healthCheckIntervalSeconds) * time.Second * time.Millisecond,
 	})
 
 	if err != nil {
