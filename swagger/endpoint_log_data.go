@@ -16,8 +16,6 @@ import (
 
 type EndpointLogData struct {
 
-	OrchEventType string `json:"orchEventType,omitempty"`
-
 	EndpointOwnerUserName string `json:"endpointOwnerUserName,omitempty"`
 
 	EndpointName string `json:"endpointName,omitempty"`
@@ -29,8 +27,6 @@ type EndpointLogData struct {
 	Status string `json:"status,omitempty"`
 
 	RunCount int32 `json:"runCount,omitempty"`
-
-	HasErrors bool `json:"hasErrors,omitempty"`
 
 	AlgoErrorCount int32 `json:"algoErrorCount,omitempty"`
 

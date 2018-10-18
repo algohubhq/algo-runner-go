@@ -109,6 +109,7 @@ func startConsumers() {
 	})
 
 	if err != nil {
+		healthy = false
 		runnerLog.Status = "Failed"
 		runnerLog.RunnerLogData.Log = fmt.Sprintf("Failed to create consumer. Fatal: %s\n", err)
 		runnerLog.log()
@@ -120,6 +121,14 @@ func startConsumers() {
 	runnerLog.log()
 
 	err = c.SubscribeTopics(topics, nil)
+	if err != nil {
+		healthy = false
+		runnerLog.Status = "Failed"
+		runnerLog.RunnerLogData.Log = fmt.Sprintf("Failed to subscribe to topics. Fatal: %s\n", err)
+		runnerLog.log()
+
+		os.Exit(1)
+	}
 
 	waitForMessages(c, topicInputs, topicAlgoIndexes)
 
@@ -420,7 +429,11 @@ func produceOutputMessage(fileName string, topic string, data []byte) {
 		},
 	}
 
-	p, err := kafka.NewProducer(&kafka.ConfigMap{"bootstrap.servers": kafkaServers})
+	p, err := kafka.NewProducer(&kafka.ConfigMap{
+		"bootstrap.servers":  kafkaServers,
+		"request.timeout.ms": 10000,
+		"retries":            1,
+	})
 
 	if err != nil {
 		runnerLog.Status = "Failed"
@@ -493,7 +506,17 @@ func produceLogMessage(logMessageBytes []byte) {
 		},
 	}
 
-	p, err := kafka.NewProducer(&kafka.ConfigMap{"bootstrap.servers": kafkaServers})
+	p, err := kafka.NewProducer(&kafka.ConfigMap{
+		"bootstrap.servers": kafkaServers,
+		"default.topic.config": kafka.ConfigMap{
+			"acks":               1,
+			"request.timeout.ms": 5000,
+			"message.timeout.ms": 5000,
+		},
+		"message.send.max.retries":     1,
+		"go.produce.channel.size":      1,
+		"queue.buffering.max.messages": 1,
+	})
 
 	if err != nil {
 		runnerLog.Status = "Failed"
@@ -502,39 +525,31 @@ func produceLogMessage(logMessageBytes []byte) {
 		return
 	}
 
-	doneChan := make(chan bool)
+	// Optional delivery channel, if not specified the Producer object's
+	// .Events channel is used.
+	deliveryChan := make(chan kafka.Event)
 
-	go func() {
-		defer close(doneChan)
-		for e := range p.Events() {
-			switch ev := e.(type) {
-			case *kafka.Message:
-				m := ev
-				if m.TopicPartition.Error != nil {
-					runnerLog.Status = "Failed"
-					runnerLog.RunnerLogData.Log = fmt.Sprintf("Delivery of log message failed: %v\n", m.TopicPartition)
-					runnerLog.log()
-				} else {
-					runnerLog.Status = "Success"
-					runnerLog.RunnerLogData.Log = fmt.Sprintf("Delivered message to topic %s [%d] at offset %v\n",
-						*m.TopicPartition.Topic, m.TopicPartition.Partition, m.TopicPartition.Offset)
-					runnerLog.log()
-				}
-				return
+	err = p.Produce(&kafka.Message{
+		TopicPartition: kafka.TopicPartition{Topic: &logTopic, Partition: kafka.PartitionAny},
+		Value:          logMessageBytes,
+		Key:            []byte(runID),
+	}, deliveryChan)
 
-			default:
-				runnerLog.RunnerLogData.Log = fmt.Sprintf("Ignored event: %s\n", ev)
-				runnerLog.log()
-			}
-		}
-	}()
+	e := <-deliveryChan
+	m := e.(*kafka.Message)
 
-	p.ProduceChannel() <- &kafka.Message{TopicPartition: kafka.TopicPartition{Topic: &logTopic, Partition: kafka.PartitionAny},
-		Key: []byte(runID), Value: logMessageBytes}
+	if m.TopicPartition.Error != nil {
+		healthy = false
+		runnerLog.Status = "Failed"
+		runnerLog.RunnerLogData.Log = fmt.Sprintf("Delivery of log message failed: %+v\n", m.TopicPartition)
+		runnerLog.log()
+	} else {
+		runnerLog.Status = "Success"
+		runnerLog.RunnerLogData.Log = fmt.Sprintf("Delivered message to topic %s [%d] at offset %+v\n",
+			*m.TopicPartition.Topic, m.TopicPartition.Partition, m.TopicPartition.Offset)
+		runnerLog.log()
+	}
 
-	// wait for delivery report goroutine to finish
-	_ = <-doneChan
-
-	p.Close()
+	close(deliveryChan)
 
 }

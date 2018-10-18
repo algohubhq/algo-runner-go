@@ -10,6 +10,10 @@
 
 package swagger
 
+import (
+	"time"
+)
+
 type DeploymentLogData struct {
 
 	OrchEventType string `json:"orchEventType,omitempty"`
@@ -36,5 +40,5 @@ type DeploymentLogData struct {
 
 	Available int32 `json:"available,omitempty"`
 
-	Age string `json:"age,omitempty"`
+	CreatedTimestamp time.Time `json:"createdTimestamp,omitempty"`
 }

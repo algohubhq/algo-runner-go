@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/user"
 	"path"
+	"strings"
 	"time"
 )
 
@@ -27,7 +28,7 @@ func (lm *logMessage) log() {
 	if _, err := os.Stat(folder); os.IsNotExist(err) {
 		os.MkdirAll(folder, os.ModePerm)
 	}
-	fullPathFile := path.Join(folder, fmt.Sprintf("%s.log", lm.LogMessageType))
+	fullPathFile := path.Join(folder, fmt.Sprintf("%s.log", strings.ToLower(lm.LogMessageType)))
 
 	f, err := os.OpenFile(fullPathFile, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0644)
 	if err != nil {
@@ -38,7 +39,7 @@ func (lm *logMessage) log() {
 	log.SetOutput(f)
 	log.Printf("%s\n", string(lmBytes))
 
-	log.SetOutput(os.Stderr)
+	log.SetOutput(os.Stdout)
 
 	// Don't send undeliverable kafka errors back to Kafka
 	if lm.LogMessageType != "Local" {

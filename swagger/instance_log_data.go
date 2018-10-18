@@ -10,6 +10,10 @@
 
 package swagger
 
+import (
+	"time"
+)
+
 type InstanceLogData struct {
 
 	OrchEventType string `json:"orchEventType,omitempty"`
@@ -32,7 +36,7 @@ type InstanceLogData struct {
 
 	Restarts int32 `json:"restarts,omitempty"`
 
-	Age string `json:"age,omitempty"`
+	CreatedTimestamp time.Time `json:"createdTimestamp,omitempty"`
 
 	Ip string `json:"ip,omitempty"`
 
