@@ -4,11 +4,12 @@ import (
 	"algo-runner-go/swagger"
 	"encoding/json"
 	"fmt"
-	"github.com/radovskyb/watcher"
 	"io/ioutil"
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/radovskyb/watcher"
 )
 
 // OutputWatcher describes a process that watches for new files created by an output.
@@ -63,7 +64,7 @@ func (outputWatcher *OutputWatcher) start() {
 			AlgoOwnerUserName:     config.AlgoOwnerUserName,
 			AlgoName:              config.AlgoName,
 			AlgoVersionTag:        config.AlgoVersionTag,
-			AlgoInstanceName:      instanceName,
+			AlgoInstanceName:      *instanceName,
 		},
 	}
 

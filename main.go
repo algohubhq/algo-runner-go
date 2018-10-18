@@ -3,7 +3,6 @@ package main
 import (
 	"algo-runner-go/swagger"
 	"flag"
-	"github.com/nu7hatch/gouuid"
 	"io/ioutil"
 	"log"
 	"os"
@@ -11,13 +10,15 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/nu7hatch/gouuid"
 )
 
 // Global variables
 var healthy bool
-var healthCheckIntervalSeconds int
-var instanceName string
-var kafkaServers string
+var healthCheckIntervalSeconds *int
+var instanceName *string
+var kafkaServers *string
 var config swagger.RunnerConfig
 var logTopic string
 
@@ -48,17 +49,19 @@ func main() {
 		healthCheckIntervalSecondsEnv := os.Getenv("HEALTH-CHECK-INTERVAL")
 		if healthCheckIntervalSecondsEnv != "" {
 			var intErr error
-			healthCheckIntervalSeconds, intErr = strconv.Atoi(healthCheckIntervalSecondsEnv)
+			healthCheckIntervalSecondsParse, intErr := strconv.Atoi(healthCheckIntervalSecondsEnv)
 			if intErr != nil {
 				// Default the health check to 30 seconds
-				healthCheckIntervalSeconds = 30
+				healthCheckIntervalSecondsParse = 30
 			}
+			healthCheckIntervalSeconds = &healthCheckIntervalSecondsParse
 		} else {
 			// Default the health check to 30 seconds
-			healthCheckIntervalSeconds = 30
+			healthCheckIntervalSecondsParse := 30
+			healthCheckIntervalSeconds = &healthCheckIntervalSecondsParse
 		}
 	} else {
-		healthCheckIntervalSeconds = *healthCheckIntervalSecondsPtr
+		healthCheckIntervalSeconds = healthCheckIntervalSecondsPtr
 	}
 
 	if *configFilePtr == "" {
@@ -80,8 +83,10 @@ func main() {
 	if *kafkaServersPtr == "" {
 
 		// Try to load from environment variable
-		kafkaServers := os.Getenv("KAFKA-SERVERS")
-		if kafkaServers == "" {
+		kafkaServersEnv := os.Getenv("KAFKA-SERVERS")
+		if kafkaServersEnv != "" {
+			kafkaServers = &kafkaServersEnv
+		} else {
 			localLog.Status = "Failed"
 			localLog.RunnerLogData.Log = "Missing the Kafka Servers argument and no environment variable KAFKA-SERVERS exists. ( --kafka-servers={broker1,broker2} ) Shutting down..."
 			localLog.log()
@@ -90,20 +95,21 @@ func main() {
 		}
 
 	} else {
-		kafkaServers = *kafkaServersPtr
+		kafkaServers = kafkaServersPtr
 	}
 
 	if *instanceNamePtr == "" {
 
 		// Try to load from environment variable
-		instanceName := os.Getenv("INSTANCE-NAME")
-		if instanceName == "" {
+		instanceNameEnv := os.Getenv("INSTANCE-NAME")
+		if instanceNameEnv == "" {
 			instanceNameUUID, _ := uuid.NewV4()
-			instanceName = strings.Replace(instanceNameUUID.String(), "-", "", -1)
+			instanceNameEnv = strings.Replace(instanceNameUUID.String(), "-", "", -1)
+			instanceName = &instanceNameEnv
 		}
 
 	} else {
-		instanceName = *instanceNamePtr
+		instanceName = instanceNamePtr
 	}
 
 	// Launch the server if not started
@@ -120,7 +126,7 @@ func main() {
 
 	}
 
-	startReadinessLivenessTouch(time.Duration(healthCheckIntervalSeconds) * time.Second)
+	startReadinessLivenessTouch(time.Duration(*healthCheckIntervalSeconds) * time.Second)
 
 	startConsumers()
 

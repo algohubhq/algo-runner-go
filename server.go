@@ -26,7 +26,7 @@ func startServer() (terminated bool) {
 			AlgoOwnerUserName:     config.AlgoOwnerUserName,
 			AlgoName:              config.AlgoName,
 			AlgoVersionTag:        config.AlgoVersionTag,
-			AlgoInstanceName:      instanceName,
+			AlgoInstanceName:      *instanceName,
 		},
 	}
 

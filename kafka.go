@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/nu7hatch/gouuid"
@@ -31,7 +32,7 @@ func startConsumers() {
 			AlgoOwnerUserName:     config.AlgoOwnerUserName,
 			AlgoName:              config.AlgoName,
 			AlgoVersionTag:        config.AlgoVersionTag,
-			AlgoInstanceName:      instanceName,
+			AlgoInstanceName:      *instanceName,
 		},
 	}
 
@@ -98,7 +99,7 @@ func startConsumers() {
 		config.AlgoName)
 
 	c, err := kafka.NewConsumer(&kafka.ConfigMap{
-		"bootstrap.servers":               kafkaServers,
+		"bootstrap.servers":               *kafkaServers,
 		"group.id":                        groupID,
 		"client.id":                       "algo-runner-go-client",
 		"enable.auto.commit":              false,
@@ -106,6 +107,7 @@ func startConsumers() {
 		"auto.offset.reset":               "earliest",
 		"go.events.channel.enable":        true,
 		"go.application.rebalance.enable": true,
+		"statistics.interval.ms":          time.Duration(*healthCheckIntervalSeconds) * time.Second * time.Millisecond,
 	})
 
 	if err != nil {
@@ -121,14 +123,6 @@ func startConsumers() {
 	runnerLog.log()
 
 	err = c.SubscribeTopics(topics, nil)
-	if err != nil {
-		healthy = false
-		runnerLog.Status = "Failed"
-		runnerLog.RunnerLogData.Log = fmt.Sprintf("Failed to subscribe to topics. Fatal: %s\n", err)
-		runnerLog.log()
-
-		os.Exit(1)
-	}
 
 	waitForMessages(c, topicInputs, topicAlgoIndexes)
 
@@ -146,7 +140,7 @@ func waitForMessages(c *kafka.Consumer, topicInputs topicInputs, topicAlgoIndexe
 			AlgoOwnerUserName:     config.AlgoOwnerUserName,
 			AlgoName:              config.AlgoName,
 			AlgoVersionTag:        config.AlgoVersionTag,
-			AlgoInstanceName:      instanceName,
+			AlgoInstanceName:      *instanceName,
 		},
 	}
 
@@ -289,7 +283,7 @@ func processMessage(msg *kafka.Message,
 			AlgoOwnerUserName:     config.AlgoOwnerUserName,
 			AlgoName:              config.AlgoName,
 			AlgoVersionTag:        config.AlgoVersionTag,
-			AlgoInstanceName:      instanceName,
+			AlgoInstanceName:      *instanceName,
 		},
 	}
 
@@ -425,14 +419,12 @@ func produceOutputMessage(fileName string, topic string, data []byte) {
 			AlgoOwnerUserName:     config.AlgoOwnerUserName,
 			AlgoName:              config.AlgoName,
 			AlgoVersionTag:        config.AlgoVersionTag,
-			AlgoInstanceName:      instanceName,
+			AlgoInstanceName:      *instanceName,
 		},
 	}
 
 	p, err := kafka.NewProducer(&kafka.ConfigMap{
-		"bootstrap.servers":  kafkaServers,
-		"request.timeout.ms": 10000,
-		"retries":            1,
+		"bootstrap.servers": *kafkaServers,
 	})
 
 	if err != nil {
@@ -502,20 +494,17 @@ func produceLogMessage(logMessageBytes []byte) {
 			AlgoOwnerUserName:     config.AlgoOwnerUserName,
 			AlgoName:              config.AlgoName,
 			AlgoVersionTag:        config.AlgoVersionTag,
-			AlgoInstanceName:      instanceName,
+			AlgoInstanceName:      *instanceName,
 		},
 	}
 
 	p, err := kafka.NewProducer(&kafka.ConfigMap{
-		"bootstrap.servers": kafkaServers,
+		"bootstrap.servers": *kafkaServers,
 		"default.topic.config": kafka.ConfigMap{
-			"acks":               1,
-			"request.timeout.ms": 5000,
-			"message.timeout.ms": 5000,
+			"request.timeout.ms": 6000,
+			"message.timeout.ms": 10000,
 		},
-		"message.send.max.retries":     1,
-		"go.produce.channel.size":      1,
-		"queue.buffering.max.messages": 1,
+		"message.send.max.retries": 1,
 	})
 
 	if err != nil {

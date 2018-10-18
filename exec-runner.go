@@ -4,7 +4,6 @@ import (
 	"algo-runner-go/swagger"
 	"bytes"
 	"fmt"
-	"github.com/nu7hatch/gouuid"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -14,6 +13,8 @@ import (
 	"sync"
 	"syscall"
 	"time"
+
+	"github.com/nu7hatch/gouuid"
 )
 
 func runExec(runID string,
@@ -25,14 +26,14 @@ func runExec(runID string,
 		LogMessageType: "Algo",
 		Status:         "Started",
 		AlgoLogData: &swagger.AlgoLogData{
-			RunId:                 runID,
+			RunId: runID,
 			EndpointOwnerUserName: config.EndpointOwnerUserName,
 			EndpointName:          config.EndpointName,
 			AlgoOwnerUserName:     config.AlgoOwnerUserName,
 			AlgoName:              config.AlgoName,
 			AlgoVersionTag:        config.AlgoVersionTag,
 			AlgoIndex:             algoIndex,
-			AlgoInstanceName:      instanceName,
+			AlgoInstanceName:      *instanceName,
 		},
 	}
 

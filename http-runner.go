@@ -5,12 +5,13 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/nu7hatch/gouuid"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strings"
 	"time"
+
+	"github.com/nu7hatch/gouuid"
 )
 
 func runHTTP(runID string,
@@ -24,14 +25,14 @@ func runHTTP(runID string,
 		LogMessageType: "Algo",
 		Status:         "Started",
 		AlgoLogData: &swagger.AlgoLogData{
-			RunId:                 runID,
+			RunId: runID,
 			EndpointOwnerUserName: config.EndpointOwnerUserName,
 			EndpointName:          config.EndpointName,
 			AlgoOwnerUserName:     config.AlgoOwnerUserName,
 			AlgoName:              config.AlgoName,
 			AlgoVersionTag:        config.AlgoVersionTag,
 			AlgoIndex:             algoIndex,
-			AlgoInstanceName:      instanceName,
+			AlgoInstanceName:      *instanceName,
 		},
 	}
 
