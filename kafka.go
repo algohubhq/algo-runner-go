@@ -517,7 +517,7 @@ func produceLogMessage(logMessageBytes []byte) {
 	deliveryChan := make(chan kafka.Event)
 
 	err = p.Produce(&kafka.Message{
-		TopicPartition: kafka.TopicPartition{Topic: &logTopic, Partition: kafka.PartitionAny},
+		TopicPartition: kafka.TopicPartition{Topic: logTopic, Partition: kafka.PartitionAny},
 		Value:          logMessageBytes,
 		Key:            []byte(runID),
 	}, deliveryChan)

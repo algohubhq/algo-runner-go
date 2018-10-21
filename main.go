@@ -20,7 +20,7 @@ var healthCheckIntervalSeconds *int
 var instanceName *string
 var kafkaServers *string
 var config swagger.RunnerConfig
-var logTopic string
+var logTopic *string
 
 var runID string
 
@@ -35,10 +35,9 @@ func main() {
 		RunnerLogData:  &swagger.RunnerLogData{},
 	}
 
-	logTopic = "algorun.runner.logs"
-
 	configFilePtr := flag.String("config", "", "JSON config file to load")
 	kafkaServersPtr := flag.String("kafka-servers", "", "Kafka broker addresses separated by a comma")
+	logTopicPtr := flag.String("log-topic", "", "Kafka topic name for logs")
 	instanceNamePtr := flag.String("instance-name", "", "The Algo Instance Name (typically Container ID")
 	healthCheckIntervalSecondsPtr := flag.Int("health-check-interval", 0, "Interval for the health check to write to the health file. (in seconds)")
 
@@ -96,6 +95,21 @@ func main() {
 
 	} else {
 		kafkaServers = kafkaServersPtr
+	}
+
+	if *logTopicPtr == "" {
+
+		// Try to load from environment variable
+		logTopicEnv := os.Getenv("LOG-TOPIC")
+		if logTopicEnv == "" {
+			logTopicEnv = "algorun.logs"
+			logTopic = &logTopicEnv
+		} else {
+			logTopic = &logTopicEnv
+		}
+
+	} else {
+		logTopic = logTopicPtr
 	}
 
 	if *instanceNamePtr == "" {
