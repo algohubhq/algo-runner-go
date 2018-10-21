@@ -106,6 +106,8 @@ func main() {
 			instanceNameUUID, _ := uuid.NewV4()
 			instanceNameEnv = strings.Replace(instanceNameUUID.String(), "-", "", -1)
 			instanceName = &instanceNameEnv
+		} else {
+			instanceName = &instanceNameEnv
 		}
 
 	} else {
