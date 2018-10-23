@@ -22,7 +22,7 @@ type DeploymentLogData struct {
 
 	EndpointName string `json:"endpointName,omitempty"`
 
-	AlgoOwnerName string `json:"algoOwnerName,omitempty"`
+	AlgoOwnerUserName string `json:"algoOwnerUserName,omitempty"`
 
 	AlgoName string `json:"algoName,omitempty"`
 

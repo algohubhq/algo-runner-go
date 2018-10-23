@@ -3,7 +3,7 @@
 # Local instance must be running to pull the swagger.json file
 java -jar ./swagger-codegen-cli.jar generate -i http://localhost:5000/swagger/v1/swagger.json -l go -o algorun-go-client
 
-mkdir ./swagger/
+mkdir -p ./swagger/
 cp ./algorun-go-client/runner_config.go ./swagger/
 cp ./algorun-go-client/algo_param_model.go ./swagger/
 cp ./algorun-go-client/data_type_model.go ./swagger/

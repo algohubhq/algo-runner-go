@@ -4,7 +4,7 @@
 *.dll
 *.so
 *.dylib
-algo-runner-go
+dist
 debug
 
 # Test binary, build with `go test -c`

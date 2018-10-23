@@ -39,15 +39,15 @@ func startConsumers() {
 	topicAlgoIndexes := make(map[string]int32)
 	var topics []string
 
-	for _, route := range config.Pipes {
+	for _, pipe := range config.Pipes {
 
-		if route.DestAlgoOwnerName == config.AlgoOwnerUserName &&
-			route.DestAlgoName == config.AlgoName {
+		if pipe.DestAlgoOwnerName == config.AlgoOwnerUserName &&
+			pipe.DestAlgoName == config.AlgoName {
 
 			var input swagger.AlgoInputModel
 			// Get the input associated with this route
 			for i := range config.Inputs {
-				if config.Inputs[i].Name == route.DestAlgoInputName {
+				if config.Inputs[i].Name == pipe.DestAlgoInputName {
 					input = config.Inputs[i]
 					break
 				}
@@ -55,37 +55,40 @@ func startConsumers() {
 
 			var topic string
 
-			switch routeType := route.PipeType; routeType {
+			switch pipeType := pipe.PipeType; pipeType {
 			case "Algo":
 
 				topic = strings.ToLower(fmt.Sprintf("algorun.%s.%s.algo.%s.%s.%d.output.%s",
 					config.EndpointOwnerUserName,
 					config.EndpointName,
-					route.SourceAlgoOwnerName,
-					route.SourceAlgoName,
-					route.SourceAlgoIndex,
-					route.SourceAlgoOutputName))
+					pipe.SourceAlgoOwnerName,
+					pipe.SourceAlgoName,
+					pipe.SourceAlgoIndex,
+					pipe.SourceAlgoOutputName))
 
 			case "DataSource":
 
 				topic = strings.ToLower(fmt.Sprintf("algorun.%s.%s.connector.%s.%d",
 					config.EndpointOwnerUserName,
 					config.EndpointName,
-					route.PipelineDataSourceName,
-					route.PipelineDataSourceIndex))
+					pipe.PipelineDataSourceName,
+					pipe.PipelineDataSourceIndex))
 
-			case "EndpointSource":
+			case "EndpointConnector":
 
 				topic = strings.ToLower(fmt.Sprintf("algorun.%s.%s.output.%s",
 					config.EndpointOwnerUserName,
 					config.EndpointName,
-					route.PipelineEndpointConnectorOutputName))
+					pipe.PipelineEndpointConnectorOutputName))
 
 			}
 
 			topicInputs[topic] = &input
-			topicAlgoIndexes[topic] = route.DestAlgoIndex
+			topicAlgoIndexes[topic] = pipe.DestAlgoIndex
 			topics = append(topics, topic)
+
+			runnerLog.RunnerLogData.Log = fmt.Sprintf("Listening to topic %s\n", topic)
+			runnerLog.log()
 
 		}
 
@@ -116,9 +119,6 @@ func startConsumers() {
 
 		os.Exit(1)
 	}
-
-	runnerLog.RunnerLogData.Log = fmt.Sprintf("Created Kafka Consumer %v\n", c)
-	runnerLog.log()
 
 	err = c.SubscribeTopics(topics, nil)
 
@@ -527,11 +527,6 @@ func produceLogMessage(logMessageBytes []byte) {
 		healthy = false
 		runnerLog.Status = "Failed"
 		runnerLog.RunnerLogData.Log = fmt.Sprintf("Delivery of log message failed: %+v\n", m.TopicPartition)
-		runnerLog.log()
-	} else {
-		runnerLog.Status = "Success"
-		runnerLog.RunnerLogData.Log = fmt.Sprintf("Delivered message to topic %s [%d] at offset %+v\n",
-			*m.TopicPartition.Topic, m.TopicPartition.Partition, m.TopicPartition.Offset)
 		runnerLog.log()
 	}
 

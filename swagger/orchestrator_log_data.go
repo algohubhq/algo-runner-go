@@ -12,5 +12,15 @@ package swagger
 
 type OrchestratorLogData struct {
 
+	EndpointOwnerUserName string `json:"endpointOwnerUserName,omitempty"`
+
+	EndpointName string `json:"endpointName,omitempty"`
+
+	AlgoOwnerUserName string `json:"algoOwnerUserName,omitempty"`
+
+	AlgoName string `json:"algoName,omitempty"`
+
+	AlgoVersionTag string `json:"algoVersionTag,omitempty"`
+
 	Log string `json:"log,omitempty"`
 }

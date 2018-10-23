@@ -25,7 +25,7 @@ func runHTTP(runID string,
 		LogMessageType: "Algo",
 		Status:         "Started",
 		AlgoLogData: &swagger.AlgoLogData{
-			RunId: runID,
+			RunId:                 runID,
 			EndpointOwnerUserName: config.EndpointOwnerUserName,
 			EndpointName:          config.EndpointName,
 			AlgoOwnerUserName:     config.AlgoOwnerUserName,
@@ -75,7 +75,7 @@ func runHTTP(runID string,
 		u.RawQuery = q.Encode()
 
 		for _, data := range inputData {
-			request, reqErr := http.NewRequest(strings.ToLower(input.HttpVerb), u.String(), bytes.NewReader(data.data))
+			request, reqErr := http.NewRequest(strings.ToUpper(input.HttpVerb), u.String(), bytes.NewReader(data.data))
 			if reqErr != nil {
 				algoLog.Status = "Failed"
 				algoLog.AlgoLogData.Log = fmt.Sprintf("Error building request: %s\n", reqErr)
