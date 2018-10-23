@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/nu7hatch/gouuid"
@@ -142,9 +143,19 @@ func main() {
 
 	}
 
+	var wg sync.WaitGroup
+	wg.Add(1)
+
+	go func() {
+		startConsumers()
+		wg.Done()
+	}()
+
 	startReadinessLivenessTouch(time.Duration(*healthCheckIntervalSeconds) * time.Second)
 
-	startConsumers()
+	healthy = true
+
+	wg.Wait()
 
 }
 
@@ -158,16 +169,17 @@ func startReadinessLivenessTouch(d time.Duration) {
 		if healthy {
 			filename, createErr = createHealthFile()
 			if createErr != nil {
-				// TODO: log the error that the tmp health file can't be created
+				// log the error that the tmp health file can't be created
+				log.Fatalf("Error health file to: %s\n%s\n", filename, createErr)
 			}
 		}
 
 		for x := range time.Tick(d) {
-			log.Printf("Health loop tick. Healthy: %t\n", healthy)
 			if healthy {
 				filename, createErr = createHealthFile()
 				if createErr != nil {
-					// TODO: log the error that the tmp health file can't be created
+					// log the error that the tmp health file can't be created
+					log.Fatalf("Error health file to: %s\n%s\n", filename, createErr)
 				}
 				if err := os.Chtimes(filename, x, x); err != nil {
 					log.Fatal(err)
@@ -181,7 +193,7 @@ func startReadinessLivenessTouch(d time.Duration) {
 
 func createHealthFile() (string, error) {
 
-	path := filepath.Join(os.TempDir(), ".health")
+	path := filepath.Join(os.TempDir(), "algo-runner.health")
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		log.Printf("Writing health file to: %s\n", path)
 		writeErr := ioutil.WriteFile(path, []byte{}, 0660)

@@ -153,8 +153,6 @@ func waitForMessages(c *kafka.Consumer, topicInputs topicInputs, topicAlgoIndexe
 
 	waiting := true
 
-	healthy = true
-
 	for waiting == true {
 		select {
 		case sig := <-sigchan:

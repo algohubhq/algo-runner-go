@@ -87,8 +87,6 @@ func startServer() (terminated bool) {
 		wg.Done()
 	}()
 
-	healthy = true
-
 	wg.Wait()
 
 	errWait := cmd.Wait()
