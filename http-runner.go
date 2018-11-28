@@ -15,8 +15,7 @@ import (
 )
 
 func runHTTP(runID string,
-	inputMap map[*swagger.AlgoInputModel][]InputData,
-	algoIndex int32) (err error) {
+	inputMap map[*swagger.AlgoInputModel][]InputData) (err error) {
 
 	startTime := time.Now()
 
@@ -31,7 +30,7 @@ func runHTTP(runID string,
 			AlgoOwnerUserName:     config.AlgoOwnerUserName,
 			AlgoName:              config.AlgoName,
 			AlgoVersionTag:        config.AlgoVersionTag,
-			AlgoIndex:             algoIndex,
+			AlgoIndex:             config.AlgoIndex,
 			AlgoInstanceName:      *instanceName,
 		},
 	}
@@ -56,7 +55,7 @@ func runHTTP(runID string,
 		config.EndpointName,
 		config.AlgoOwnerUserName,
 		config.AlgoName,
-		algoIndex))
+		config.AlgoIndex))
 
 	for input, inputData := range inputMap {
 

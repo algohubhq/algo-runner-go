@@ -18,21 +18,20 @@ import (
 )
 
 func runExec(runID string,
-	inputMap map[*swagger.AlgoInputModel][]InputData,
-	algoIndex int32) (err error) {
+	inputMap map[*swagger.AlgoInputModel][]InputData) (err error) {
 
 	// Create the base message
 	algoLog := logMessage{
 		LogMessageType: "Algo",
 		Status:         "Started",
 		AlgoLogData: &swagger.AlgoLogData{
-			RunId: runID,
+			RunId:                 runID,
 			EndpointOwnerUserName: config.EndpointOwnerUserName,
 			EndpointName:          config.EndpointName,
 			AlgoOwnerUserName:     config.AlgoOwnerUserName,
 			AlgoName:              config.AlgoName,
 			AlgoVersionTag:        config.AlgoVersionTag,
-			AlgoIndex:             algoIndex,
+			AlgoIndex:             config.AlgoIndex,
 			AlgoInstanceName:      *instanceName,
 		},
 	}
@@ -198,7 +197,7 @@ func runExec(runID string,
 				}
 
 				// Watch for a specific file.
-				outputWatcher.watch(fileFolder, algoIndex, &output, outputMessageDataType)
+				outputWatcher.watch(fileFolder, config.AlgoIndex, &output, outputMessageDataType)
 
 			case "folderparameter":
 				// Watch folder for changes.
@@ -215,7 +214,7 @@ func runExec(runID string,
 				}
 
 				// Watch for a specific file.
-				outputWatcher.watch(folder, algoIndex, &output, outputMessageDataType)
+				outputWatcher.watch(folder, config.AlgoIndex, &output, outputMessageDataType)
 
 			case "stdout":
 				sendStdOut = true
@@ -267,7 +266,7 @@ func runExec(runID string,
 			config.EndpointName,
 			config.AlgoOwnerUserName,
 			config.AlgoName,
-			algoIndex))
+			config.AlgoIndex))
 
 		// Write to stdout output topic
 		fileName, _ := uuid.NewV4()

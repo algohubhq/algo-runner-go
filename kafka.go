@@ -36,7 +36,6 @@ func startConsumers() {
 	}
 
 	topicInputs := make(topicInputs)
-	topicAlgoIndexes := make(map[string]int32)
 	var topics []string
 
 	for _, pipe := range config.Pipes {
@@ -93,7 +92,6 @@ func startConsumers() {
 			topicName = strings.ToLower(strings.Replace(topicName, "{endpointname}", config.EndpointName, -1))
 
 			topicInputs[topicName] = &input
-			topicAlgoIndexes[topicName] = pipe.DestAlgoIndex
 			topics = append(topics, topicName)
 
 			runnerLog.RunnerLogData.Log = fmt.Sprintf("Listening to topic %s\n", topicName)
@@ -131,11 +129,11 @@ func startConsumers() {
 
 	err = c.SubscribeTopics(topics, nil)
 
-	waitForMessages(c, topicInputs, topicAlgoIndexes)
+	waitForMessages(c, topicInputs)
 
 }
 
-func waitForMessages(c *kafka.Consumer, topicInputs topicInputs, topicAlgoIndexes map[string]int32) {
+func waitForMessages(c *kafka.Consumer, topicInputs topicInputs) {
 
 	// Create the base log message
 	runnerLog := logMessage{
@@ -181,7 +179,6 @@ func waitForMessages(c *kafka.Consumer, topicInputs topicInputs, topicAlgoIndexe
 				runnerLog.log()
 
 				input := topicInputs[*e.TopicPartition.Topic]
-				algoIndex := topicAlgoIndexes[*e.TopicPartition.Topic]
 				inputData, run := processMessage(e, input)
 
 				if data[runID] == nil {
@@ -197,9 +194,9 @@ func waitForMessages(c *kafka.Consumer, topicInputs topicInputs, topicAlgoIndexe
 
 					var runError error
 					if strings.ToLower(config.ServerType) == "serverless" {
-						runError = runExec(runID, data[runID], algoIndex)
+						runError = runExec(runID, data[runID])
 					} else if strings.ToLower(config.ServerType) == "http" {
-						runError = runHTTP(runID, data[runID], algoIndex)
+						runError = runHTTP(runID, data[runID])
 					}
 
 					if runError == nil {
