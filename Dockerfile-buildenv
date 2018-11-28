@@ -66,7 +66,7 @@ FROM golang:1.10-alpine3.7 AS algorun-go-buildenv
 #
 # e.g.: docker build --build-arg LIBRDKAFKA_VERSION=4e7a46701ecce7297b2298885da980be7856e5f9
 #
-ARG LIBRDKAFKA_VERSION=v0.11.4
+ARG LIBRDKAFKA_VERSION=v0.11.6
 
 # Set the workdir to the full GOPATH of your project.
 WORKDIR $GOPATH/src/algo-runner-go
@@ -103,6 +103,39 @@ RUN cd $(mktemp -d) \
  && ./configure \
  && make -j \
  && make install
+
+# Add Glide
+RUN apk add --no-cache \
+        ca-certificates \
+        # https://github.com/Masterminds/glide#supported-version-control-systems
+        git mercurial subversion bzr \
+        openssh \
+ && update-ca-certificates \
+    \
+ # Install build dependencies
+ && apk add --no-cache --virtual .build-deps \
+        curl make \
+    \
+ # Download and unpack Glide sources
+ && curl -L -o /tmp/glide.tar.gz \
+          https://github.com/Masterminds/glide/archive/v0.13.2.tar.gz \
+ && tar -xzf /tmp/glide.tar.gz -C /tmp \
+ && mkdir -p $GOPATH/src/github.com/Masterminds \
+ && mv /tmp/glide-* $GOPATH/src/github.com/Masterminds/glide \
+ && cd $GOPATH/src/github.com/Masterminds/glide \
+    \
+ # Build and install Glide executable
+ && make install \
+    \
+ # Install Glide license
+ && mkdir -p /usr/local/share/doc/glide \
+ && cp LICENSE /usr/local/share/doc/glide/ \
+    \
+ # Cleanup unnecessary files
+ && apk del .build-deps \
+ && rm -rf /var/cache/apk/* \
+           $GOPATH/src/* \
+           /tmp/*
 
 # Build a completely static binary, able to be used in a `scratch` container.
 # RUN go build -o /tmp/algo-runner-go -tags static_all

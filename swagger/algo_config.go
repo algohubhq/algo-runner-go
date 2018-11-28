@@ -12,6 +12,10 @@ package swagger
 
 type AlgoConfig struct {
 
+	Applied bool `json:"applied,omitempty"`
+
+	DeploymentName string `json:"deploymentName,omitempty"`
+
 	AlgoOwnerUserName string `json:"algoOwnerUserName,omitempty"`
 
 	AlgoName string `json:"algoName,omitempty"`
@@ -34,8 +38,6 @@ type AlgoConfig struct {
 
 	WriteAllOutputs bool `json:"writeAllOutputs,omitempty"`
 
-	Pipes []PipeModel `json:"pipes,omitempty"`
-
 	GpuEnabled bool `json:"gpuEnabled,omitempty"`
 
 	TimeoutSeconds int32 `json:"timeoutSeconds,omitempty"`
@@ -44,11 +46,11 @@ type AlgoConfig struct {
 
 	MemoryLimitBytes int64 `json:"memoryLimitBytes,omitempty"`
 
-	CpuRequestUnits int32 `json:"cpuRequestUnits,omitempty"`
+	CpuRequestUnits float64 `json:"cpuRequestUnits,omitempty"`
 
-	CpuLimitUnits int32 `json:"cpuLimitUnits,omitempty"`
+	CpuLimitUnits float64 `json:"cpuLimitUnits,omitempty"`
 
-	GpuLimitUnits int32 `json:"gpuLimitUnits,omitempty"`
+	GpuLimitUnits float64 `json:"gpuLimitUnits,omitempty"`
 
 	Instances int32 `json:"instances,omitempty"`
 

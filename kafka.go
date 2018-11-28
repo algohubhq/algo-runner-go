@@ -42,7 +42,8 @@ func startConsumers() {
 	for _, pipe := range config.Pipes {
 
 		if pipe.DestAlgoOwnerName == config.AlgoOwnerUserName &&
-			pipe.DestAlgoName == config.AlgoName {
+			pipe.DestAlgoName == config.AlgoName &&
+			pipe.DestAlgoIndex == config.AlgoIndex {
 
 			var input swagger.AlgoInputModel
 			// Get the input associated with this route
@@ -53,41 +54,49 @@ func startConsumers() {
 				}
 			}
 
-			var topic string
+			var topicConfig swagger.TopicConfigModel
+			// Get the topic config associated with this route
+			for x := range config.TopicConfigs {
 
-			switch pipeType := pipe.PipeType; pipeType {
-			case "Algo":
+				switch pipeType := pipe.PipeType; pipeType {
+				case "Algo":
 
-				topic = strings.ToLower(fmt.Sprintf("algorun.%s.%s.algo.%s.%s.%d.output.%s",
-					config.EndpointOwnerUserName,
-					config.EndpointName,
-					pipe.SourceAlgoOwnerName,
-					pipe.SourceAlgoName,
-					pipe.SourceAlgoIndex,
-					pipe.SourceAlgoOutputName))
+					if config.TopicConfigs[x].AlgoOwnerName == pipe.SourceAlgoOwnerName &&
+						config.TopicConfigs[x].AlgoName == pipe.SourceAlgoName &&
+						config.TopicConfigs[x].AlgoIndex == pipe.SourceAlgoIndex &&
+						config.TopicConfigs[x].AlgoOutputName == pipe.SourceAlgoOutputName {
+						topicConfig = config.TopicConfigs[x]
+						break
+					}
 
-			case "DataSource":
+				case "DataSource":
 
-				topic = strings.ToLower(fmt.Sprintf("algorun.%s.%s.connector.%s.%d",
-					config.EndpointOwnerUserName,
-					config.EndpointName,
-					pipe.PipelineDataSourceName,
-					pipe.PipelineDataSourceIndex))
+					if config.TopicConfigs[x].PipelineDataSourceName == pipe.PipelineDataSourceName &&
+						config.TopicConfigs[x].PipelineDataSourceIndex == pipe.PipelineDataSourceIndex {
+						topicConfig = config.TopicConfigs[x]
+						break
+					}
 
-			case "EndpointConnector":
+				case "EndpointConnector":
 
-				topic = strings.ToLower(fmt.Sprintf("algorun.%s.%s.output.%s",
-					config.EndpointOwnerUserName,
-					config.EndpointName,
-					pipe.PipelineEndpointConnectorOutputName))
+					if config.TopicConfigs[x].EndpointConnectorOutputName == pipe.PipelineEndpointConnectorOutputName {
+						topicConfig = config.TopicConfigs[x]
+						break
+					}
+
+				}
 
 			}
 
-			topicInputs[topic] = &input
-			topicAlgoIndexes[topic] = pipe.DestAlgoIndex
-			topics = append(topics, topic)
+			// Replace the endpoint username and name in the topic string
+			topicName := strings.ToLower(strings.Replace(topicConfig.TopicName, "{endpointownerusername}", config.EndpointOwnerUserName, -1))
+			topicName = strings.ToLower(strings.Replace(topicName, "{endpointname}", config.EndpointName, -1))
 
-			runnerLog.RunnerLogData.Log = fmt.Sprintf("Listening to topic %s\n", topic)
+			topicInputs[topicName] = &input
+			topicAlgoIndexes[topicName] = pipe.DestAlgoIndex
+			topics = append(topics, topicName)
+
+			runnerLog.RunnerLogData.Log = fmt.Sprintf("Listening to topic %s\n", topicName)
 			runnerLog.log()
 
 		}

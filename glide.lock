@@ -1,0 +1,12 @@
+hash: 2787cef8b9e1eac6bd4a2248549353b4531485c2eea63328f559c2f9b8bb1c34
+updated: 2018-11-28T11:16:27.907528327-08:00
+imports:
+- name: github.com/confluentinc/confluent-kafka-go
+  version: 460e8e43b282a1a68219df600ef63442b81faf5f
+  subpackages:
+  - kafka
+- name: github.com/nu7hatch/gouuid
+  version: 179d4d0c4d8d407a32af483c2354df1d2c91e6c3
+- name: github.com/radovskyb/watcher
+  version: 6145e1439b9de93806925353403f91d2abbad8a5
+testImports: []

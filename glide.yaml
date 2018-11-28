@@ -1,0 +1,9 @@
+package: algorun-orchestrator
+import:
+- package: github.com/confluentinc/confluent-kafka-go
+  version: ^0.11.6
+  subpackages:
+  - kafka
+- package: github.com/nu7hatch/gouuid
+- package: github.com/radovskyb/watcher
+  version: ^1.0.2

@@ -6,6 +6,8 @@ java -jar ./swagger-codegen-cli.jar generate -i http://localhost:5000/swagger/v1
 mkdir -p ./swagger/
 cp ./algorun-go-client/runner_config.go ./swagger/
 cp ./algorun-go-client/algo_param_model.go ./swagger/
+cp ./algorun-go-client/topic_config_model.go ./swagger/
+cp ./algorun-go-client/topic_param_model.go ./swagger/
 cp ./algorun-go-client/data_type_model.go ./swagger/
 cp ./algorun-go-client/data_type_option_model.go ./swagger/
 cp ./algorun-go-client/media_type_model.go ./swagger/

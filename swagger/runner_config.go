@@ -11,7 +11,6 @@
 package swagger
 
 type RunnerConfig struct {
-
 	EndpointOwnerUserName string `json:"endpointOwnerUserName,omitempty"`
 
 	EndpointName string `json:"endpointName,omitempty"`
@@ -26,6 +25,8 @@ type RunnerConfig struct {
 
 	AlgoVersionTag string `json:"algoVersionTag,omitempty"`
 
+	AlgoIndex int32 `json:"algoIndex,omitempty"`
+
 	Entrypoint string `json:"entrypoint,omitempty"`
 
 	ServerType string `json:"serverType,omitempty"`
@@ -39,6 +40,8 @@ type RunnerConfig struct {
 	WriteAllOutputs bool `json:"writeAllOutputs,omitempty"`
 
 	Pipes []PipeModel `json:"pipes,omitempty"`
+
+	TopicConfigs []TopicConfigModel `json:"topicConfigs,omitempty"`
 
 	GpuEnabled bool `json:"gpuEnabled,omitempty"`
 

@@ -8,7 +8,7 @@ WORKDIR /go/src/algo-runner-go
 
 COPY . /go/src/algo-runner-go
 
-RUN dep ensure
+RUN glide up -v
 
 # Stripping via -ldflags "-s -w" 
 RUN CGO_ENABLED=1 GOOS=linux go build -tags static_all -ldflags "${ldflags}" -a -installsuffix cgo -o algo-runner-go .
