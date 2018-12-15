@@ -3,21 +3,15 @@ package main
 import (
 	"algo-runner-go/swagger"
 	"flag"
-	"io/ioutil"
-	"log"
 	"os"
-	"path/filepath"
-	"strconv"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/nu7hatch/gouuid"
 )
 
 // Global variables
 var healthy bool
-var healthCheckIntervalSeconds *int
 var instanceName *string
 var kafkaServers *string
 var config swagger.RunnerConfig
@@ -40,29 +34,8 @@ func main() {
 	kafkaServersPtr := flag.String("kafka-servers", "", "Kafka broker addresses separated by a comma")
 	logTopicPtr := flag.String("log-topic", "", "Kafka topic name for logs")
 	instanceNamePtr := flag.String("instance-name", "", "The Algo Instance Name (typically Container ID")
-	healthCheckIntervalSecondsPtr := flag.Int("health-check-interval", 0, "Interval for the health check to write to the health file. (in seconds)")
 
 	flag.Parse()
-
-	if *healthCheckIntervalSecondsPtr == 0 {
-		// Try to load from environment variable
-		healthCheckIntervalSecondsEnv := os.Getenv("HEALTH-CHECK-INTERVAL")
-		if healthCheckIntervalSecondsEnv != "" {
-			var intErr error
-			healthCheckIntervalSecondsParse, intErr := strconv.Atoi(healthCheckIntervalSecondsEnv)
-			if intErr != nil {
-				// Default the health check to 30 seconds
-				healthCheckIntervalSecondsParse = 30
-			}
-			healthCheckIntervalSeconds = &healthCheckIntervalSecondsParse
-		} else {
-			// Default the health check to 30 seconds
-			healthCheckIntervalSecondsParse := 30
-			healthCheckIntervalSeconds = &healthCheckIntervalSecondsParse
-		}
-	} else {
-		healthCheckIntervalSeconds = healthCheckIntervalSecondsPtr
-	}
 
 	if *configFilePtr == "" {
 		// Try to load from environment variable
@@ -151,54 +124,8 @@ func main() {
 		wg.Done()
 	}()
 
-	startReadinessLivenessTouch(time.Duration(*healthCheckIntervalSeconds) * time.Second)
-
-	healthy = true
+	createHealthHandler()
 
 	wg.Wait()
 
-}
-
-func startReadinessLivenessTouch(d time.Duration) {
-
-	go func() {
-
-		var filename string
-		var createErr error
-		// Only write the health file once healthy
-		if healthy {
-			filename, createErr = createHealthFile()
-			if createErr != nil {
-				// log the error that the tmp health file can't be created
-				log.Fatalf("Error health file to: %s\n%s\n", filename, createErr)
-			}
-		}
-
-		for x := range time.Tick(d) {
-			if healthy {
-				filename, createErr = createHealthFile()
-				if createErr != nil {
-					// log the error that the tmp health file can't be created
-					log.Fatalf("Error health file to: %s\n%s\n", filename, createErr)
-				}
-				if err := os.Chtimes(filename, x, x); err != nil {
-					log.Fatal(err)
-				}
-			}
-		}
-
-	}()
-
-}
-
-func createHealthFile() (string, error) {
-
-	path := filepath.Join(os.TempDir(), "algo-runner.health")
-	if _, err := os.Stat(path); os.IsNotExist(err) {
-		log.Printf("Writing health file to: %s\n", path)
-		writeErr := ioutil.WriteFile(path, []byte{}, 0660)
-		return path, writeErr
-	}
-
-	return path, nil
 }

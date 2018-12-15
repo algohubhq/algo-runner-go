@@ -108,14 +108,12 @@ func startConsumers() {
 		config.AlgoName)
 
 	c, err := kafka.NewConsumer(&kafka.ConfigMap{
-		"bootstrap.servers":               *kafkaServers,
-		"group.id":                        groupID,
-		"client.id":                       "algo-runner-go-client",
-		"enable.auto.commit":              false,
-		"enable.auto.offset.store":        false,
-		"auto.offset.reset":               "earliest",
-		"go.events.channel.enable":        true,
-		"go.application.rebalance.enable": true,
+		"bootstrap.servers":        *kafkaServers,
+		"group.id":                 groupID,
+		"client.id":                "algo-runner-go-client",
+		"enable.auto.commit":       false,
+		"enable.auto.offset.store": false,
+		"auto.offset.reset":        "earliest",
 	})
 
 	if err != nil {
@@ -151,7 +149,7 @@ func waitForMessages(c *kafka.Consumer, topicInputs topicInputs) {
 
 	defer c.Close()
 
-	sigchan := make(chan os.Signal)
+	sigchan := make(chan os.Signal, 1)
 	signal.Notify(sigchan, syscall.SIGINT, syscall.SIGTERM)
 
 	data := make(map[string]map[*swagger.AlgoInputModel][]InputData)
@@ -171,7 +169,13 @@ func waitForMessages(c *kafka.Consumer, topicInputs topicInputs) {
 			healthy = false
 			waiting = false
 
-		case ev := <-c.Events():
+		default:
+
+			ev := c.Poll(100)
+			if ev == nil {
+				continue
+			}
+
 			switch e := ev.(type) {
 			case *kafka.Message:
 
