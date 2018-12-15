@@ -179,6 +179,8 @@ func waitForMessages(c *kafka.Consumer, topicInputs topicInputs) {
 			switch e := ev.(type) {
 			case *kafka.Message:
 
+				healthy = true
+
 				runnerLog.RunnerLogData.Log = fmt.Sprintf("Kafka Message received on %s\n", e.TopicPartition)
 				runnerLog.log()
 
@@ -249,6 +251,7 @@ func waitForMessages(c *kafka.Consumer, topicInputs topicInputs) {
 				}
 
 			case kafka.AssignedPartitions:
+				healthy = true
 				runnerLog.RunnerLogData.Log = fmt.Sprintf("%v\n", e)
 				runnerLog.log()
 				c.Assign(e.Partitions)
@@ -257,6 +260,7 @@ func waitForMessages(c *kafka.Consumer, topicInputs topicInputs) {
 				runnerLog.log()
 				c.Unassign()
 			case kafka.PartitionEOF:
+				healthy = true
 				runnerLog.RunnerLogData.Log = fmt.Sprintf("Reached %v\n", e)
 				runnerLog.log()
 			case kafka.Error:
