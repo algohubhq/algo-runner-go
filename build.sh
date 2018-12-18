@@ -19,9 +19,9 @@ docker create --name buildoutput algohub/algo-runner-go:build echo
 
 mkdir -p ./dist
 
-docker cp buildoutput:/go/src/algo-runner-go/algo-runner-go ./dist/algo-runner-go
-# docker cp buildoutput:/go/src/algo-runner-go/algo-runner-go-armhf ./algo-runner-go-armhf
-# docker cp buildoutput:/go/src/algo-runner-go/algo-runner-go-arm64 ./algo-runner-go-arm64
-# docker cp buildoutput:/go/src/algo-runner-go/algo-runner-go.exe ./algo-runner-go.exe
+docker cp buildoutput:/go/src/algo-runner-go/algo-runner-go ./dist/algo-runner
+# docker cp buildoutput:/go/src/algo-runner-go/algo-runner-go-armhf ./algo-runner-armhf
+# docker cp buildoutput:/go/src/algo-runner-go/algo-runner-go-arm64 ./algo-runner-arm64
+# docker cp buildoutput:/go/src/algo-runner-go/algo-runner-go.exe ./algo-runner.exe
 
 docker rm buildoutput
