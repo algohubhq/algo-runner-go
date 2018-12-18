@@ -8,10 +8,7 @@
             "name": "Launch",
             "type": "go",
             "request": "launch",
-            "mode": "debug",
-            "remotePath": "",
-            "port": 2345,
-            "host": "127.0.0.1",
+            "mode": "auto",
             "program": "${workspaceFolder}",
             "env": {},
             "args": [
@@ -26,7 +23,7 @@
                 "--instance-name", "algo-run-debug"
             ],
             "cwd": "${workspaceRoot}",
-            "showLog": true,
+            "showLog": false,
             // "trace": "verbose"
         }
     ]
