@@ -7,7 +7,6 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
-	"os/user"
 	"path"
 	"strings"
 	"sync"
@@ -182,10 +181,15 @@ func runExec(runID string,
 				fileUUID, _ := uuid.NewV4()
 				fileID := strings.Replace(fileUUID.String(), "-", "", -1)
 
-				usr, _ := user.Current()
-				dir := usr.HomeDir
+				folder := path.Join("/data",
+					config.EndpointOwnerUserName,
+					config.EndpointName,
+					runID,
+					config.AlgoOwnerUserName,
+					config.AlgoName,
+					string(config.AlgoIndex),
+					output.Name)
 
-				folder := path.Join(dir, "algorun", "data", runID, output.Name)
 				fileFolder := path.Join(folder, fileID)
 				if _, err := os.Stat(folder); os.IsNotExist(err) {
 					os.MkdirAll(folder, os.ModePerm)
@@ -201,9 +205,16 @@ func runExec(runID string,
 
 			case "folderparameter":
 				// Watch folder for changes.
-				usr, _ := user.Current()
-				dir := usr.HomeDir
-				folder := path.Join(dir, "algorun", "data", runID, output.Name)
+
+				folder := path.Join("/data",
+					config.EndpointOwnerUserName,
+					config.EndpointName,
+					runID,
+					config.AlgoOwnerUserName,
+					config.AlgoName,
+					string(config.AlgoIndex),
+					output.Name)
+
 				if _, err := os.Stat(folder); os.IsNotExist(err) {
 					os.MkdirAll(folder, os.ModePerm)
 				}
