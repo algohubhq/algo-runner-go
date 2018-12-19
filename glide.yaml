@@ -1,4 +1,4 @@
-package: algorun-orchestrator
+package: algo-runner-go
 import:
 - package: github.com/confluentinc/confluent-kafka-go
   version: ^0.11.6
