@@ -102,20 +102,6 @@ func main() {
 		instanceName = instanceNamePtr
 	}
 
-	// Launch the server if not started
-	if strings.ToLower(config.ServerType) != "serverless" {
-
-		var serverTerminated bool
-		go func() {
-			serverTerminated = startServer()
-			if serverTerminated {
-				healthy = false
-				os.Exit(1)
-			}
-		}()
-
-	}
-
 	var wg sync.WaitGroup
 	wg.Add(1)
 
