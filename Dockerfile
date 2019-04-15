@@ -150,6 +150,6 @@ RUN glide up -v
 RUN CGO_ENABLED=1 GOOS=linux go build -tags static_all -ldflags "${ldflags}" -a -installsuffix cgo -o algo-runner-go .
 
 # Create the scratch container that only contains the algo-runner binary
-FROM scratch as final
+FROM busybox as final
 
 COPY --from=static-build /go/src/algo-runner-go/algo-runner-go /algo-runner/algo-runner
