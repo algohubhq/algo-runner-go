@@ -1,27 +1,8 @@
 #!/bin/sh
 
-export arch=$(uname -m)
-
-if [ "$arch" = "armv7l" ] ; then
-    echo "Build not supported on $arch, use cross-build."
-    exit 1
-fi
-
 GIT_COMMIT=$(git rev-list -1 HEAD)
 VERSION=$(git describe --all --exact-match `git rev-parse HEAD` | grep tags | sed 's/tags\///')
 
-docker inspect "algorun-go-buildenv:latest" > /dev/null 2>&1 || docker build --no-cache -t algorun-go-buildenv -f ./Dockerfile-buildenv .
-# docker build --no-cache -t algorun-go-buildenv -f ./Dockerfile-buildenv .
+docker build --build-arg VERSION=$VERSION --build-arg GIT_COMMIT=$GIT_COMMIT -t algohub/algo-runner:$GIT_COMMIT .
 
-docker build --no-cache --build-arg VERSION=$VERSION --build-arg GIT_COMMIT=$GIT_COMMIT -t algohub/algo-runner-go:build .
-
-docker create --name buildoutput algohub/algo-runner-go:build echo
-
-mkdir -p ./dist
-
-docker cp buildoutput:/go/src/algo-runner-go/algo-runner-go ./dist/algo-runner
-# docker cp buildoutput:/go/src/algo-runner-go/algo-runner-go-armhf ./algo-runner-armhf
-# docker cp buildoutput:/go/src/algo-runner-go/algo-runner-go-arm64 ./algo-runner-arm64
-# docker cp buildoutput:/go/src/algo-runner-go/algo-runner-go.exe ./algo-runner.exe
-
-docker rm buildoutput
+docker tag algohub/algo-runner:$GIT_COMMIT algohub/algo-runner:latest
