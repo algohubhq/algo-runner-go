@@ -108,7 +108,7 @@ func startConsumers() {
 		config.AlgoName)
 
 	c, err := kafka.NewConsumer(&kafka.ConfigMap{
-		"bootstrap.servers":        *kafkaServers,
+		"bootstrap.servers":        *kafkaBrokers,
 		"group.id":                 groupID,
 		"client.id":                "algo-runner-go-client",
 		"enable.auto.commit":       false,
@@ -434,7 +434,7 @@ func produceOutputMessage(fileName string, topic string, data []byte) {
 	}
 
 	p, err := kafka.NewProducer(&kafka.ConfigMap{
-		"bootstrap.servers": *kafkaServers,
+		"bootstrap.servers": *kafkaBrokers,
 	})
 
 	if err != nil {
@@ -509,7 +509,7 @@ func produceLogMessage(logMessageBytes []byte) {
 	}
 
 	p, err := kafka.NewProducer(&kafka.ConfigMap{
-		"bootstrap.servers": *kafkaServers,
+		"bootstrap.servers": *kafkaBrokers,
 		"default.topic.config": kafka.ConfigMap{
 			"request.timeout.ms": 6000,
 			"message.timeout.ms": 10000,

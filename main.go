@@ -7,13 +7,13 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/nu7hatch/gouuid"
+	uuid "github.com/nu7hatch/gouuid"
 )
 
 // Global variables
 var healthy bool
 var instanceName *string
-var kafkaServers *string
+var kafkaBrokers *string
 var config swagger.RunnerConfig
 var logTopic *string
 
@@ -31,7 +31,7 @@ func main() {
 	}
 
 	configFilePtr := flag.String("config", "", "JSON config file to load")
-	kafkaServersPtr := flag.String("kafka-servers", "", "Kafka broker addresses separated by a comma")
+	kafkaBrokersPtr := flag.String("kafka-brokers", "", "Kafka broker addresses separated by a comma")
 	logTopicPtr := flag.String("log-topic", "", "Kafka topic name for logs")
 	instanceNamePtr := flag.String("instance-name", "", "The Algo Instance Name (typically Container ID")
 
@@ -53,22 +53,22 @@ func main() {
 		config = loadConfigFromFile(*configFilePtr)
 	}
 
-	if *kafkaServersPtr == "" {
+	if *kafkaBrokersPtr == "" {
 
 		// Try to load from environment variable
-		kafkaServersEnv := os.Getenv("KAFKA-SERVERS")
-		if kafkaServersEnv != "" {
-			kafkaServers = &kafkaServersEnv
+		kafkaBrokersEnv := os.Getenv("KAFKA-BROKERS")
+		if kafkaBrokersEnv != "" {
+			kafkaBrokers = &kafkaBrokersEnv
 		} else {
 			localLog.Status = "Failed"
-			localLog.RunnerLogData.Log = "Missing the Kafka Servers argument and no environment variable KAFKA-SERVERS exists. ( --kafka-servers={broker1,broker2} ) Shutting down..."
+			localLog.RunnerLogData.Log = "Missing the Kafka Brokers argument and no environment variable KAFKA-BROKERS exists. ( --kafka-brokers={broker1,broker2} ) Shutting down..."
 			localLog.log()
 
 			os.Exit(1)
 		}
 
 	} else {
-		kafkaServers = kafkaServersPtr
+		kafkaBrokers = kafkaBrokersPtr
 	}
 
 	if *logTopicPtr == "" {
