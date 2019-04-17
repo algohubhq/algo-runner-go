@@ -31,6 +31,7 @@ func main() {
 	localLog := logMessage{
 		Type_:  "Local",
 		Status: "Started",
+		Version: "1",
 	}
 
 	configFilePtr := flag.String("config", "", "JSON config file to load")

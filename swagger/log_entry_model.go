@@ -15,7 +15,6 @@ import (
 )
 
 type LogEntryModel struct {
-
 	Level string `json:"level,omitempty"`
 
 	Type_ string `json:"type,omitempty"`
@@ -29,6 +28,8 @@ type LogEntryModel struct {
 	IsError bool `json:"isError,omitempty"`
 
 	Msg string `json:"msg,omitempty"`
+
+	Version string `json:"version,omitempty"`
 
 	Data map[string]interface{} `json:"data,omitempty"`
 

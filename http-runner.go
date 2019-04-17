@@ -23,6 +23,7 @@ func runHTTP(runID string,
 	algoLog := logMessage{
 		Type_:  "Algo",
 		Status: "Started",
+		Version: "1",
 		Data: map[string]interface{}{
 			"RunId":                 runID,
 			"EndpointOwnerUserName": config.EndpointOwnerUserName,

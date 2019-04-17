@@ -25,6 +25,7 @@ func startConsumers() {
 	runnerLog := logMessage{
 		Type_:  "Runner",
 		Status: "Started",
+		Version: "1",
 		Data: map[string]interface{}{
 			"EndpointOwnerUserName": config.EndpointOwnerUserName,
 			"EndpointName":          config.EndpointName,
@@ -137,6 +138,7 @@ func waitForMessages(c *kafka.Consumer, topicInputs topicInputs) {
 	runnerLog := logMessage{
 		Type_:  "Runner",
 		Status: "Started",
+		Version: "1",
 		Data: map[string]interface{}{
 			"EndpointOwnerUserName": config.EndpointOwnerUserName,
 			"EndpointName":          config.EndpointName,
@@ -287,6 +289,7 @@ func processMessage(msg *kafka.Message,
 	runnerLog := logMessage{
 		Type_:  "Runner",
 		Status: "Started",
+		Version: "1",
 		Data: map[string]interface{}{
 			"EndpointOwnerUserName": config.EndpointOwnerUserName,
 			"EndpointName":          config.EndpointName,
@@ -423,6 +426,7 @@ func produceOutputMessage(fileName string, topic string, data []byte) {
 	runnerLog := logMessage{
 		Type_:  "Runner",
 		Status: "Started",
+		Version: "1",
 		Data: map[string]interface{}{
 			"EndpointOwnerUserName": config.EndpointOwnerUserName,
 			"EndpointName":          config.EndpointName,

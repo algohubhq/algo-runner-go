@@ -21,8 +21,9 @@ func runExec(runID string,
 
 	// Create the base message
 	algoLog := logMessage{
-		Type_:  "Algo",
-		Status: "Started",
+		Type_:   "Algo",
+		Status:  "Started",
+		Version: "1",
 		Data: map[string]interface{}{
 			"RunId":                 runID,
 			"EndpointOwnerUserName": config.EndpointOwnerUserName,

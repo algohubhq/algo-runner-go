@@ -56,8 +56,9 @@ func (outputWatcher *OutputWatcher) start() {
 
 	// Create the base log message
 	runnerLog := logMessage{
-		Type_:  "Runner",
-		Status: "Running",
+		Type_:   "Runner",
+		Status:  "Running",
+		Version: "1",
 		Data: map[string]interface{}{
 			"EndpointOwnerUserName": config.EndpointOwnerUserName,
 			"EndpointName":          config.EndpointName,

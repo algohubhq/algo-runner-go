@@ -13,6 +13,7 @@ func loadConfigFromFile(fileName string) swagger.RunnerConfig {
 	localLog := logMessage{
 		Type_:  "Local",
 		Status: "Started",
+		Version: "1",
 	}
 
 	raw, err := ioutil.ReadFile(fileName)
@@ -41,6 +42,7 @@ func loadConfigFromString(jsonConfig string) swagger.RunnerConfig {
 	localLog := logMessage{
 		Type_:  "Local",
 		Status: "Started",
+		Version: "1",
 	}
 
 	var c swagger.RunnerConfig
