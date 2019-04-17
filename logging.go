@@ -11,6 +11,7 @@ import (
 
 	"github.com/go-logr/zapr"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 type logMessage swagger.LogEntryModel
@@ -56,6 +57,8 @@ func newLogger(logType string) (*zap.Logger, error) {
 	fullPathFile := path.Join(folder, fmt.Sprintf("%s.log", strings.ToLower(logType)))
 
 	cfg := zap.NewProductionConfig()
+	cfg.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
+
 	cfg.OutputPaths = []string{
 		"stdout",
 		fullPathFile,

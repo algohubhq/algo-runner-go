@@ -19,7 +19,7 @@
                 // "--config", "../algo-test-go/runner-admin-test-image-resize-stdin-stdout.json",
                 // "--config", "../algo-test-go/runner-admin-test-text-transform-http.json",
                 // "--config", "../algo-test-go/runner-admin-test-text-transform-stdin-stdout.json",
-                "--kafka-servers", "localhost:32400",
+                "--kafka-brokers", "localhost:32400",
                 "--instance-name", "algo-run-debug"
             ],
             "cwd": "${workspaceRoot}",
