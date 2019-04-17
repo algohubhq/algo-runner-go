@@ -14,7 +14,7 @@ import (
 	"syscall"
 
 	"github.com/confluentinc/confluent-kafka-go/kafka"
-	"github.com/nu7hatch/gouuid"
+	uuid "github.com/nu7hatch/gouuid"
 )
 
 type topicInputs map[string]*swagger.AlgoInputModel
@@ -489,61 +489,5 @@ func produceOutputMessage(fileName string, topic string, data []byte) {
 	_ = <-doneChan
 
 	p.Close()
-
-}
-
-func produceLogMessage(logMessageBytes []byte) {
-
-	// Create the base log message
-	runnerLog := logMessage{
-		LogMessageType: "Local",
-		Status:         "Started",
-		RunnerLogData: &swagger.RunnerLogData{
-			EndpointOwnerUserName: config.EndpointOwnerUserName,
-			EndpointName:          config.EndpointName,
-			AlgoOwnerUserName:     config.AlgoOwnerUserName,
-			AlgoName:              config.AlgoName,
-			AlgoVersionTag:        config.AlgoVersionTag,
-			AlgoInstanceName:      *instanceName,
-		},
-	}
-
-	p, err := kafka.NewProducer(&kafka.ConfigMap{
-		"bootstrap.servers": *kafkaBrokers,
-		"default.topic.config": kafka.ConfigMap{
-			"request.timeout.ms": 6000,
-			"message.timeout.ms": 10000,
-		},
-		"message.send.max.retries": 1,
-	})
-
-	if err != nil {
-		runnerLog.Status = "Failed"
-		runnerLog.RunnerLogData.Log = fmt.Sprintf("Failed to create server message producer: %s\n", err)
-		runnerLog.log()
-		return
-	}
-
-	// Optional delivery channel, if not specified the Producer object's
-	// .Events channel is used.
-	deliveryChan := make(chan kafka.Event)
-
-	err = p.Produce(&kafka.Message{
-		TopicPartition: kafka.TopicPartition{Topic: logTopic, Partition: kafka.PartitionAny},
-		Value:          logMessageBytes,
-		Key:            []byte(runID),
-	}, deliveryChan)
-
-	e := <-deliveryChan
-	m := e.(*kafka.Message)
-
-	if m.TopicPartition.Error != nil {
-		healthy = false
-		runnerLog.Status = "Failed"
-		runnerLog.RunnerLogData.Log = fmt.Sprintf("Delivery of log message failed: %+v\n", m.TopicPartition)
-		runnerLog.log()
-	}
-
-	close(deliveryChan)
 
 }

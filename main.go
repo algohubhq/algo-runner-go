@@ -7,8 +7,12 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/go-logr/logr"
+
 	uuid "github.com/nu7hatch/gouuid"
 )
+
+var log logr.Logger
 
 // Global variables
 var healthy bool

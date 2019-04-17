@@ -23,6 +23,7 @@ func main() {
 	listFiles := flag.Bool("list", false, "list watched files on start")
 	stdinPipe := flag.Bool("pipe", false, "pipe event's info to command's stdin")
 	keepalive := flag.Bool("keepalive", false, "keep alive when a cmd returns code != 0")
+	ignore := flag.String("ignore", "", "comma separated list of paths to ignore")
 
 	flag.Parse()
 
@@ -52,6 +53,21 @@ func main() {
 	w := watcher.New()
 	w.IgnoreHiddenFiles(!*dotfiles)
 
+	// Get any of the paths to ignore.
+	ignoredPaths := strings.Split(*ignore, ",")
+
+	for _, path := range ignoredPaths {
+		trimmed := strings.TrimSpace(path)
+		if trimmed == "" {
+			continue
+		}
+
+		err := w.Ignore(trimmed)
+		if err != nil {
+			log.Fatalln(err)
+		}
+	}
+
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
@@ -73,7 +89,7 @@ func main() {
 					c.Stdout = os.Stdout
 					c.Stderr = os.Stderr
 					if err := c.Run(); err != nil {
-						if !c.ProcessState.Success() && *keepalive {
+						if (c.ProcessState == nil || !c.ProcessState.Success()) && *keepalive {
 							log.Println(err)
 							continue
 						}

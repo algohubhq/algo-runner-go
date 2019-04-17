@@ -2,25 +2,35 @@ package main
 
 import (
 	"algo-runner-go/swagger"
-	"encoding/json"
 	"fmt"
-	"log"
 	"os"
 	"os/user"
 	"path"
 	"strings"
 	"time"
+
+	"github.com/go-logr/zapr"
+	"go.uber.org/zap"
 )
 
 type logMessage swagger.LogMessage
 
 func (lm *logMessage) log() {
 
+	zapLog, err := newLogger(lm.LogMessageType)
+	if err != nil {
+		panic(fmt.Sprintf("Failed to create logger! [%v]", err))
+	}
+	log = zapr.NewLogger(zapLog)
+
 	lm.LogTimestamp = time.Now().UTC()
 
 	// Send to local console and file
-	lmBytes, err := json.Marshal(lm)
-	log.Printf("%s\n", string(lmBytes))
+	log.Info("", "data", lm)
+
+}
+
+func newLogger(logMessageType string) (*zap.Logger, error) {
 
 	usr, _ := user.Current()
 	dir := usr.HomeDir
@@ -28,23 +38,11 @@ func (lm *logMessage) log() {
 	if _, err := os.Stat(folder); os.IsNotExist(err) {
 		os.MkdirAll(folder, os.ModePerm)
 	}
-	fullPathFile := path.Join(folder, fmt.Sprintf("%s.log", strings.ToLower(lm.LogMessageType)))
+	fullPathFile := path.Join(folder, fmt.Sprintf("%s.log", strings.ToLower(logMessageType)))
 
-	f, err := os.OpenFile(fullPathFile, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0644)
-	if err != nil {
-		log.Fatalf("Error opening the local log file: %v", err)
+	cfg := zap.NewProductionConfig()
+	cfg.OutputPaths = []string{
+		fullPathFile,
 	}
-	defer f.Close()
-
-	log.SetOutput(f)
-	log.Printf("%s\n", string(lmBytes))
-
-	log.SetOutput(os.Stdout)
-
-	// Don't send undeliverable kafka errors back to Kafka
-	if lm.LogMessageType != "Local" {
-		// Send to Kafka
-		produceLogMessage(lmBytes)
-	}
-
+	return cfg.Build()
 }

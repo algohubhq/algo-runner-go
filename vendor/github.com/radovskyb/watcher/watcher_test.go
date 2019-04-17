@@ -104,22 +104,22 @@ func TestFileInfo(t *testing.T) {
 
 	// Test file info methods.
 	if fInfo.Name() != "finfo" {
-		t.Fatal("expected fInfo.Name() to be 'finfo', got %s", fInfo.Name())
+		t.Fatalf("expected fInfo.Name() to be 'finfo', got %s", fInfo.Name())
 	}
 	if fInfo.IsDir() != true {
-		t.Fatal("expected fInfo.IsDir() to be true, got %t", fInfo.IsDir())
+		t.Fatalf("expected fInfo.IsDir() to be true, got %t", fInfo.IsDir())
 	}
 	if fInfo.Size() != 1 {
-		t.Fatal("expected fInfo.Size() to be 1, got %d", fInfo.Size())
+		t.Fatalf("expected fInfo.Size() to be 1, got %d", fInfo.Size())
 	}
 	if fInfo.Sys() != nil {
-		t.Fatal("expected fInfo.Sys() to be nil, got %v", fInfo.Sys())
+		t.Fatalf("expected fInfo.Sys() to be nil, got %v", fInfo.Sys())
 	}
 	if fInfo.ModTime() != modTime {
-		t.Fatal("expected fInfo.ModTime() to be %v, got %v", modTime, fInfo.ModTime())
+		t.Fatalf("expected fInfo.ModTime() to be %v, got %v", modTime, fInfo.ModTime())
 	}
 	if fInfo.Mode() != os.ModeDir {
-		t.Fatal("expected fInfo.Mode() to be os.ModeDir, got %#v", fInfo.Mode())
+		t.Fatalf("expected fInfo.Mode() to be os.ModeDir, got %#v", fInfo.Mode())
 	}
 
 	w := New()
@@ -268,6 +268,11 @@ func TestRemove(t *testing.T) {
 // TODO: Test remove recursive function.
 
 func TestIgnoreHiddenFilesRecursive(t *testing.T) {
+	// TODO: Write tests for ignore hidden on windows.
+	if runtime.GOOS == "windows" {
+		return
+	}
+
 	testDir, teardown := setup(t)
 	defer teardown()
 
@@ -327,6 +332,11 @@ func TestIgnoreHiddenFilesRecursive(t *testing.T) {
 }
 
 func TestIgnoreHiddenFiles(t *testing.T) {
+	// TODO: Write tests for ignore hidden on windows.
+	if runtime.GOOS == "windows" {
+		return
+	}
+
 	testDir, teardown := setup(t)
 	defer teardown()
 

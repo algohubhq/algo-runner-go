@@ -1,12 +1,28 @@
-hash: 2787cef8b9e1eac6bd4a2248549353b4531485c2eea63328f559c2f9b8bb1c34
-updated: 2018-11-28T11:16:27.907528327-08:00
+hash: 984225a2328df9be1d67ea63a5ca6b52c4427020d5d0e5c4d07a7cf5c08e0286
+updated: 2019-04-16T20:20:23.668492167-07:00
 imports:
 - name: github.com/confluentinc/confluent-kafka-go
   version: 460e8e43b282a1a68219df600ef63442b81faf5f
   subpackages:
   - kafka
+- name: github.com/go-logr/logr
+  version: 9fb12b3b21c5415d16ac18dc5cd42c1cfdd40c4e
+- name: github.com/go-logr/zapr
+  version: 03f06a783fbb7dfaf3f629c7825480e43a7105e6
 - name: github.com/nu7hatch/gouuid
   version: 179d4d0c4d8d407a32af483c2354df1d2c91e6c3
 - name: github.com/radovskyb/watcher
-  version: 6145e1439b9de93806925353403f91d2abbad8a5
+  version: d8b41ca2397a9b5cfc26adb10edbbcde40187a87
+- name: go.uber.org/atomic
+  version: 1ea20fb1cbb1cc08cbd0d913a96dead89aa18289
+- name: go.uber.org/multierr
+  version: 3c4937480c32f4c13a875a1829af76c98ca3d40a
+- name: go.uber.org/zap
+  version: ff33455a0e382e8a81d14dd7c922020b6b5e7982
+  subpackages:
+  - buffer
+  - internal/bufferpool
+  - internal/color
+  - internal/exit
+  - zapcore
 testImports: []
