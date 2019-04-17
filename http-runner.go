@@ -11,27 +11,27 @@ import (
 	"strings"
 	"time"
 
-	"github.com/nu7hatch/gouuid"
+	uuid "github.com/nu7hatch/gouuid"
 )
 
 func runHTTP(runID string,
 	inputMap map[*swagger.AlgoInputModel][]InputData) (err error) {
 
-	startTime := time.Now()
+	// startTime := time.Now()
 
 	// Create the base message
 	algoLog := logMessage{
-		LogMessageType: "Algo",
-		Status:         "Started",
-		AlgoLogData: &swagger.AlgoLogData{
-			RunId:                 runID,
-			EndpointOwnerUserName: config.EndpointOwnerUserName,
-			EndpointName:          config.EndpointName,
-			AlgoOwnerUserName:     config.AlgoOwnerUserName,
-			AlgoName:              config.AlgoName,
-			AlgoVersionTag:        config.AlgoVersionTag,
-			AlgoIndex:             config.AlgoIndex,
-			AlgoInstanceName:      *instanceName,
+		Type_:  "Algo",
+		Status: "Started",
+		Data: map[string]interface{}{
+			"RunId":                 runID,
+			"EndpointOwnerUserName": config.EndpointOwnerUserName,
+			"EndpointName":          config.EndpointName,
+			"AlgoOwnerUserName":     config.AlgoOwnerUserName,
+			"AlgoName":              config.AlgoName,
+			"AlgoVersionTag":        config.AlgoVersionTag,
+			"AlgoIndex":             config.AlgoIndex,
+			"AlgoInstanceName":      *instanceName,
 		},
 	}
 
@@ -77,18 +77,18 @@ func runHTTP(runID string,
 			request, reqErr := http.NewRequest(strings.ToUpper(input.HttpVerb), u.String(), bytes.NewReader(data.data))
 			if reqErr != nil {
 				algoLog.Status = "Failed"
-				algoLog.AlgoLogData.Log = fmt.Sprintf("Error building request: %s\n", reqErr)
+				algoLog.Msg = fmt.Sprintf("Error building request: %s\n", reqErr)
 				algoLog.log()
 				continue
 			}
 			response, errReq := netClient.Do(request)
 
-			reqDuration := time.Since(startTime)
-			algoLog.AlgoLogData.RuntimeMs = int64(reqDuration / time.Millisecond)
+			// reqDuration := time.Since(startTime)
+			// algoLog.AlgoLogData.RuntimeMs = int64(reqDuration / time.Millisecond)
 
 			if errReq != nil {
 				algoLog.Status = "Failed"
-				algoLog.AlgoLogData.Log = fmt.Sprintf("Error getting response from http server: %s\n", errReq)
+				algoLog.Msg = fmt.Sprintf("Error getting response from http server: %s\n", errReq)
 				algoLog.log()
 				continue
 			} else {
@@ -98,7 +98,7 @@ func runHTTP(runID string,
 				contents, errRead := ioutil.ReadAll(response.Body)
 				if errRead != nil {
 					algoLog.Status = "Failed"
-					algoLog.AlgoLogData.Log = fmt.Sprintf("Error reading response from http server: %s\n", errRead)
+					algoLog.Msg = fmt.Sprintf("Error reading response from http server: %s\n", errRead)
 					algoLog.log()
 					continue
 				}
@@ -108,7 +108,7 @@ func runHTTP(runID string,
 					produceOutputMessage(fileName.String(), outputTopic, contents)
 
 					algoLog.Status = "Success"
-					algoLog.AlgoLogData.Log = ""
+					algoLog.Msg = ""
 					algoLog.log()
 
 					return nil
@@ -116,16 +116,16 @@ func runHTTP(runID string,
 
 				// Produce the error to the log
 				algoLog.Status = "Failed"
-				algoLog.AlgoLogData.Log = fmt.Sprintf("Server returned non-success http status code: %d\n%s\n", response.StatusCode, contents)
+				algoLog.Msg = fmt.Sprintf("Server returned non-success http status code: %d\n%s\n", response.StatusCode, contents)
 				algoLog.log()
 
-				return errors.New(algoLog.AlgoLogData.Log)
+				return errors.New(algoLog.Msg)
 
 			}
 		}
 
 	}
 
-	return errors.New(algoLog.AlgoLogData.Log)
+	return errors.New(algoLog.Msg)
 
 }

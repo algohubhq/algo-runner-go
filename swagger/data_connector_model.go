@@ -10,10 +10,6 @@
 
 package swagger
 
-import (
-	"time"
-)
-
 type DataConnectorModel struct {
 
 	Id int32 `json:"id,omitempty"`
@@ -31,8 +27,4 @@ type DataConnectorModel struct {
 	TasksMax int32 `json:"tasksMax,omitempty"`
 
 	Options []DataConnectorOptionModel `json:"options,omitempty"`
-
-	CreatedTimestamp time.Time `json:"createdTimestamp,omitempty"`
-
-	UpdatedTimestamp time.Time `json:"updatedTimestamp,omitempty"`
 }

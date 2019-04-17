@@ -10,15 +10,7 @@
 
 package swagger
 
-import (
-	"time"
-)
-
 type DataTypeOptionModel struct {
 
 	Name string `json:"name,omitempty"`
-
-	CreatedTimestamp time.Time `json:"createdTimestamp,omitempty"`
-
-	UpdatedTimestamp time.Time `json:"updatedTimestamp,omitempty"`
 }

@@ -10,10 +10,6 @@
 
 package swagger
 
-import (
-	"time"
-)
-
 type DataTypeModel struct {
 
 	Name string `json:"name"`
@@ -24,7 +20,5 @@ type DataTypeModel struct {
 
 	Scale int32 `json:"scale,omitempty"`
 
-	CreatedTimestamp time.Time `json:"createdTimestamp,omitempty"`
-
-	UpdatedTimestamp time.Time `json:"updatedTimestamp,omitempty"`
+	Mask string `json:"mask,omitempty"`
 }

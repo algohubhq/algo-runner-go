@@ -10,12 +10,7 @@
 
 package swagger
 
-import (
-	"time"
-)
-
 type AlgoLogData struct {
-
 	RunId string `json:"runId,omitempty"`
 
 	AlgoInstanceName string `json:"algoInstanceName,omitempty"`
@@ -31,14 +26,4 @@ type AlgoLogData struct {
 	AlgoVersionTag string `json:"algoVersionTag,omitempty"`
 
 	AlgoIndex int32 `json:"algoIndex,omitempty"`
-
-	CompletionPercent float64 `json:"completionPercent,omitempty"`
-
-	StartedTimestamp time.Time `json:"startedTimestamp,omitempty"`
-
-	CompletedTimestamp time.Time `json:"completedTimestamp,omitempty"`
-
-	RuntimeMs int64 `json:"runtimeMs,omitempty"`
-
-	Log string `json:"log,omitempty"`
 }

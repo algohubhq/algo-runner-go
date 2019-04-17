@@ -10,10 +10,6 @@
 
 package swagger
 
-import (
-	"time"
-)
-
 type AlgoInputModel struct {
 
 	Name string `json:"name"`
@@ -39,8 +35,4 @@ type AlgoInputModel struct {
 	HttpHeaders string `json:"httpHeaders,omitempty"`
 
 	MediaTypes []MediaTypeModel `json:"mediaTypes"`
-
-	CreatedTimestamp time.Time `json:"createdTimestamp,omitempty"`
-
-	UpdatedTimestamp time.Time `json:"updatedTimestamp,omitempty"`
 }

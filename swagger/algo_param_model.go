@@ -10,10 +10,6 @@
 
 package swagger
 
-import (
-	"time"
-)
-
 type AlgoParamModel struct {
 
 	SortOrder int32 `json:"sortOrder,omitempty"`
@@ -27,8 +23,4 @@ type AlgoParamModel struct {
 	DataType *DataTypeModel `json:"dataType,omitempty"`
 
 	Options []DataTypeOptionModel `json:"options,omitempty"`
-
-	CreatedTimestamp time.Time `json:"createdTimestamp,omitempty"`
-
-	UpdatedTimestamp time.Time `json:"updatedTimestamp,omitempty"`
 }

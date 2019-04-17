@@ -29,9 +29,8 @@ func main() {
 
 	// Create the base log message
 	localLog := logMessage{
-		LogMessageType: "Local",
-		Status:         "Started",
-		RunnerLogData:  &swagger.RunnerLogData{},
+		Type_:  "Local",
+		Status: "Started",
 	}
 
 	configFilePtr := flag.String("config", "", "JSON config file to load")
@@ -48,7 +47,7 @@ func main() {
 			config = loadConfigFromString(configEnv)
 		} else {
 			localLog.Status = "Failed"
-			localLog.RunnerLogData.Log = "Missing the config file path argument and no environment variable ALGO-RUNNER-CONFIG exists. ( --config=./config.json ) Shutting down..."
+			localLog.Msg = "Missing the config file path argument and no environment variable ALGO-RUNNER-CONFIG exists. ( --config=./config.json ) Shutting down..."
 			localLog.log()
 
 			os.Exit(1)
@@ -65,7 +64,7 @@ func main() {
 			kafkaBrokers = &kafkaBrokersEnv
 		} else {
 			localLog.Status = "Failed"
-			localLog.RunnerLogData.Log = "Missing the Kafka Brokers argument and no environment variable KAFKA-BROKERS exists. ( --kafka-brokers={broker1,broker2} ) Shutting down..."
+			localLog.Msg = "Missing the Kafka Brokers argument and no environment variable KAFKA-BROKERS exists. ( --kafka-brokers={broker1,broker2} ) Shutting down..."
 			localLog.log()
 
 			os.Exit(1)

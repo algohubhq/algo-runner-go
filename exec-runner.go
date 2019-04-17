@@ -13,7 +13,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/nu7hatch/gouuid"
+	uuid "github.com/nu7hatch/gouuid"
 )
 
 func runExec(runID string,
@@ -21,21 +21,21 @@ func runExec(runID string,
 
 	// Create the base message
 	algoLog := logMessage{
-		LogMessageType: "Algo",
-		Status:         "Started",
-		AlgoLogData: &swagger.AlgoLogData{
-			RunId:                 runID,
-			EndpointOwnerUserName: config.EndpointOwnerUserName,
-			EndpointName:          config.EndpointName,
-			AlgoOwnerUserName:     config.AlgoOwnerUserName,
-			AlgoName:              config.AlgoName,
-			AlgoVersionTag:        config.AlgoVersionTag,
-			AlgoIndex:             config.AlgoIndex,
-			AlgoInstanceName:      *instanceName,
+		Type_:  "Algo",
+		Status: "Started",
+		Data: map[string]interface{}{
+			"RunId":                 runID,
+			"EndpointOwnerUserName": config.EndpointOwnerUserName,
+			"EndpointName":          config.EndpointName,
+			"AlgoOwnerUserName":     config.AlgoOwnerUserName,
+			"AlgoName":              config.AlgoName,
+			"AlgoVersionTag":        config.AlgoVersionTag,
+			"AlgoIndex":             config.AlgoIndex,
+			"AlgoInstanceName":      *instanceName,
 		},
 	}
 
-	startTime := time.Now().UTC()
+	// startTime := time.Now().UTC()
 
 	command := getCommand(config)
 
@@ -47,15 +47,14 @@ func runExec(runID string,
 	go func() {
 		sig := <-sigchan
 
-		algoLog.Status = "Terminated"
-		algoLog.AlgoLogData.Log = fmt.Sprintf("Caught signal %v. Killing algo process: %s\n", sig, config.Entrypoint)
+		algoLog.Msg = fmt.Sprintf("Caught signal %v. Killing algo process: %s\n", sig, config.Entrypoint)
 		algoLog.log()
 
 		if targetCmd != nil && targetCmd.Process != nil {
 			val := targetCmd.Process.Kill()
 			if val != nil {
 				algoLog.Status = "Terminated"
-				algoLog.AlgoLogData.Log = fmt.Sprintf("Killed algo process: %s - error %s\n", config.Entrypoint, val.Error())
+				algoLog.Msg = fmt.Sprintf("Killed algo process: %s - error %s\n", config.Entrypoint, val.Error())
 				algoLog.log()
 			}
 		}
@@ -75,7 +74,7 @@ func runExec(runID string,
 	// Write to the topic as error if no value
 	if inputMap == nil {
 		algoLog.Status = "Failed"
-		algoLog.AlgoLogData.Log = "Attempted to run but input data is completely empty."
+		algoLog.Msg = "Attempted to run but input data is completely empty."
 		algoLog.log()
 
 		return
@@ -91,14 +90,14 @@ func runExec(runID string,
 			<-timer.C
 
 			algoLog.Status = "Timeout"
-			algoLog.AlgoLogData.Log = fmt.Sprintf("Algo timed out. Timeout value: %d seconds", config.TimeoutSeconds)
+			algoLog.Msg = fmt.Sprintf("Algo timed out. Timeout value: %d seconds", config.TimeoutSeconds)
 			algoLog.log()
 
 			if targetCmd != nil && targetCmd.Process != nil {
 				val := targetCmd.Process.Kill()
 				if val != nil {
 					algoLog.Status = "Timeout"
-					algoLog.AlgoLogData.Log = fmt.Sprintf("Killed algo process due to timeout: %s - error %s\n", config.Entrypoint, val.Error())
+					algoLog.Msg = fmt.Sprintf("Killed algo process due to timeout: %s - error %s\n", config.Entrypoint, val.Error())
 					algoLog.log()
 				}
 			}
@@ -258,13 +257,13 @@ func runExec(runID string,
 		timer.Stop()
 	}
 
-	execDuration := time.Since(startTime)
+	// execDuration := time.Since(startTime)
 
 	if cmdErr != nil {
 
 		algoLog.Status = "Failed"
-		algoLog.AlgoLogData.RuntimeMs = int64(execDuration / time.Millisecond)
-		algoLog.AlgoLogData.Log = fmt.Sprintf("%s\nStdout: %s\nStderr: %s", cmdErr, stdout, stderr)
+		// algoLog.AlgoLogData.RuntimeMs = int64(execDuration / time.Millisecond)
+		algoLog.Msg = fmt.Sprintf("%s\nStdout: %s\nStderr: %s", cmdErr, stdout, stderr)
 		algoLog.log()
 
 		return cmdErr
@@ -286,8 +285,8 @@ func runExec(runID string,
 
 	// Write completion to log topic
 	algoLog.Status = "Success"
-	algoLog.AlgoLogData.RuntimeMs = int64(execDuration / time.Millisecond)
-	algoLog.AlgoLogData.Log = fmt.Sprintf("Stdout: %s\nStderr: %s", stdout, stderr)
+	// algoLog.AlgoLogData.RuntimeMs = int64(execDuration / time.Millisecond)
+	algoLog.Msg = fmt.Sprintf("Stdout: %s\nStderr: %s", stdout, stderr)
 	algoLog.log()
 
 	outputWatcher.closeOutputWatcher()

@@ -10,10 +10,6 @@
 
 package swagger
 
-import (
-	"time"
-)
-
 type DataConnectorOptionModel struct {
 
 	SortOrder int32 `json:"sortOrder,omitempty"`
@@ -25,8 +21,4 @@ type DataConnectorOptionModel struct {
 	Value string `json:"value,omitempty"`
 
 	DataType *DataTypeModel `json:"dataType,omitempty"`
-
-	CreatedTimestamp time.Time `json:"createdTimestamp,omitempty"`
-
-	UpdatedTimestamp time.Time `json:"updatedTimestamp,omitempty"`
 }

@@ -11,6 +11,7 @@
 package swagger
 
 type RunnerConfig struct {
+
 	EndpointOwnerUserName string `json:"endpointOwnerUserName,omitempty"`
 
 	EndpointName string `json:"endpointName,omitempty"`

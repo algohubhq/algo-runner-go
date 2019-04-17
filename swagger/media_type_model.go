@@ -10,10 +10,6 @@
 
 package swagger
 
-import (
-	"time"
-)
-
 type MediaTypeModel struct {
 
 	Title string `json:"title,omitempty"`
@@ -33,8 +29,4 @@ type MediaTypeModel struct {
 	RfcUrl string `json:"rfcUrl,omitempty"`
 
 	Url string `json:"url,omitempty"`
-
-	CreatedTimestamp time.Time `json:"createdTimestamp,omitempty"`
-
-	UpdatedTimestamp time.Time `json:"updatedTimestamp,omitempty"`
 }

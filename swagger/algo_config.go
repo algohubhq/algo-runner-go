@@ -24,7 +24,9 @@ type AlgoConfig struct {
 
 	AlgoIndex int32 `json:"algoIndex,omitempty"`
 
-	Container string `json:"container,omitempty"`
+	ImageRepository string `json:"imageRepository,omitempty"`
+
+	ImageTag string `json:"imageTag,omitempty"`
 
 	Entrypoint string `json:"entrypoint,omitempty"`
 
@@ -61,4 +63,20 @@ type AlgoConfig struct {
 	MaxInstances int32 `json:"maxInstances,omitempty"`
 
 	AutoScaleCPUPercent int32 `json:"autoScaleCPUPercent,omitempty"`
+
+	AlgoRunnerImage string `json:"algoRunnerImage,omitempty"`
+
+	AlgoRunnerImageTag string `json:"algoRunnerImageTag,omitempty"`
+
+	LivenessInitialDelaySeconds int32 `json:"livenessInitialDelaySeconds,omitempty"`
+
+	LivenessTimeoutSeconds int32 `json:"livenessTimeoutSeconds,omitempty"`
+
+	LivenessPeriodSeconds int32 `json:"livenessPeriodSeconds,omitempty"`
+
+	ReadinessInitialDelaySeconds int32 `json:"readinessInitialDelaySeconds,omitempty"`
+
+	ReadinessTimeoutSeconds int32 `json:"readinessTimeoutSeconds,omitempty"`
+
+	ReadinessPeriodSeconds int32 `json:"readinessPeriodSeconds,omitempty"`
 }

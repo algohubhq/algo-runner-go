@@ -14,11 +14,27 @@ import (
 	"time"
 )
 
-type RunnerLogData struct {
+type LogEntryModel struct {
+
+	Level string `json:"level,omitempty"`
+
+	Type_ string `json:"type,omitempty"`
+
+	Ts time.Time `json:"ts,omitempty"`
+
+	Status string `json:"status,omitempty"`
 
 	RunId string `json:"runId,omitempty"`
 
+	IsError bool `json:"isError,omitempty"`
+
+	Msg string `json:"msg,omitempty"`
+
+	Data map[string]interface{} `json:"data,omitempty"`
+
 	AlgoInstanceName string `json:"algoInstanceName,omitempty"`
+
+	AlgoFullName string `json:"algoFullName,omitempty"`
 
 	EndpointOwnerUserName string `json:"endpointOwnerUserName,omitempty"`
 
@@ -31,14 +47,4 @@ type RunnerLogData struct {
 	AlgoVersionTag string `json:"algoVersionTag,omitempty"`
 
 	AlgoIndex int32 `json:"algoIndex,omitempty"`
-
-	CompletionPercent float64 `json:"completionPercent,omitempty"`
-
-	StartedTimestamp time.Time `json:"startedTimestamp,omitempty"`
-
-	CompletedTimestamp time.Time `json:"completedTimestamp,omitempty"`
-
-	RuntimeMs int64 `json:"runtimeMs,omitempty"`
-
-	Log string `json:"log,omitempty"`
 }

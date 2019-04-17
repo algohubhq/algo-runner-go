@@ -10,10 +10,6 @@
 
 package swagger
 
-import (
-	"time"
-)
-
 type PipelineDataConnectorModel struct {
 
 	DataConnector *DataConnectorModel `json:"dataConnector,omitempty"`
@@ -25,8 +21,4 @@ type PipelineDataConnectorModel struct {
 	PositionX float32 `json:"positionX,omitempty"`
 
 	PositionY float32 `json:"positionY,omitempty"`
-
-	CreatedTimestamp time.Time `json:"createdTimestamp,omitempty"`
-
-	UpdatedTimestamp time.Time `json:"updatedTimestamp,omitempty"`
 }

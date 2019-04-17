@@ -10,10 +10,6 @@
 
 package swagger
 
-import (
-	"time"
-)
-
 type PipeModel struct {
 
 	PipeType string `json:"pipeType,omitempty"`
@@ -45,8 +41,4 @@ type PipeModel struct {
 	DestAlgoIndex int32 `json:"destAlgoIndex,omitempty"`
 
 	DestAlgoInputName string `json:"destAlgoInputName,omitempty"`
-
-	CreatedTimestamp time.Time `json:"createdTimestamp,omitempty"`
-
-	UpdatedTimestamp time.Time `json:"updatedTimestamp,omitempty"`
 }
