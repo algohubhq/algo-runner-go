@@ -39,7 +39,7 @@ func (lm *logMessage) log() {
 			"version", lm.Version,
 			"status", lm.Status,
 			"runId", lm.RunId,
-			"isError", true,
+			"isError", false,
 			"data", lm.Data)
 	}
 
