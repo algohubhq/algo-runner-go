@@ -15,6 +15,7 @@ import (
 )
 
 type LogEntryModel struct {
+
 	Level string `json:"level,omitempty"`
 
 	Type_ string `json:"type,omitempty"`
@@ -32,20 +33,4 @@ type LogEntryModel struct {
 	Version string `json:"version,omitempty"`
 
 	Data map[string]interface{} `json:"data,omitempty"`
-
-	AlgoInstanceName string `json:"algoInstanceName,omitempty"`
-
-	AlgoFullName string `json:"algoFullName,omitempty"`
-
-	EndpointOwnerUserName string `json:"endpointOwnerUserName,omitempty"`
-
-	EndpointName string `json:"endpointName,omitempty"`
-
-	AlgoOwnerUserName string `json:"algoOwnerUserName,omitempty"`
-
-	AlgoName string `json:"algoName,omitempty"`
-
-	AlgoVersionTag string `json:"algoVersionTag,omitempty"`
-
-	AlgoIndex int32 `json:"algoIndex,omitempty"`
 }
