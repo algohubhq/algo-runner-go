@@ -42,6 +42,7 @@ func newLogger(logMessageType string) (*zap.Logger, error) {
 
 	cfg := zap.NewProductionConfig()
 	cfg.OutputPaths = []string{
+		"stdout",
 		fullPathFile,
 	}
 	return cfg.Build()
