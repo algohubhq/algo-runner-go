@@ -30,6 +30,7 @@ func (lm *logMessage) log() {
 		lm.Status == "Timeout" {
 		log.Error(errors.New(lm.Msg),
 			"version", lm.Version,
+			"type", lm.Type_,
 			"status", lm.Status,
 			"runId", lm.RunId,
 			"isError", true,
@@ -37,6 +38,7 @@ func (lm *logMessage) log() {
 	} else {
 		log.Info(lm.Msg,
 			"version", lm.Version,
+			"type", lm.Type_,
 			"status", lm.Status,
 			"runId", lm.RunId,
 			"isError", false,
