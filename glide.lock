@@ -1,8 +1,8 @@
-hash: 984225a2328df9be1d67ea63a5ca6b52c4427020d5d0e5c4d07a7cf5c08e0286
-updated: 2019-04-16T20:20:23.668492167-07:00
+hash: 77af0474954094227aeddf9e9276b2c4bd3965f848805798e6f37d1f0997d26c
+updated: 2019-04-17T20:20:02.93570872-07:00
 imports:
 - name: github.com/confluentinc/confluent-kafka-go
-  version: 460e8e43b282a1a68219df600ef63442b81faf5f
+  version: ecccefd9ca31c656bd33471dc0d9293fcf3de99b
   subpackages:
   - kafka
 - name: github.com/go-logr/logr

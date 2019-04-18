@@ -30,8 +30,8 @@ func TestProducerAPIs(t *testing.T) {
 	// expected message dr count on events channel
 	expMsgCnt := 0
 	p, err := NewProducer(&ConfigMap{
-		"socket.timeout.ms":    10,
-		"default.topic.config": ConfigMap{"message.timeout.ms": 10}})
+		"socket.timeout.ms":  10,
+		"message.timeout.ms": 10})
 	if err != nil {
 		t.Fatalf("%s", err)
 	}
@@ -183,7 +183,9 @@ func TestProducerAPIs(t *testing.T) {
 func TestProducerBufferSafety(t *testing.T) {
 
 	p, err := NewProducer(&ConfigMap{
-		"socket.timeout.ms":    10,
+		"socket.timeout.ms": 10,
+		// Use deprecated default.topic.config here to verify
+		// it still works.
 		"default.topic.config": ConfigMap{"message.timeout.ms": 10}})
 	if err != nil {
 		t.Fatalf("%s", err)
@@ -213,4 +215,15 @@ func TestProducerBufferSafety(t *testing.T) {
 	p.Flush(100)
 
 	p.Close()
+}
+
+// TestProducerInvalidConfig verifies that invalid configuration is handled correctly.
+func TestProducerInvalidConfig(t *testing.T) {
+
+	_, err := NewProducer(&ConfigMap{
+		"delivery.report.only.error": true,
+	})
+	if err == nil {
+		t.Fatalf("Expected NewProducer() to fail with delivery.report.only.error set")
+	}
 }
