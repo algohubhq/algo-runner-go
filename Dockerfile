@@ -66,7 +66,7 @@ FROM golang:1.10-alpine3.7 AS algorun-go-buildenv
 #
 # e.g.: docker build --build-arg LIBRDKAFKA_VERSION=4e7a46701ecce7297b2298885da980be7856e5f9
 #
-ARG LIBRDKAFKA_VERSION=v0.11.6
+ARG LIBRDKAFKA_VERSION=v1.0.0
 
 # Set the workdir to the full GOPATH of your project.
 WORKDIR $GOPATH/src/algo-runner-go
