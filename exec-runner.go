@@ -265,7 +265,7 @@ func runExec(runID string,
 
 		algoLog.Status = "Failed"
 		// algoLog.AlgoLogData.RuntimeMs = int64(execDuration / time.Millisecond)
-		algoLog.Msg = fmt.Sprintf("Stdout: %s | Stderr: %s", cmdErr, stdout, stderr)
+		algoLog.Msg = fmt.Sprintf("Stdout: %s | Stderr: %s", stdout, stderr)
 		algoLog.log(cmdErr)
 
 		return cmdErr
