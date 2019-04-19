@@ -21,8 +21,8 @@ func runHTTP(runID string,
 
 	// Create the base message
 	algoLog := logMessage{
-		Type_:  "Algo",
-		Status: "Started",
+		Type_:   "Algo",
+		Status:  "Started",
 		Version: "1",
 		Data: map[string]interface{}{
 			"RunId":                 runID,
@@ -78,8 +78,8 @@ func runHTTP(runID string,
 			request, reqErr := http.NewRequest(strings.ToUpper(input.HttpVerb), u.String(), bytes.NewReader(data.data))
 			if reqErr != nil {
 				algoLog.Status = "Failed"
-				algoLog.Msg = fmt.Sprintf("Error building request: %s\n", reqErr)
-				algoLog.log()
+				algoLog.Msg = fmt.Sprintf("Error building request")
+				algoLog.log(reqErr)
 				continue
 			}
 			response, errReq := netClient.Do(request)
@@ -89,8 +89,8 @@ func runHTTP(runID string,
 
 			if errReq != nil {
 				algoLog.Status = "Failed"
-				algoLog.Msg = fmt.Sprintf("Error getting response from http server: %s\n", errReq)
-				algoLog.log()
+				algoLog.Msg = fmt.Sprintf("Error getting response from http server.")
+				algoLog.log(errReq)
 				continue
 			} else {
 				defer response.Body.Close()
@@ -99,8 +99,8 @@ func runHTTP(runID string,
 				contents, errRead := ioutil.ReadAll(response.Body)
 				if errRead != nil {
 					algoLog.Status = "Failed"
-					algoLog.Msg = fmt.Sprintf("Error reading response from http server: %s\n", errRead)
-					algoLog.log()
+					algoLog.Msg = fmt.Sprintf("Error reading response from http server")
+					algoLog.log(errRead)
 					continue
 				}
 				if response.StatusCode == 200 {
@@ -110,15 +110,15 @@ func runHTTP(runID string,
 
 					algoLog.Status = "Success"
 					algoLog.Msg = ""
-					algoLog.log()
+					algoLog.log(nil)
 
 					return nil
 				}
 
 				// Produce the error to the log
 				algoLog.Status = "Failed"
-				algoLog.Msg = fmt.Sprintf("Server returned non-success http status code: %d\n%s\n", response.StatusCode, contents)
-				algoLog.log()
+				algoLog.Msg = fmt.Sprintf("Server returned non-success http status code: %d", response.StatusCode)
+				algoLog.log(errors.New(string(contents)))
 
 				return errors.New(algoLog.Msg)
 

@@ -11,16 +11,16 @@ func loadConfigFromFile(fileName string) swagger.RunnerConfig {
 
 	// Create the base log message
 	localLog := logMessage{
-		Type_:  "Local",
-		Status: "Started",
+		Type_:   "Local",
+		Status:  "Started",
 		Version: "1",
 	}
 
 	raw, err := ioutil.ReadFile(fileName)
 	if err != nil {
 		localLog.Status = "Failed"
-		localLog.Msg = fmt.Sprintf("Unable to read the config file [%s] with error: %s\n", fileName, err)
-		localLog.log()
+		localLog.Msg = fmt.Sprintf("Unable to read the config file [%s].", fileName)
+		localLog.log(err)
 	}
 
 	var c swagger.RunnerConfig
@@ -28,8 +28,8 @@ func loadConfigFromFile(fileName string) swagger.RunnerConfig {
 
 	if jsonErr != nil {
 		localLog.Status = "Failed"
-		localLog.Msg = fmt.Sprintf("Unable to deserialize the config file [%s] with error: %s\n", fileName, jsonErr)
-		localLog.log()
+		localLog.Msg = fmt.Sprintf("Unable to deserialize the config file [%s].", fileName)
+		localLog.log(jsonErr)
 	}
 
 	return c
@@ -40,8 +40,8 @@ func loadConfigFromString(jsonConfig string) swagger.RunnerConfig {
 
 	// Create the base log message
 	localLog := logMessage{
-		Type_:  "Local",
-		Status: "Started",
+		Type_:   "Local",
+		Status:  "Started",
 		Version: "1",
 	}
 
@@ -50,8 +50,8 @@ func loadConfigFromString(jsonConfig string) swagger.RunnerConfig {
 
 	if jsonErr != nil {
 		localLog.Status = "Failed"
-		localLog.Msg = fmt.Sprintf("Unable to deserialize the config from string [%s] with error: %s\n", jsonConfig, jsonErr)
-		localLog.log()
+		localLog.Msg = fmt.Sprintf("Unable to deserialize the config from string [%s].", jsonConfig)
+		localLog.log(jsonErr)
 	}
 
 	return c

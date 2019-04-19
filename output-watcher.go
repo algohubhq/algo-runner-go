@@ -113,8 +113,8 @@ func (outputWatcher *OutputWatcher) start() {
 
 					if jsonErr != nil {
 						runnerLog.Status = "Failed"
-						runnerLog.Msg = fmt.Sprintf("Unable to create the file reference json with error: %s\n", jsonErr)
-						runnerLog.log()
+						runnerLog.Msg = fmt.Sprintf("Unable to create the file reference json.")
+						runnerLog.log(jsonErr)
 					}
 
 					produceOutputMessage(fileName, fileOutputTopic, jsonBytes)
@@ -124,8 +124,8 @@ func (outputWatcher *OutputWatcher) start() {
 					fileBytes, err := ioutil.ReadFile(event.Path)
 					if err != nil {
 						runnerLog.Status = "Failed"
-						runnerLog.Msg = fmt.Sprintf("Output watcher unable to read the file [%s] from disk with error: %s\n", event.Path, err)
-						runnerLog.log()
+						runnerLog.Msg = fmt.Sprintf("Output watcher unable to read the file [%s] from disk.", event.Path)
+						runnerLog.log(err)
 					}
 
 					produceOutputMessage(fileName, fileOutputTopic, fileBytes)
@@ -134,8 +134,8 @@ func (outputWatcher *OutputWatcher) start() {
 
 			case err := <-outputWatcher.fileWatcher.Error:
 				runnerLog.Status = "Failed"
-				runnerLog.Msg = fmt.Sprintf("Output watcher error watching output file/folder: %s/n", err)
-				runnerLog.log()
+				runnerLog.Msg = fmt.Sprintf("Output watcher error watching output file/folder.")
+				runnerLog.log(err)
 
 			case <-outputWatcher.fileWatcher.Closed:
 				return
@@ -146,8 +146,8 @@ func (outputWatcher *OutputWatcher) start() {
 	go func() {
 		if err := outputWatcher.fileWatcher.Start(time.Millisecond * 10); err != nil {
 			runnerLog.Status = "Failed"
-			runnerLog.Msg = fmt.Sprintf("Output watcher failed to start with error: %s/n", err)
-			runnerLog.log()
+			runnerLog.Msg = fmt.Sprintf("Output watcher failed to start.")
+			runnerLog.log(err)
 		}
 	}()
 

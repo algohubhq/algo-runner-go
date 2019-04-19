@@ -3,6 +3,7 @@ package main
 import (
 	"algo-runner-go/swagger"
 	"bytes"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -48,15 +49,15 @@ func runExec(runID string,
 	go func() {
 		sig := <-sigchan
 
-		algoLog.Msg = fmt.Sprintf("Caught signal %v. Killing algo process: %s\n", sig, config.Entrypoint)
-		algoLog.log()
+		algoLog.Msg = fmt.Sprintf("Caught signal %v. Killing algo process: %s", sig, config.Entrypoint)
+		algoLog.log(nil)
 
 		if targetCmd != nil && targetCmd.Process != nil {
 			val := targetCmd.Process.Kill()
 			if val != nil {
 				algoLog.Status = "Terminated"
-				algoLog.Msg = fmt.Sprintf("Killed algo process: %s - error %s\n", config.Entrypoint, val.Error())
-				algoLog.log()
+				algoLog.Msg = fmt.Sprintf("Killed algo process: %s", config.Entrypoint)
+				algoLog.log(val)
 			}
 		}
 	}()
@@ -75,8 +76,8 @@ func runExec(runID string,
 	// Write to the topic as error if no value
 	if inputMap == nil {
 		algoLog.Status = "Failed"
-		algoLog.Msg = "Attempted to run but input data is completely empty."
-		algoLog.log()
+		algoLog.Msg = "Attempted to run but input data is empty."
+		algoLog.log(errors.New("Input data was empty"))
 
 		return
 	}
@@ -92,14 +93,14 @@ func runExec(runID string,
 
 			algoLog.Status = "Timeout"
 			algoLog.Msg = fmt.Sprintf("Algo timed out. Timeout value: %d seconds", config.TimeoutSeconds)
-			algoLog.log()
+			algoLog.log(nil)
 
 			if targetCmd != nil && targetCmd.Process != nil {
 				val := targetCmd.Process.Kill()
 				if val != nil {
 					algoLog.Status = "Timeout"
-					algoLog.Msg = fmt.Sprintf("Killed algo process due to timeout: %s - error %s\n", config.Entrypoint, val.Error())
-					algoLog.log()
+					algoLog.Msg = fmt.Sprintf("Killed algo process due to timeout: %s", config.Entrypoint)
+					algoLog.log(val)
 				}
 			}
 		}()
@@ -264,8 +265,8 @@ func runExec(runID string,
 
 		algoLog.Status = "Failed"
 		// algoLog.AlgoLogData.RuntimeMs = int64(execDuration / time.Millisecond)
-		algoLog.Msg = fmt.Sprintf("%s\nStdout: %s\nStderr: %s", cmdErr, stdout, stderr)
-		algoLog.log()
+		algoLog.Msg = fmt.Sprintf("Stdout: %s | Stderr: %s", cmdErr, stdout, stderr)
+		algoLog.log(cmdErr)
 
 		return cmdErr
 
@@ -287,8 +288,8 @@ func runExec(runID string,
 	// Write completion to log topic
 	algoLog.Status = "Success"
 	// algoLog.AlgoLogData.RuntimeMs = int64(execDuration / time.Millisecond)
-	algoLog.Msg = fmt.Sprintf("Stdout: %s\nStderr: %s", stdout, stderr)
-	algoLog.log()
+	algoLog.Msg = fmt.Sprintf("Stdout: %s | Stderr: %s", stdout, stderr)
+	algoLog.log(nil)
 
 	outputWatcher.closeOutputWatcher()
 

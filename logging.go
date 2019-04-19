@@ -2,7 +2,6 @@ package main
 
 import (
 	"algo-runner-go/swagger"
-	"errors"
 	"fmt"
 	"os"
 	"os/user"
@@ -15,7 +14,7 @@ import (
 
 type logMessage swagger.LogEntryModel
 
-func (lm *logMessage) log() {
+func (lm *logMessage) log(err error) {
 
 	zapLog, err := newLogger(lm.Type_)
 	if err != nil {
@@ -24,16 +23,13 @@ func (lm *logMessage) log() {
 	log = zapr.NewLogger(zapLog)
 
 	// Send to local console and file
-	if lm.Status == "Unknown" ||
-		lm.Status == "Failed" ||
-		lm.Status == "Terminated" ||
-		lm.Status == "Timeout" {
-		log.Error(errors.New(lm.Msg),
+	if err != nil {
+		log.Error(err,
+			lm.Msg,
 			"version", lm.Version,
 			"type", lm.Type_,
 			"status", lm.Status,
 			"runId", lm.RunId,
-			"isError", true,
 			"data", lm.Data)
 	} else {
 		log.Info(lm.Msg,
@@ -41,7 +37,6 @@ func (lm *logMessage) log() {
 			"type", lm.Type_,
 			"status", lm.Status,
 			"runId", lm.RunId,
-			"isError", false,
 			"data", lm.Data)
 	}
 

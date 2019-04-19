@@ -2,6 +2,7 @@ package main
 
 import (
 	"algo-runner-go/swagger"
+	"errors"
 	"flag"
 	"os"
 	"strings"
@@ -29,8 +30,8 @@ func main() {
 
 	// Create the base log message
 	localLog := logMessage{
-		Type_:  "Local",
-		Status: "Started",
+		Type_:   "Local",
+		Status:  "Started",
 		Version: "1",
 	}
 
@@ -49,7 +50,7 @@ func main() {
 		} else {
 			localLog.Status = "Failed"
 			localLog.Msg = "Missing the config file path argument and no environment variable ALGO-RUNNER-CONFIG exists. ( --config=./config.json ) Shutting down..."
-			localLog.log()
+			localLog.log(errors.New("ALGO-RUNNER-CONFIG missing"))
 
 			os.Exit(1)
 		}
@@ -66,7 +67,7 @@ func main() {
 		} else {
 			localLog.Status = "Failed"
 			localLog.Msg = "Missing the Kafka Brokers argument and no environment variable KAFKA-BROKERS exists. ( --kafka-brokers={broker1,broker2} ) Shutting down..."
-			localLog.log()
+			localLog.log(errors.New("KAFKA-BROKERS missing"))
 
 			os.Exit(1)
 		}

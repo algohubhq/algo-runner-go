@@ -3,6 +3,7 @@ package main
 import (
 	"algo-runner-go/swagger"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -95,8 +96,8 @@ func startConsumers() {
 			topicInputs[topicName] = &input
 			topics = append(topics, topicName)
 
-			runnerLog.Msg = fmt.Sprintf("Listening to topic %s\n", topicName)
-			runnerLog.log()
+			runnerLog.Msg = fmt.Sprintf("Listening to topic %s", topicName)
+			runnerLog.log(nil)
 
 		}
 
@@ -120,8 +121,8 @@ func startConsumers() {
 	if err != nil {
 		healthy = false
 		runnerLog.Status = "Failed"
-		runnerLog.Msg = fmt.Sprintf("Failed to create consumer. Fatal: %s\n", err)
-		runnerLog.log()
+		runnerLog.Msg = fmt.Sprintf("Failed to create consumer.")
+		runnerLog.log(err)
 
 		os.Exit(1)
 	}
@@ -166,8 +167,8 @@ func waitForMessages(c *kafka.Consumer, topicInputs topicInputs) {
 		case sig := <-sigchan:
 
 			runnerLog.Status = "Terminated"
-			runnerLog.Msg = fmt.Sprintf("Caught signal %v: terminating the Kafka Consumer process.\n", sig)
-			runnerLog.log()
+			runnerLog.Msg = fmt.Sprintf("Caught signal %v: terminating the Kafka Consumer process.", sig)
+			runnerLog.log(errors.New("Terminating"))
 
 			healthy = false
 			waiting = false
@@ -188,8 +189,8 @@ func waitForMessages(c *kafka.Consumer, topicInputs topicInputs) {
 
 				healthy = true
 
-				runnerLog.Msg = fmt.Sprintf("Kafka Message received on %s\n", e.TopicPartition)
-				runnerLog.log()
+				runnerLog.Msg = fmt.Sprintf("Kafka Message received on %s", e.TopicPartition)
+				runnerLog.log(nil)
 
 				input := topicInputs[*e.TopicPartition.Topic]
 				inputData, run := processMessage(e, input)
@@ -227,18 +228,16 @@ func waitForMessages(c *kafka.Consumer, topicInputs topicInputs) {
 						_, offsetErr := c.StoreOffsets([]kafka.TopicPartition{offsets[runID]})
 						if offsetErr != nil {
 							runnerLog.Status = "Failed"
-							runnerLog.Msg = fmt.Sprintf("Failed to store offsets for [%v] with error '%s'",
-								[]kafka.TopicPartition{offsets[runID]},
-								offsetErr)
-							runnerLog.log()
+							runnerLog.Msg = fmt.Sprintf("Failed to store offsets for [%v]",
+								[]kafka.TopicPartition{offsets[runID]})
+							runnerLog.log(offsetErr)
 						}
 
 						_, commitErr := c.Commit()
 						if commitErr != nil {
 							runnerLog.Status = "Failed"
-							runnerLog.Msg = fmt.Sprintf("Failed to commit offsets with error '%s'",
-								commitErr)
-							runnerLog.log()
+							runnerLog.Msg = fmt.Sprintf("Failed to commit offsets.")
+							runnerLog.log(commitErr)
 						}
 
 						delete(data, runID)
@@ -246,9 +245,9 @@ func waitForMessages(c *kafka.Consumer, topicInputs topicInputs) {
 
 					} else {
 						runnerLog.Status = "Failed"
-						runnerLog.Msg = fmt.Sprintf("Failed to run Algo with error '%s'",
+						runnerLog.Msg = fmt.Sprintf("Failed to run Algo",
 							runError)
-						runnerLog.log()
+						runnerLog.log(runError)
 					}
 
 				} else {
@@ -259,16 +258,16 @@ func waitForMessages(c *kafka.Consumer, topicInputs topicInputs) {
 
 			case kafka.AssignedPartitions:
 				healthy = true
-				runnerLog.Msg = fmt.Sprintf("%v\n", e)
-				runnerLog.log()
+				runnerLog.Msg = fmt.Sprintf("%v", e)
+				runnerLog.log(nil)
 				c.Assign(e.Partitions)
 			case kafka.RevokedPartitions:
-				runnerLog.Msg = fmt.Sprintf("%v\n", e)
-				runnerLog.log()
+				runnerLog.Msg = fmt.Sprintf("%v", e)
+				runnerLog.log(nil)
 				c.Unassign()
 			case kafka.Error:
-				runnerLog.Msg = fmt.Sprintf("Kafka Error: %v\n", e)
-				runnerLog.log()
+				runnerLog.Msg = fmt.Sprintf("Kafka Error: %v", e)
+				runnerLog.log(nil)
 				healthy = false
 				waiting = false
 
@@ -347,8 +346,8 @@ func processMessage(msg *kafka.Message,
 
 			if jsonErr != nil {
 				runnerLog.Status = "Failed"
-				runnerLog.Msg = fmt.Sprintf("Failed to parse the FileReference json with error: %v\n", jsonErr.Error())
-				runnerLog.log()
+				runnerLog.Msg = fmt.Sprintf("Failed to parse the FileReference json.")
+				runnerLog.log(jsonErr)
 			}
 
 			// Read the file
@@ -356,8 +355,8 @@ func processMessage(msg *kafka.Message,
 			fileBytes, err := ioutil.ReadFile(fullPathFile)
 			if err != nil {
 				runnerLog.Status = "Failed"
-				runnerLog.Msg = fmt.Sprintf("Failed to read the file reference with error: %v\n", err)
-				runnerLog.log()
+				runnerLog.Msg = fmt.Sprintf("Failed to read the file reference.")
+				runnerLog.log(err)
 			}
 
 			inputData.isFileReference = false
@@ -380,16 +379,16 @@ func processMessage(msg *kafka.Message,
 
 			if jsonErr != nil {
 				runnerLog.Status = "Failed"
-				runnerLog.Msg = fmt.Sprintf("Failed to parse the FileReference json with error: %v\n", jsonErr.Error())
-				runnerLog.log()
+				runnerLog.Msg = fmt.Sprintf("Failed to parse the FileReference json")
+				runnerLog.log(jsonErr)
 			}
 			// Check if the file exists
 			fullPathFile := path.Join(fileReference.FilePath, fileReference.FileName)
 			if _, err := os.Stat(fullPathFile); os.IsNotExist(err) {
 				// Log error, File doesn't exist!
 				runnerLog.Status = "Failed"
-				runnerLog.Msg = fmt.Sprintf("The file reference doesn't exist or is not accessible: [%s]\n", fullPathFile)
-				runnerLog.log()
+				runnerLog.Msg = fmt.Sprintf("The file reference doesn't exist or is not accessible: [%s]", fullPathFile)
+				runnerLog.log(err)
 			}
 			inputData.data = []byte(fullPathFile)
 
@@ -409,8 +408,8 @@ func processMessage(msg *kafka.Message,
 			err := ioutil.WriteFile(fullPathFile, msg.Value, 0644)
 			if err != nil {
 				runnerLog.Status = "Failed"
-				runnerLog.Msg = fmt.Sprintf("Unable to write the embedded data to file [%s] with error: %v\n", fullPathFile, err)
-				runnerLog.log()
+				runnerLog.Msg = fmt.Sprintf("Unable to write the embedded data to file [%s]", fullPathFile)
+				runnerLog.log(err)
 			}
 
 			inputData.data = []byte(fullPathFile)
@@ -445,8 +444,8 @@ func produceOutputMessage(fileName string, topic string, data []byte) {
 	if err != nil {
 		runnerLog.Status = "Failed"
 		runnerLog.Type_ = "Local"
-		runnerLog.Msg = fmt.Sprintf("Failed to create Kafka message producer: %s\n", err)
-		runnerLog.log()
+		runnerLog.Msg = fmt.Sprintf("Failed to create Kafka message producer.", err)
+		runnerLog.log(err)
 
 		return
 	}
@@ -462,22 +461,22 @@ func produceOutputMessage(fileName string, topic string, data []byte) {
 				if m.TopicPartition.Error != nil {
 					runnerLog.Status = "Failed"
 					runnerLog.Type_ = "Runner"
-					runnerLog.Msg = fmt.Sprintf("Delivery failed for output: %v\n", m.TopicPartition)
-					runnerLog.log()
+					runnerLog.Msg = fmt.Sprintf("Delivery failed for output: %v", m.TopicPartition.Topic)
+					runnerLog.log(m.TopicPartition.Error)
 				} else {
 					runnerLog.Status = "Success"
 					runnerLog.Type_ = "Runner"
-					runnerLog.Msg = fmt.Sprintf("Delivered message to topic %s [%d] at offset %v\n",
+					runnerLog.Msg = fmt.Sprintf("Delivered message to topic %s [%d] at offset %v",
 						*m.TopicPartition.Topic, m.TopicPartition.Partition, m.TopicPartition.Offset)
-					runnerLog.log()
+					runnerLog.log(nil)
 				}
 				return
 
 			default:
 
 				runnerLog.Type_ = "Local"
-				runnerLog.Msg = fmt.Sprintf("Ignored event: %s\n", ev)
-				runnerLog.log()
+				runnerLog.Msg = fmt.Sprintf("Ignored event: %s", ev)
+				runnerLog.log(nil)
 			}
 		}
 	}()
