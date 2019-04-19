@@ -23,8 +23,8 @@ func startConsumers() {
 
 	// Create the base log message
 	runnerLog := logMessage{
-		Type_:  "Runner",
-		Status: "Started",
+		Type_:   "Runner",
+		Status:  "Started",
 		Version: "1",
 		Data: map[string]interface{}{
 			"EndpointOwnerUserName": config.EndpointOwnerUserName,
@@ -136,8 +136,8 @@ func waitForMessages(c *kafka.Consumer, topicInputs topicInputs) {
 
 	// Create the base log message
 	runnerLog := logMessage{
-		Type_:  "Runner",
-		Status: "Started",
+		Type_:   "Runner",
+		Status:  "Started",
 		Version: "1",
 		Data: map[string]interface{}{
 			"EndpointOwnerUserName": config.EndpointOwnerUserName,
@@ -159,6 +159,7 @@ func waitForMessages(c *kafka.Consumer, topicInputs topicInputs) {
 	offsets := make(map[string]kafka.TopicPartition)
 
 	waiting := true
+	firstPoll := true
 
 	for waiting == true {
 		select {
@@ -175,6 +176,10 @@ func waitForMessages(c *kafka.Consumer, topicInputs topicInputs) {
 
 			ev := c.Poll(100)
 			if ev == nil {
+				if firstPoll {
+					healthy = true
+					firstPoll = false
+				}
 				continue
 			}
 
@@ -261,10 +266,6 @@ func waitForMessages(c *kafka.Consumer, topicInputs topicInputs) {
 				runnerLog.Msg = fmt.Sprintf("%v\n", e)
 				runnerLog.log()
 				c.Unassign()
-			case kafka.PartitionEOF:
-				healthy = true
-				runnerLog.Msg = fmt.Sprintf("Reached %v\n", e)
-				runnerLog.log()
 			case kafka.Error:
 				runnerLog.Msg = fmt.Sprintf("Kafka Error: %v\n", e)
 				runnerLog.log()
@@ -287,8 +288,8 @@ func processMessage(msg *kafka.Message,
 
 	// Create the base log message
 	runnerLog := logMessage{
-		Type_:  "Runner",
-		Status: "Started",
+		Type_:   "Runner",
+		Status:  "Started",
 		Version: "1",
 		Data: map[string]interface{}{
 			"EndpointOwnerUserName": config.EndpointOwnerUserName,
@@ -424,8 +425,8 @@ func produceOutputMessage(fileName string, topic string, data []byte) {
 
 	// Create the base log message
 	runnerLog := logMessage{
-		Type_:  "Runner",
-		Status: "Started",
+		Type_:   "Runner",
+		Status:  "Started",
 		Version: "1",
 		Data: map[string]interface{}{
 			"EndpointOwnerUserName": config.EndpointOwnerUserName,
