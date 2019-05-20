@@ -11,14 +11,19 @@
 package swagger
 
 type DataConnectorModel struct {
-
 	Id int32 `json:"id,omitempty"`
 
 	DataConnectorType string `json:"dataConnectorType,omitempty"`
 
 	Name string `json:"name,omitempty"`
 
+	IconUrl string `json:"iconUrl,omitempty"`
+
+	Author string `json:"author,omitempty"`
+
 	Description string `json:"description,omitempty"`
+
+	Versions []DataConnectorVersionModel `json:"versions"`
 
 	Url string `json:"url,omitempty"`
 

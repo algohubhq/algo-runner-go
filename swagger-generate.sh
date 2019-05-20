@@ -16,6 +16,7 @@ cp ./algorun-go-client/algo_output_model.go ./swagger/
 cp ./algorun-go-client/pipe_model.go ./swagger/
 cp ./algorun-go-client/pipeline_data_connector_model.go ./swagger/
 cp ./algorun-go-client/data_connector_model.go ./swagger/
+cp ./algorun-go-client/data_connector_version_model.go ./swagger/
 cp ./algorun-go-client/data_connector_option_model.go ./swagger/
 cp ./algorun-go-client/algo_config.go ./swagger/
 cp ./algorun-go-client/log_entry_model.go ./swagger/

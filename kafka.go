@@ -73,7 +73,8 @@ func startConsumers() {
 				case "DataSource":
 
 					if config.TopicConfigs[x].PipelineDataSourceName == pipe.PipelineDataSourceName &&
-						config.TopicConfigs[x].PipelineDataSourceIndex == pipe.PipelineDataSourceIndex {
+						config.TopicConfigs[x].PipelineDataSourceIndex == pipe.PipelineDataSourceIndex &&
+						config.TopicConfigs[x].TopicName == pipe.PipelineDataSourceTopicName {
 						topicConfig = config.TopicConfigs[x]
 						break
 					}

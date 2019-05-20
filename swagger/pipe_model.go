@@ -18,6 +18,8 @@ type PipeModel struct {
 
 	PipelineDataSourceName string `json:"pipelineDataSourceName,omitempty"`
 
+	PipelineDataSourceTopicName string `json:"pipelineDataSourceTopicName,omitempty"`
+
 	PipelineDataSourceIndex int32 `json:"pipelineDataSourceIndex,omitempty"`
 
 	SourceAlgoOwnerName string `json:"sourceAlgoOwnerName,omitempty"`

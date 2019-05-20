@@ -16,9 +16,13 @@ import (
 
 type LogEntryModel struct {
 
+	Version string `json:"version,omitempty"`
+
 	Level string `json:"level,omitempty"`
 
 	Type_ string `json:"type,omitempty"`
+
+	Logger string `json:"logger,omitempty"`
 
 	Ts time.Time `json:"ts,omitempty"`
 
@@ -26,11 +30,11 @@ type LogEntryModel struct {
 
 	RunId string `json:"runId,omitempty"`
 
-	IsError bool `json:"isError,omitempty"`
-
 	Msg string `json:"msg,omitempty"`
 
-	Version string `json:"version,omitempty"`
+	IsError bool `json:"isError,omitempty"`
+
+	Error_ string `json:"error,omitempty"`
 
 	Data map[string]interface{} `json:"data,omitempty"`
 }
