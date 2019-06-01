@@ -10,7 +10,7 @@
 
 package swagger
 
-type RunnerConfig struct {
+type AlgoRunnerConfig struct {
 
 	EndpointOwnerUserName string `json:"endpointOwnerUserName,omitempty"`
 

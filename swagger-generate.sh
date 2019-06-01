@@ -4,7 +4,7 @@
 java -jar ./swagger-codegen-cli.jar generate -i https://localhost:5443/swagger/v1/swagger.json -Dio.swagger.parser.util.RemoteUrl.trustAll=true -l go -o algorun-go-client
 
 mkdir -p ./swagger/
-cp ./algorun-go-client/runner_config.go ./swagger/
+cp ./algorun-go-client/algo_runner_config.go ./swagger/
 cp ./algorun-go-client/algo_param_model.go ./swagger/
 cp ./algorun-go-client/topic_config_model.go ./swagger/
 cp ./algorun-go-client/topic_param_model.go ./swagger/

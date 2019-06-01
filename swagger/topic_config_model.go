@@ -12,21 +12,11 @@ package swagger
 
 type TopicConfigModel struct {
 
-	PipeType string `json:"pipeType,omitempty"`
+	NodeType string `json:"nodeType,omitempty"`
 
-	EndpointConnectorOutputName string `json:"endpointConnectorOutputName,omitempty"`
+	SourceName string `json:"sourceName,omitempty"`
 
-	PipelineDataSourceName string `json:"pipelineDataSourceName,omitempty"`
-
-	PipelineDataSourceIndex int32 `json:"pipelineDataSourceIndex,omitempty"`
-
-	AlgoOwnerName string `json:"algoOwnerName,omitempty"`
-
-	AlgoName string `json:"algoName,omitempty"`
-
-	AlgoIndex int32 `json:"algoIndex,omitempty"`
-
-	AlgoOutputName string `json:"algoOutputName,omitempty"`
+	SourceOutputName string `json:"sourceOutputName,omitempty"`
 
 	TopicAutoName bool `json:"topicAutoName,omitempty"`
 

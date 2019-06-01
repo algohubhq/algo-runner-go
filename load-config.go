@@ -7,7 +7,7 @@ import (
 	"io/ioutil"
 )
 
-func loadConfigFromFile(fileName string) swagger.RunnerConfig {
+func loadConfigFromFile(fileName string) swagger.AlgoRunnerConfig {
 
 	// Create the base log message
 	localLog := logMessage{
@@ -23,7 +23,7 @@ func loadConfigFromFile(fileName string) swagger.RunnerConfig {
 		localLog.log(err)
 	}
 
-	var c swagger.RunnerConfig
+	var c swagger.AlgoRunnerConfig
 	jsonErr := json.Unmarshal(raw, &c)
 
 	if jsonErr != nil {
@@ -36,7 +36,7 @@ func loadConfigFromFile(fileName string) swagger.RunnerConfig {
 
 }
 
-func loadConfigFromString(jsonConfig string) swagger.RunnerConfig {
+func loadConfigFromString(jsonConfig string) swagger.AlgoRunnerConfig {
 
 	// Create the base log message
 	localLog := logMessage{
@@ -45,7 +45,7 @@ func loadConfigFromString(jsonConfig string) swagger.RunnerConfig {
 		Version: "1",
 	}
 
-	var c swagger.RunnerConfig
+	var c swagger.AlgoRunnerConfig
 	jsonErr := json.Unmarshal([]byte(jsonConfig), &c)
 
 	if jsonErr != nil {

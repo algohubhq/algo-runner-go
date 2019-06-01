@@ -158,6 +158,8 @@ func runExec(runID string,
 
 	outputWatcher := newOutputWatcher()
 
+	algoName := fmt.Sprintf("%s/%s:%s[%d]", config.AlgoOwnerUserName, config.AlgoName, config.AlgoVersionTag, config.AlgoIndex)
+
 	// Set the arguments for the output
 	for _, output := range config.Outputs {
 
@@ -166,10 +168,9 @@ func runExec(runID string,
 
 		// Check to see if there are any mapped routes for this output and get the message data type
 		for i := range config.Pipes {
-			if config.Pipes[i].SourceAlgoOwnerName == config.AlgoOwnerUserName &&
-				config.Pipes[i].SourceAlgoName == config.AlgoName {
+			if config.Pipes[i].SourceName == algoName {
 				handleOutput = true
-				outputMessageDataType = config.Pipes[i].SourceAlgoOutputMessageDataType
+				outputMessageDataType = config.Pipes[i].SourceOutputMessageDataType
 				break
 			}
 		}
@@ -297,7 +298,7 @@ func runExec(runID string,
 
 }
 
-func getCommand(config swagger.RunnerConfig) []string {
+func getCommand(config swagger.AlgoRunnerConfig) []string {
 
 	cmd := strings.Split(config.Entrypoint, " ")
 
@@ -311,7 +312,7 @@ func getCommand(config swagger.RunnerConfig) []string {
 	return cmd
 }
 
-func getEnvironment(config swagger.RunnerConfig) []string {
+func getEnvironment(config swagger.AlgoRunnerConfig) []string {
 
 	env := strings.Split(config.Entrypoint, " ")
 

@@ -19,7 +19,7 @@ var log logr.Logger
 var healthy bool
 var instanceName *string
 var kafkaBrokers *string
-var config swagger.RunnerConfig
+var config swagger.AlgoRunnerConfig
 var logTopic *string
 
 var runID string

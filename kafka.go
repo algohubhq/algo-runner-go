@@ -39,17 +39,16 @@ func startConsumers() {
 
 	topicInputs := make(topicInputs)
 	var topics []string
+	algoName := fmt.Sprintf("%s/%s:%s[%d]", config.AlgoOwnerUserName, config.AlgoName, config.AlgoVersionTag, config.AlgoIndex)
 
 	for _, pipe := range config.Pipes {
 
-		if pipe.DestAlgoOwnerName == config.AlgoOwnerUserName &&
-			pipe.DestAlgoName == config.AlgoName &&
-			pipe.DestAlgoIndex == config.AlgoIndex {
+		if pipe.DestName == algoName {
 
 			var input swagger.AlgoInputModel
 			// Get the input associated with this route
 			for i := range config.Inputs {
-				if config.Inputs[i].Name == pipe.DestAlgoInputName {
+				if config.Inputs[i].Name == pipe.DestInputName {
 					input = config.Inputs[i]
 					break
 				}
@@ -58,36 +57,11 @@ func startConsumers() {
 			var topicConfig swagger.TopicConfigModel
 			// Get the topic config associated with this route
 			for x := range config.TopicConfigs {
-
-				switch pipeType := pipe.PipeType; pipeType {
-				case "Algo":
-
-					if config.TopicConfigs[x].AlgoOwnerName == pipe.SourceAlgoOwnerName &&
-						config.TopicConfigs[x].AlgoName == pipe.SourceAlgoName &&
-						config.TopicConfigs[x].AlgoIndex == pipe.SourceAlgoIndex &&
-						config.TopicConfigs[x].AlgoOutputName == pipe.SourceAlgoOutputName {
-						topicConfig = config.TopicConfigs[x]
-						break
-					}
-
-				case "DataSource":
-
-					if config.TopicConfigs[x].PipelineDataSourceName == pipe.PipelineDataSourceName &&
-						config.TopicConfigs[x].PipelineDataSourceIndex == pipe.PipelineDataSourceIndex &&
-						config.TopicConfigs[x].TopicName == pipe.PipelineDataSourceTopicName {
-						topicConfig = config.TopicConfigs[x]
-						break
-					}
-
-				case "EndpointConnector":
-
-					if config.TopicConfigs[x].EndpointConnectorOutputName == pipe.PipelineEndpointConnectorOutputName {
-						topicConfig = config.TopicConfigs[x]
-						break
-					}
-
+				if config.TopicConfigs[x].SourceName == pipe.SourceName &&
+					config.TopicConfigs[x].SourceOutputName == pipe.SourceOutputName {
+					topicConfig = config.TopicConfigs[x]
+					break
 				}
-
 			}
 
 			// Replace the endpoint username and name in the topic string
