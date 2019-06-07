@@ -37,7 +37,7 @@ func runExec(runID string,
 		},
 	}
 
-	// startTime := time.Now().UTC()
+	startTime := time.Now()
 
 	command := getCommand(config)
 
@@ -260,8 +260,6 @@ func runExec(runID string,
 		timer.Stop()
 	}
 
-	// execDuration := time.Since(startTime)
-
 	if cmdErr != nil {
 
 		algoLog.Status = "Failed"
@@ -269,28 +267,30 @@ func runExec(runID string,
 		algoLog.Msg = fmt.Sprintf("Stdout: %s | Stderr: %s", stdout, stderr)
 		algoLog.log(cmdErr)
 
-		return cmdErr
+	} else {
+
+		if sendStdOut {
+			stdoutTopic := strings.ToLower(fmt.Sprintf("algorun.%s.%s.algo.%s.%s.%d.output.stdout",
+				config.EndpointOwnerUserName,
+				config.EndpointName,
+				config.AlgoOwnerUserName,
+				config.AlgoName,
+				config.AlgoIndex))
+
+			// Write to stdout output topic
+			fileName, _ := uuid.NewV4()
+			produceOutputMessage(fileName.String(), stdoutTopic, stdout)
+		}
+
+		// Write completion to log topic
+		algoLog.Status = "Success"
+		algoLog.Msg = fmt.Sprintf("Stdout: %s | Stderr: %s", stdout, stderr)
+		algoLog.log(nil)
 
 	}
 
-	if sendStdOut {
-		stdoutTopic := strings.ToLower(fmt.Sprintf("algorun.%s.%s.algo.%s.%s.%d.output.stdout",
-			config.EndpointOwnerUserName,
-			config.EndpointName,
-			config.AlgoOwnerUserName,
-			config.AlgoName,
-			config.AlgoIndex))
-
-		// Write to stdout output topic
-		fileName, _ := uuid.NewV4()
-		produceOutputMessage(fileName.String(), stdoutTopic, stdout)
-	}
-
-	// Write completion to log topic
-	algoLog.Status = "Success"
-	// algoLog.AlgoLogData.RuntimeMs = int64(execDuration / time.Millisecond)
-	algoLog.Msg = fmt.Sprintf("Stdout: %s | Stderr: %s", stdout, stderr)
-	algoLog.log(nil)
+	execDuration := time.Since(startTime)
+	algoRuntimeHistogram.WithLabelValues(endpointLabel, algoLabel, algoLog.Status).Observe(execDuration.Seconds())
 
 	outputWatcher.closeOutputWatcher()
 

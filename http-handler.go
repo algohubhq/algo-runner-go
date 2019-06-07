@@ -2,9 +2,11 @@ package main
 
 import (
 	"net/http"
+
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
-func createHealthHandler() {
+func createHTTPHandler() {
 
 	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		defer r.Body.Close()
@@ -16,6 +18,7 @@ func createHealthHandler() {
 		}
 
 	})
+	http.Handle("/metrics", promhttp.Handler())
 
 	http.ListenAndServe(":10080", nil)
 

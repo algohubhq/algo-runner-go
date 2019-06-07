@@ -2,6 +2,7 @@ package main
 
 import (
 	"algo-runner-go/swagger"
+	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -13,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	uuid "github.com/nu7hatch/gouuid"
@@ -164,6 +166,8 @@ func waitForMessages(c *kafka.Consumer, topicInputs topicInputs) {
 
 				healthy = true
 
+				startTime := time.Now()
+
 				runnerLog.Msg = fmt.Sprintf("Kafka Message received on %s", e.TopicPartition)
 				runnerLog.log(nil)
 
@@ -220,10 +224,12 @@ func waitForMessages(c *kafka.Consumer, topicInputs topicInputs) {
 
 					} else {
 						runnerLog.Status = "Failed"
-						runnerLog.Msg = fmt.Sprintf("Failed to run Algo",
-							runError)
+						runnerLog.Msg = "Failed to run algo"
 						runnerLog.log(runError)
 					}
+
+					reqDuration := time.Since(startTime)
+					runnerRuntimeHistogram.WithLabelValues(endpointLabel, algoLabel, runnerLog.Status).Observe(reqDuration.Seconds())
 
 				} else {
 					// Save the offset for the data that was only stored but not executed
@@ -391,6 +397,8 @@ func processMessage(msg *kafka.Message,
 		}
 	}
 
+	bytesProcessedCounter.WithLabelValues(endpointLabel, algoLabel, runnerLog.Status).Add(float64(binary.Size(msg.Value)))
+
 	return
 
 }
@@ -419,7 +427,7 @@ func produceOutputMessage(fileName string, topic string, data []byte) {
 	if err != nil {
 		runnerLog.Status = "Failed"
 		runnerLog.Type_ = "Local"
-		runnerLog.Msg = fmt.Sprintf("Failed to create Kafka message producer.", err)
+		runnerLog.Msg = "Failed to create Kafka message producer."
 		runnerLog.log(err)
 
 		return

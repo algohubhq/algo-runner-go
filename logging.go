@@ -24,6 +24,15 @@ func (lm *logMessage) log(err error) {
 
 	// Send to local console and file
 	if err != nil {
+
+		// Increment the error metric
+		switch logType := strings.ToLower(lm.Type_); logType {
+		case "algo":
+			algoErrorCounter.WithLabelValues(endpointLabel, algoLabel).Inc()
+		case "runner":
+			runnerErrorCounter.WithLabelValues(endpointLabel, algoLabel).Inc()
+		}
+
 		log.Error(err,
 			lm.Msg,
 			"version", lm.Version,

@@ -13,3 +13,5 @@ import:
   version: ^1.9.1
 - package: github.com/go-logr/zapr
   version: ^0.1.1
+- package: github.com/prometheus/client_golang
+  version: ^0.9.4

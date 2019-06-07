@@ -13,16 +13,16 @@ import (
 	uuid "github.com/nu7hatch/gouuid"
 )
 
-var log logr.Logger
-
 // Global variables
-var healthy bool
-var instanceName *string
-var kafkaBrokers *string
-var config swagger.AlgoRunnerConfig
-var logTopic *string
-
-var runID string
+var (
+	log          logr.Logger
+	healthy      bool
+	instanceName *string
+	kafkaBrokers *string
+	config       swagger.AlgoRunnerConfig
+	logTopic     *string
+	runID        string
+)
 
 func main() {
 
@@ -107,6 +107,8 @@ func main() {
 		instanceName = instanceNamePtr
 	}
 
+	registerMetrics()
+
 	var wg sync.WaitGroup
 	wg.Add(1)
 
@@ -115,7 +117,7 @@ func main() {
 		wg.Done()
 	}()
 
-	createHealthHandler()
+	createHTTPHandler()
 
 	wg.Wait()
 

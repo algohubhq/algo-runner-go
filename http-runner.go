@@ -17,8 +17,6 @@ import (
 func runHTTP(runID string,
 	inputMap map[*swagger.AlgoInputModel][]InputData) (err error) {
 
-	// startTime := time.Now()
-
 	// Create the base message
 	algoLog := logMessage{
 		Type_:   "Algo",
@@ -75,6 +73,8 @@ func runHTTP(runID string,
 		u.RawQuery = q.Encode()
 
 		for _, data := range inputData {
+
+			startTime := time.Now()
 			request, reqErr := http.NewRequest(strings.ToUpper(input.HttpVerb), u.String(), bytes.NewReader(data.data))
 			if reqErr != nil {
 				algoLog.Status = "Failed"
@@ -84,14 +84,16 @@ func runHTTP(runID string,
 			}
 			response, errReq := netClient.Do(request)
 
-			// reqDuration := time.Since(startTime)
-			// algoLog.AlgoLogData.RuntimeMs = int64(reqDuration / time.Millisecond)
-
 			if errReq != nil {
 				algoLog.Status = "Failed"
 				algoLog.Msg = fmt.Sprintf("Error getting response from http server.")
 				algoLog.log(errReq)
+
+				reqDuration := time.Since(startTime)
+				algoRuntimeHistogram.WithLabelValues(endpointLabel, algoLabel, algoLog.Status).Observe(reqDuration.Seconds())
+
 				continue
+
 			} else {
 				defer response.Body.Close()
 				// TODO: Get the content type and parse the contents
@@ -103,6 +105,10 @@ func runHTTP(runID string,
 					algoLog.log(errRead)
 					continue
 				}
+
+				reqDuration := time.Since(startTime)
+				algoRuntimeHistogram.WithLabelValues(endpointLabel, algoLabel, algoLog.Status).Observe(reqDuration.Seconds())
+
 				if response.StatusCode == 200 {
 					// Send to output topic
 					fileName, _ := uuid.NewV4()
