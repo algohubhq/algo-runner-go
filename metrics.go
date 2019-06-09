@@ -41,8 +41,8 @@ var (
 
 func registerMetrics() {
 
-	endpointLabel = fmt.Sprintf("%s_%s", config.EndpointOwnerUserName, config.EndpointName)
-	algoLabel = fmt.Sprintf("%s_%s", config.AlgoOwnerUserName, config.AlgoName)
+	endpointLabel = fmt.Sprintf("%s/%s", config.EndpointOwnerUserName, config.EndpointName)
+	algoLabel = fmt.Sprintf("%s/%s", config.AlgoOwnerUserName, config.AlgoName)
 
 	prometheus.MustRegister(runnerRuntimeHistogram)
 	prometheus.MustRegister(algoRuntimeHistogram)
