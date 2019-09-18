@@ -15,7 +15,6 @@ RUN set -x \
         make \
         openssl-dev \
         tar \
-        cyrus-sasl \
         krb5-dev \
         perl \
         py-sphinx \
@@ -33,6 +32,8 @@ RUN set -x \
         --localstatedir=/var \
         --enable-plain \
         --enable-scram \
+        --enable-krb4 \
+        --enable-gssapi \
         --disable-cram \
         --disable-digest \
         --disable-ldapdb \
@@ -42,11 +43,11 @@ RUN set -x \
         --disable-srp \
         --disable-sql \
         --disable-login \
-        --disable-krb4 \
-        --with-gss_impl=mit \
+        --with-gss_impl=heimdal \
         --with-devrandom=/dev/urandom \
         --with-ldap=/usr \
         --with-saslauthd=/var/run/saslauthd \
+        --with-dblib=none \
         --mandir=/usr/share/man \
  && make -j1 \
  && make -j1 install \
@@ -58,7 +59,7 @@ RUN set -x \
     /var/tmp/* \
     /var/cache/apk/*
 
-FROM golang:1.10-alpine3.7 AS algorun-go-buildenv
+FROM golang:1.13.0-alpine3.10 AS algorun-go-buildenv
 
 # The default librdkafka version is the latest stable release on GitHub. You can
 # use the `--build-arg` argument for `docker build` to specify a different
@@ -66,7 +67,7 @@ FROM golang:1.10-alpine3.7 AS algorun-go-buildenv
 #
 # e.g.: docker build --build-arg LIBRDKAFKA_VERSION=4e7a46701ecce7297b2298885da980be7856e5f9
 #
-ARG LIBRDKAFKA_VERSION=v1.0.0
+ARG LIBRDKAFKA_VERSION=v1.1.0
 
 # Set the workdir to the full GOPATH of your project.
 WORKDIR $GOPATH/src/algo-runner-go
@@ -79,12 +80,12 @@ RUN apk add -U \
     curl \
     git \
     libevent \
-    libressl2.6-libcrypto \
-    libressl2.6-libssl \
     lz4-dev \
+    cyrus-sasl-dev \
     openssh \
     openssl \
     openssl-dev \
+    krb5-dev \
     python \
     yajl-dev \
     zlib-dev
