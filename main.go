@@ -10,7 +10,6 @@ import (
 
 	"github.com/go-logr/logr"
 
-	mc "github.com/minio/mc/cmd"
 	uuid "github.com/nu7hatch/gouuid"
 )
 
@@ -27,13 +26,14 @@ var (
 
 func main() {
 
-	mirrorArgs := string[]{
-		"mirror",
-		"localdir/",
-		"play/mybucket",
-	}
+	// mirrorArgs := []string{
+	// 	"mc",
+	// 	"mirror",
+	// 	"/home/mike/source/go/src/algo-runner-go/yo/",
+	// 	"play/mybucket",
+	// }
 
-	mc.Main(mirrorArgs)
+	// mc.Main(mirrorArgs)
 
 	healthy = false
 

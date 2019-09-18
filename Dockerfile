@@ -105,39 +105,6 @@ RUN cd $(mktemp -d) \
  && make -j \
  && make install
 
-# Add Glide
-RUN apk add --no-cache \
-        ca-certificates \
-        # https://github.com/Masterminds/glide#supported-version-control-systems
-        git mercurial subversion bzr \
-        openssh \
- && update-ca-certificates \
-    \
- # Install build dependencies
- && apk add --no-cache --virtual .build-deps \
-        curl make \
-    \
- # Download and unpack Glide sources
- && curl -L -o /tmp/glide.tar.gz \
-          https://github.com/Masterminds/glide/archive/v0.13.2.tar.gz \
- && tar -xzf /tmp/glide.tar.gz -C /tmp \
- && mkdir -p $GOPATH/src/github.com/Masterminds \
- && mv /tmp/glide-* $GOPATH/src/github.com/Masterminds/glide \
- && cd $GOPATH/src/github.com/Masterminds/glide \
-    \
- # Build and install Glide executable
- && make install \
-    \
- # Install Glide license
- && mkdir -p /usr/local/share/doc/glide \
- && cp LICENSE /usr/local/share/doc/glide/ \
-    \
- # Cleanup unnecessary files
- && apk del .build-deps \
- && rm -rf /var/cache/apk/* \
-           $GOPATH/src/* \
-           /tmp/*
-
 # Build a completely static binary, able to be used in a `scratch` container.
 # RUN go build -o /tmp/algo-runner-go -tags static_all
 
@@ -147,7 +114,6 @@ FROM algorun-go-buildenv as static-build
 RUN mkdir -p /go/src/algo-runner-go
 WORKDIR /go/src/algo-runner-go
 COPY . /go/src/algo-runner-go
-RUN glide up -v
 RUN CGO_ENABLED=1 GOOS=linux go build -tags static_all -ldflags "${ldflags}" -a -installsuffix cgo -o algo-runner-go .
 
 # Create the scratch container that only contains the algo-runner binary
