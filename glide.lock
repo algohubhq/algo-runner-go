@@ -1,12 +1,12 @@
-hash: 3a3cf28164879eaab165be6dd33aefa61b1a95309df02f27e2026249e6a5f290
-updated: 2019-06-07T10:19:11.199860317-07:00
+hash: 0f6f3ac665ad91847b2bb17114d5dbdc9b71d4c89fc5b4cd5547f41a68b9d98c
+updated: 2019-09-17T17:48:28.483094649-07:00
 imports:
 - name: github.com/beorn7/perks
-  version: 4b2b341e8d7715fae06375aa633dbb6e91b3fb46
+  version: 37c8de3658fcb183f997c4e13e8337516ab753e6
   subpackages:
   - quantile
 - name: github.com/confluentinc/confluent-kafka-go
-  version: ecccefd9ca31c656bd33471dc0d9293fcf3de99b
+  version: 48acc03b9ddd85b5c8c268b480d5a9a3d523b9ad
   subpackages:
   - kafka
 - name: github.com/go-logr/logr
@@ -14,7 +14,7 @@ imports:
 - name: github.com/go-logr/zapr
   version: 03f06a783fbb7dfaf3f629c7825480e43a7105e6
 - name: github.com/golang/protobuf
-  version: b285ee9cfc6c881bb20c0d8dc73370ea9b9ec90f
+  version: 822fe56949f5d56c9e2f02367c657e0e9b4d27d1
   subpackages:
   - proto
 - name: github.com/matttproud/golang_protobuf_extensions
@@ -28,24 +28,24 @@ imports:
   subpackages:
   - prometheus
   - prometheus/internal
-  - prometheus/promauto
   - prometheus/promhttp
 - name: github.com/prometheus/client_model
-  version: fd36f4220a901265f90734c3183c5f0c91daa0b8
+  version: 14fe0d1b01d4d5fc031dd4bec1823bd3ebbe8016
   subpackages:
   - go
 - name: github.com/prometheus/common
-  version: 17f5ca1748182ddf24fc33a5a7caaaf790a52fcc
+  version: 287d3e634a1e550c9e463dd7e5a75a422c614505
   subpackages:
   - expfmt
   - internal/bitbucket.org/ww/goautoneg
   - model
 - name: github.com/prometheus/procfs
-  version: 1de2bc567d78f4ff415fd103412f7e5ec9e8876b
+  version: de25ac347ef9305868b04dc42425c973b863b18c
   subpackages:
   - internal/fs
+  - internal/util
 - name: github.com/radovskyb/watcher
-  version: d8b41ca2397a9b5cfc26adb10edbbcde40187a87
+  version: f5989f8deca223d590d5a130c77ea375fe9fde30
 - name: go.uber.org/atomic
   version: df976f2515e274675050de7b3f42545de80594fd
 - name: go.uber.org/multierr
