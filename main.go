@@ -26,15 +26,6 @@ var (
 
 func main() {
 
-	// mirrorArgs := []string{
-	// 	"mc",
-	// 	"mirror",
-	// 	"/home/mike/source/go/src/algo-runner-go/yo/",
-	// 	"play/mybucket",
-	// }
-
-	// mc.Main(mirrorArgs)
-
 	healthy = false
 
 	// Create the base log message

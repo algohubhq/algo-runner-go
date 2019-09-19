@@ -116,7 +116,10 @@ WORKDIR /go/src/algo-runner-go
 COPY . /go/src/algo-runner-go
 RUN CGO_ENABLED=1 GOOS=linux go build -tags static_all -ldflags "${ldflags}" -a -installsuffix cgo -o algo-runner-go .
 
+FROM minio/mc as mc
+
 # Create the scratch container that only contains the algo-runner binary
 FROM busybox as final
 
+COPY --from=mc /usr/bin/mc /algo-runner/mc
 COPY --from=static-build /go/src/algo-runner-go/algo-runner-go /algo-runner/algo-runner

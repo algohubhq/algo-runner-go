@@ -5,12 +5,10 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"os"
-	"os/exec"
 	"os/signal"
-	"path"
 	"strings"
-	"sync"
 	"syscall"
 	"time"
 
@@ -37,11 +35,10 @@ func runExec(runID string,
 		},
 	}
 
+	execCmd := newExecCmd()
+	targetCmd := execCmd.targetCmd
+
 	startTime := time.Now()
-
-	command := getCommand(config)
-
-	targetCmd := exec.Command(command[0], command[1:]...)
 
 	sigchan := make(chan os.Signal)
 	signal.Notify(sigchan, syscall.SIGINT, syscall.SIGTERM)
@@ -61,17 +58,6 @@ func runExec(runID string,
 			}
 		}
 	}()
-
-	envs := getEnvironment(config)
-	if len(envs) > 0 {
-		//targetCmd.Env = envs
-	}
-
-	var stdout []byte
-	var stderr []byte
-	var cmdErr error
-
-	var wg sync.WaitGroup
 
 	// Write to the topic as error if no value
 	if inputMap == nil {
@@ -154,107 +140,26 @@ func runExec(runID string,
 		}
 	}
 
-	var sendStdOut bool
-
-	outputWatcher := newOutputWatcher()
-
-	algoName := fmt.Sprintf("%s/%s:%s[%d]", config.AlgoOwnerUserName, config.AlgoName, config.AlgoVersionTag, config.AlgoIndex)
-
-	// Set the arguments for the output
-	for _, output := range config.Outputs {
-
-		handleOutput := config.WriteAllOutputs
-		outputMessageDataType := "Embedded"
-
-		// Check to see if there are any mapped routes for this output and get the message data type
-		for i := range config.Pipes {
-			if config.Pipes[i].SourceName == algoName {
-				handleOutput = true
-				outputMessageDataType = config.Pipes[i].SourceOutputMessageDataType
-				break
-			}
-		}
-
-		if handleOutput {
-
-			switch outputDeliveryType := output.OutputDeliveryType; strings.ToLower(outputDeliveryType) {
-			case "fileparameter":
-
-				fileUUID, _ := uuid.NewV4()
-				fileID := strings.Replace(fileUUID.String(), "-", "", -1)
-
-				folder := path.Join("/data",
-					config.EndpointOwnerUserName,
-					config.EndpointName,
-					runID,
-					config.AlgoOwnerUserName,
-					config.AlgoName,
-					string(config.AlgoIndex),
-					output.Name)
-
-				fileFolder := path.Join(folder, fileID)
-				if _, err := os.Stat(folder); os.IsNotExist(err) {
-					os.MkdirAll(folder, os.ModePerm)
-				}
-				// Set the output parameter
-				if output.Parameter != "" {
-					targetCmd.Args = append(targetCmd.Args, output.Parameter)
-					targetCmd.Args = append(targetCmd.Args, fileFolder)
-				}
-
-				// Watch for a specific file.
-				outputWatcher.watch(fileFolder, config.AlgoIndex, &output, outputMessageDataType)
-
-			case "folderparameter":
-				// Watch folder for changes.
-
-				folder := path.Join("/data",
-					config.EndpointOwnerUserName,
-					config.EndpointName,
-					runID,
-					config.AlgoOwnerUserName,
-					config.AlgoName,
-					string(config.AlgoIndex),
-					output.Name)
-
-				if _, err := os.Stat(folder); os.IsNotExist(err) {
-					os.MkdirAll(folder, os.ModePerm)
-				}
-				// Set the output parameter
-				if output.Parameter != "" {
-					targetCmd.Args = append(targetCmd.Args, output.Parameter)
-					targetCmd.Args = append(targetCmd.Args, folder)
-				}
-
-				// Watch for a specific file.
-				outputWatcher.watch(folder, config.AlgoIndex, &output, outputMessageDataType)
-
-			case "stdout":
-				sendStdOut = true
-			}
-
-		}
+	stdout, err := targetCmd.StdoutPipe()
+	if err != nil {
+		// log.Fatal(err)
+	}
+	stderr, err := targetCmd.StderrPipe()
+	if err != nil {
+		// log.Fatal(err)
 	}
 
-	outputWatcher.start()
+	stdoutBytes, _ := ioutil.ReadAll(stdout)
+	fmt.Printf("%s\n", stdoutBytes)
 
-	wg.Add(1)
+	stderrBytes, _ := ioutil.ReadAll(stderr)
+	fmt.Printf("%s\n", stderrBytes)
 
-	go func() {
-		var b bytes.Buffer
-		targetCmd.Stderr = &b
+	if err := targetCmd.Start(); err != nil {
+		// log.Fatal(err)
+	}
 
-		defer wg.Done()
-
-		stdout, cmdErr = targetCmd.Output()
-
-		if b.Len() > 0 {
-			stderr = b.Bytes()
-		}
-		b.Reset()
-	}()
-
-	wg.Wait()
+	cmdErr := targetCmd.Wait()
 
 	if timer != nil {
 		timer.Stop()
@@ -269,7 +174,7 @@ func runExec(runID string,
 
 	} else {
 
-		if sendStdOut {
+		if execCmd.sendStdout {
 			stdoutTopic := strings.ToLower(fmt.Sprintf("algorun.%s.%s.algo.%s.%s.%d.output.stdout",
 				config.EndpointOwnerUserName,
 				config.EndpointName,
@@ -279,7 +184,7 @@ func runExec(runID string,
 
 			// Write to stdout output topic
 			fileName, _ := uuid.NewV4()
-			produceOutputMessage(fileName.String(), stdoutTopic, stdout)
+			produceOutputMessage(fileName.String(), stdoutTopic, stdoutBytes)
 		}
 
 		// Write completion to log topic
@@ -292,29 +197,6 @@ func runExec(runID string,
 	execDuration := time.Since(startTime)
 	algoRuntimeHistogram.WithLabelValues(endpointLabel, algoLabel, algoLog.Status).Observe(execDuration.Seconds())
 
-	outputWatcher.closeOutputWatcher()
-
 	return nil
 
-}
-
-func getCommand(config swagger.AlgoRunnerConfig) []string {
-
-	cmd := strings.Split(config.Entrypoint, " ")
-
-	for _, param := range config.AlgoParams {
-		cmd = append(cmd, param.Name)
-		if param.DataType.Name != "switch" {
-			cmd = append(cmd, param.Value)
-		}
-	}
-
-	return cmd
-}
-
-func getEnvironment(config swagger.AlgoRunnerConfig) []string {
-
-	env := strings.Split(config.Entrypoint, " ")
-
-	return env
 }

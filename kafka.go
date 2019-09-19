@@ -22,6 +22,12 @@ import (
 
 type topicInputs map[string]*swagger.AlgoInputModel
 
+func start() {
+	if config.ServerType == "serverless" {
+
+	}
+}
+
 func startConsumers() {
 
 	// Create the base log message
