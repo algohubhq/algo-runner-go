@@ -8,40 +8,40 @@ import (
 
 // Global metrics variables
 var (
-	endpointLabel string
+	deploymentLabel string
 	algoLabel     string
 
 	runnerRuntimeHistogram = prometheus.NewHistogramVec(prometheus.HistogramOpts{
 		Name:    "algorunner_run_duration_seconds",
 		Help:    "The complete message processing duration in seconds",
 		Buckets: []float64{0.005, 0.05, 0.25, 1},
-	}, []string{"endpoint", "algo", "status"})
+	}, []string{"deployment", "algo", "status"})
 
 	algoRuntimeHistogram = prometheus.NewHistogramVec(prometheus.HistogramOpts{
 		Name:    "algorunner_algo_duration_seconds",
 		Help:    "The algo run duration in seconds",
 		Buckets: []float64{0.005, 0.05, 0.25, 1, 2.5, 5, 7.5, 10, 20, 30},
-	}, []string{"endpoint", "algo", "status"})
+	}, []string{"deployment", "algo", "status"})
 
 	bytesProcessedCounter = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "algorunner_bytes_processed_total",
 		Help: "The total number of bytes processed by the runner",
-	}, []string{"endpoint", "algo", "status"})
+	}, []string{"deployment", "algo", "status"})
 
 	algoErrorCounter = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "algorunner_algo_error_total",
 		Help: "The total number of errors from the algo",
-	}, []string{"endpoint", "algo"})
+	}, []string{"deployment", "algo"})
 
 	runnerErrorCounter = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "algorunner_runner_error_total",
 		Help: "The total number of errors from the runner",
-	}, []string{"endpoint", "algo"})
+	}, []string{"deployment", "algo"})
 )
 
 func registerMetrics() {
 
-	endpointLabel = fmt.Sprintf("%s/%s", config.EndpointOwnerUserName, config.EndpointName)
+	deploymentLabel = fmt.Sprintf("%s/%s", config.DeploymentOwnerUserName, config.DeploymentName)
 	algoLabel = fmt.Sprintf("%s/%s", config.AlgoOwnerUserName, config.AlgoName)
 
 	prometheus.MustRegister(runnerRuntimeHistogram)

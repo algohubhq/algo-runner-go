@@ -12,9 +12,9 @@ package swagger
 
 type AlgoRunnerConfig struct {
 
-	EndpointOwnerUserName string `json:"endpointOwnerUserName,omitempty"`
+	DeploymentOwnerUserName string `json:"deploymentOwnerUserName,omitempty"`
 
-	EndpointName string `json:"endpointName,omitempty"`
+	DeploymentName string `json:"deploymentName,omitempty"`
 
 	PipelineOwnerUserName string `json:"pipelineOwnerUserName,omitempty"`
 

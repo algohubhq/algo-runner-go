@@ -14,7 +14,7 @@ import (
 
 type logMessage swagger.LogEntryModel
 
-func (lm *logMessage) log(err error) {
+func (lm *logMessage) log(errLog error) {
 
 	zapLog, err := newLogger(lm.Type_)
 	if err != nil {
@@ -23,17 +23,17 @@ func (lm *logMessage) log(err error) {
 	log = zapr.NewLogger(zapLog)
 
 	// Send to local console and file
-	if err != nil {
+	if errLog != nil {
 
 		// Increment the error metric
 		switch logType := strings.ToLower(lm.Type_); logType {
 		case "algo":
-			algoErrorCounter.WithLabelValues(endpointLabel, algoLabel).Inc()
+			algoErrorCounter.WithLabelValues(deploymentLabel, algoLabel).Inc()
 		case "runner":
-			runnerErrorCounter.WithLabelValues(endpointLabel, algoLabel).Inc()
+			runnerErrorCounter.WithLabelValues(deploymentLabel, algoLabel).Inc()
 		}
 
-		log.Error(err,
+		log.Error(errLog,
 			lm.Msg,
 			"version", lm.Version,
 			"type", lm.Type_,

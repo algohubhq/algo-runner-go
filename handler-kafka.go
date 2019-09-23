@@ -22,12 +22,6 @@ import (
 
 type topicInputs map[string]*swagger.AlgoInputModel
 
-func start() {
-	if config.ServerType == "serverless" {
-
-	}
-}
-
 func startConsumers() {
 
 	// Create the base log message
@@ -36,14 +30,16 @@ func startConsumers() {
 		Status:  "Started",
 		Version: "1",
 		Data: map[string]interface{}{
-			"EndpointOwnerUserName": config.EndpointOwnerUserName,
-			"EndpointName":          config.EndpointName,
-			"AlgoOwnerUserName":     config.AlgoOwnerUserName,
-			"AlgoName":              config.AlgoName,
-			"AlgoVersionTag":        config.AlgoVersionTag,
-			"AlgoInstanceName":      *instanceName,
+			"DeploymentOwnerUserName": config.DeploymentOwnerUserName,
+			"DeploymentName":          config.DeploymentName,
+			"AlgoOwnerUserName":       config.AlgoOwnerUserName,
+			"AlgoName":                config.AlgoName,
+			"AlgoVersionTag":          config.AlgoVersionTag,
+			"AlgoInstanceName":        *instanceName,
 		},
 	}
+
+	execRunner := newExecRunner()
 
 	topicInputs := make(topicInputs)
 	var topics []string
@@ -72,9 +68,9 @@ func startConsumers() {
 				}
 			}
 
-			// Replace the endpoint username and name in the topic string
-			topicName := strings.ToLower(strings.Replace(topicConfig.TopicName, "{endpointownerusername}", config.EndpointOwnerUserName, -1))
-			topicName = strings.ToLower(strings.Replace(topicName, "{endpointname}", config.EndpointName, -1))
+			// Replace the deployment username and name in the topic string
+			topicName := strings.ToLower(strings.Replace(topicConfig.TopicName, "{deploymentownerusername}", config.DeploymentOwnerUserName, -1))
+			topicName = strings.ToLower(strings.Replace(topicName, "{deploymentname}", config.DeploymentName, -1))
 
 			topicInputs[topicName] = &input
 			topics = append(topics, topicName)
@@ -87,8 +83,8 @@ func startConsumers() {
 	}
 
 	groupID := fmt.Sprintf("%s-%s-%s-%s",
-		config.EndpointOwnerUserName,
-		config.EndpointName,
+		config.DeploymentOwnerUserName,
+		config.DeploymentName,
 		config.AlgoOwnerUserName,
 		config.AlgoName)
 
@@ -112,11 +108,11 @@ func startConsumers() {
 
 	err = c.SubscribeTopics(topics, nil)
 
-	waitForMessages(c, topicInputs)
+	waitForMessages(c, execRunner, topicInputs)
 
 }
 
-func waitForMessages(c *kafka.Consumer, topicInputs topicInputs) {
+func waitForMessages(c *kafka.Consumer, execRunner *ExecRunner, topicInputs topicInputs) {
 
 	// Create the base log message
 	runnerLog := logMessage{
@@ -124,12 +120,12 @@ func waitForMessages(c *kafka.Consumer, topicInputs topicInputs) {
 		Status:  "Started",
 		Version: "1",
 		Data: map[string]interface{}{
-			"EndpointOwnerUserName": config.EndpointOwnerUserName,
-			"EndpointName":          config.EndpointName,
-			"AlgoOwnerUserName":     config.AlgoOwnerUserName,
-			"AlgoName":              config.AlgoName,
-			"AlgoVersionTag":        config.AlgoVersionTag,
-			"AlgoInstanceName":      *instanceName,
+			"DeploymentOwnerUserName": config.DeploymentOwnerUserName,
+			"DeploymentName":          config.DeploymentName,
+			"AlgoOwnerUserName":       config.AlgoOwnerUserName,
+			"AlgoName":                config.AlgoName,
+			"AlgoVersionTag":          config.AlgoVersionTag,
+			"AlgoInstanceName":        *instanceName,
 		},
 	}
 
@@ -193,7 +189,7 @@ func waitForMessages(c *kafka.Consumer, topicInputs topicInputs) {
 
 					var runError error
 					if strings.ToLower(config.ServerType) == "serverless" {
-						runError = runExec(runID, data[runID])
+						runError = execRunner.run(runID, data[runID])
 					} else if strings.ToLower(config.ServerType) == "http" {
 						runError = runHTTP(runID, data[runID])
 					}
@@ -235,7 +231,7 @@ func waitForMessages(c *kafka.Consumer, topicInputs topicInputs) {
 					}
 
 					reqDuration := time.Since(startTime)
-					runnerRuntimeHistogram.WithLabelValues(endpointLabel, algoLabel, runnerLog.Status).Observe(reqDuration.Seconds())
+					runnerRuntimeHistogram.WithLabelValues(deploymentLabel, algoLabel, runnerLog.Status).Observe(reqDuration.Seconds())
 
 				} else {
 					// Save the offset for the data that was only stored but not executed
@@ -278,12 +274,12 @@ func processMessage(msg *kafka.Message,
 		Status:  "Started",
 		Version: "1",
 		Data: map[string]interface{}{
-			"EndpointOwnerUserName": config.EndpointOwnerUserName,
-			"EndpointName":          config.EndpointName,
-			"AlgoOwnerUserName":     config.AlgoOwnerUserName,
-			"AlgoName":              config.AlgoName,
-			"AlgoVersionTag":        config.AlgoVersionTag,
-			"AlgoInstanceName":      *instanceName,
+			"DeploymentOwnerUserName": config.DeploymentOwnerUserName,
+			"DeploymentName":          config.DeploymentName,
+			"AlgoOwnerUserName":       config.AlgoOwnerUserName,
+			"AlgoName":                config.AlgoName,
+			"AlgoVersionTag":          config.AlgoVersionTag,
+			"AlgoInstanceName":        *instanceName,
 		},
 	}
 
@@ -403,7 +399,7 @@ func processMessage(msg *kafka.Message,
 		}
 	}
 
-	bytesProcessedCounter.WithLabelValues(endpointLabel, algoLabel, runnerLog.Status).Add(float64(binary.Size(msg.Value)))
+	bytesProcessedCounter.WithLabelValues(deploymentLabel, algoLabel, runnerLog.Status).Add(float64(binary.Size(msg.Value)))
 
 	return
 
@@ -417,12 +413,12 @@ func produceOutputMessage(fileName string, topic string, data []byte) {
 		Status:  "Started",
 		Version: "1",
 		Data: map[string]interface{}{
-			"EndpointOwnerUserName": config.EndpointOwnerUserName,
-			"EndpointName":          config.EndpointName,
-			"AlgoOwnerUserName":     config.AlgoOwnerUserName,
-			"AlgoName":              config.AlgoName,
-			"AlgoVersionTag":        config.AlgoVersionTag,
-			"AlgoInstanceName":      *instanceName,
+			"DeploymentOwnerUserName": config.DeploymentOwnerUserName,
+			"DeploymentName":          config.DeploymentName,
+			"AlgoOwnerUserName":       config.AlgoOwnerUserName,
+			"AlgoName":                config.AlgoName,
+			"AlgoVersionTag":          config.AlgoVersionTag,
+			"AlgoInstanceName":        *instanceName,
 		},
 	}
 
@@ -460,6 +456,10 @@ func produceOutputMessage(fileName string, topic string, data []byte) {
 					runnerLog.log(nil)
 				}
 				return
+			case kafka.Error:
+				runnerLog.Msg = fmt.Sprintf("Failed to deliver output message to Kafka: %v", e)
+				runnerLog.log(nil)
+				healthy = false
 
 			default:
 

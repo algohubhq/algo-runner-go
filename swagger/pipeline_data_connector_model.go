@@ -14,6 +14,8 @@ type PipelineDataConnectorModel struct {
 
 	DataConnector *DataConnectorModel `json:"dataConnector,omitempty"`
 
+	FullName string `json:"fullName,omitempty"`
+
 	DataConnectorVersionTag string `json:"dataConnectorVersionTag,omitempty"`
 
 	Index int32 `json:"index,omitempty"`

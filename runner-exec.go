@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/signal"
+	"path"
 	"strings"
 	"syscall"
 	"time"
@@ -15,7 +16,101 @@ import (
 	uuid "github.com/nu7hatch/gouuid"
 )
 
-func runExec(runID string,
+// ExecRunner holds the configuration for the external process and any file mirroring
+type ExecRunner struct {
+	command    []string
+	sendStdout bool
+}
+
+// New creates a new ExecRunner.
+func newExecRunner() *ExecRunner {
+
+	// Create the base log message
+	localLog := logMessage{
+		Type_:   "Data",
+		Status:  "Started",
+		Version: "1",
+		Data: map[string]interface{}{
+			"DeploymentOwnerUserName": config.DeploymentOwnerUserName,
+			"DeploymentName":          config.DeploymentName,
+			"AlgoOwnerUserName":       config.AlgoOwnerUserName,
+			"AlgoName":                config.AlgoName,
+			"AlgoVersionTag":          config.AlgoVersionTag,
+			"AlgoIndex":               config.AlgoIndex,
+			"AlgoInstanceName":        *instanceName,
+		},
+	}
+
+	command := getCommand(config)
+
+	envs := getEnvironment(config)
+	if len(envs) > 0 {
+		//targetCmd.Env = envs
+	}
+
+	algoName := fmt.Sprintf("%s/%s:%s[%d]", config.AlgoOwnerUserName, config.AlgoName, config.AlgoVersionTag, config.AlgoIndex)
+
+	outputHandler := newOutputHandler()
+	var sendStdout bool
+	// Set the arguments for the output
+	for _, output := range config.Outputs {
+
+		handleOutput := config.WriteAllOutputs
+		outputMessageDataType := "embedded"
+
+		// Check to see if there are any mapped routes for this output and get the message data type
+		for i := range config.Pipes {
+			if config.Pipes[i].SourceName == algoName {
+				handleOutput = true
+				outputMessageDataType = strings.ToLower(config.Pipes[i].SourceOutputMessageDataType)
+				break
+			}
+		}
+
+		if handleOutput {
+
+			if strings.ToLower(output.OutputDeliveryType) == "fileparameter" ||
+				strings.ToLower(output.OutputDeliveryType) == "folderparameter" {
+
+				// Watch folder for changes.
+
+				folder := path.Join("/output")
+
+				if _, err := os.Stat(folder); os.IsNotExist(err) {
+					err = os.MkdirAll(folder, os.ModePerm)
+					if err != nil {
+						localLog.Status = "Failed"
+						localLog.Msg = fmt.Sprintf("Failed to create output folder: %s\n", folder)
+						localLog.log(err)
+					}
+				}
+				// Set the output parameter
+				if output.Parameter != "" {
+					command = append(command, output.Parameter)
+					command = append(command, folder)
+				}
+
+				// Watch a folder folder
+				// start a mc exec command
+				go func() {
+					outputHandler.watch(folder, config.AlgoIndex, &output, outputMessageDataType)
+				}()
+
+			} else if strings.ToLower(output.OutputDeliveryType) == "stdout" {
+				sendStdout = true
+			}
+
+		}
+	}
+
+	return &ExecRunner{
+		command:    command,
+		sendStdout: sendStdout,
+	}
+
+}
+
+func (execRunner *ExecRunner) run(runID string,
 	inputMap map[*swagger.AlgoInputModel][]InputData) (err error) {
 
 	// Create the base message
@@ -24,19 +119,18 @@ func runExec(runID string,
 		Status:  "Started",
 		Version: "1",
 		Data: map[string]interface{}{
-			"RunId":                 runID,
-			"EndpointOwnerUserName": config.EndpointOwnerUserName,
-			"EndpointName":          config.EndpointName,
-			"AlgoOwnerUserName":     config.AlgoOwnerUserName,
-			"AlgoName":              config.AlgoName,
-			"AlgoVersionTag":        config.AlgoVersionTag,
-			"AlgoIndex":             config.AlgoIndex,
-			"AlgoInstanceName":      *instanceName,
+			"RunId":                   runID,
+			"DeploymentOwnerUserName": config.DeploymentOwnerUserName,
+			"DeploymentName":          config.DeploymentName,
+			"AlgoOwnerUserName":       config.AlgoOwnerUserName,
+			"AlgoName":                config.AlgoName,
+			"AlgoVersionTag":          config.AlgoVersionTag,
+			"AlgoIndex":               config.AlgoIndex,
+			"AlgoInstanceName":        *instanceName,
 		},
 	}
 
-	execCmd := newExecCmd()
-	targetCmd := execCmd.targetCmd
+	targetCmd := execRunner.newExecCmd()
 
 	startTime := time.Now()
 
@@ -174,10 +268,10 @@ func runExec(runID string,
 
 	} else {
 
-		if execCmd.sendStdout {
+		if execRunner.sendStdout {
 			stdoutTopic := strings.ToLower(fmt.Sprintf("algorun.%s.%s.algo.%s.%s.%d.output.stdout",
-				config.EndpointOwnerUserName,
-				config.EndpointName,
+				config.DeploymentOwnerUserName,
+				config.DeploymentName,
 				config.AlgoOwnerUserName,
 				config.AlgoName,
 				config.AlgoIndex))
@@ -195,8 +289,29 @@ func runExec(runID string,
 	}
 
 	execDuration := time.Since(startTime)
-	algoRuntimeHistogram.WithLabelValues(endpointLabel, algoLabel, algoLog.Status).Observe(execDuration.Seconds())
+	algoRuntimeHistogram.WithLabelValues(deploymentLabel, algoLabel, algoLog.Status).Observe(execDuration.Seconds())
 
 	return nil
 
+}
+
+func getCommand(config swagger.AlgoRunnerConfig) []string {
+
+	cmd := strings.Split(config.Entrypoint, " ")
+
+	for _, param := range config.AlgoParams {
+		cmd = append(cmd, param.Name)
+		if param.DataType.Name != "switch" {
+			cmd = append(cmd, param.Value)
+		}
+	}
+
+	return cmd
+}
+
+func getEnvironment(config swagger.AlgoRunnerConfig) []string {
+
+	env := strings.Split(config.Entrypoint, " ")
+
+	return env
 }

@@ -29,4 +29,6 @@ type MediaTypeModel struct {
 	RfcUrl string `json:"rfcUrl,omitempty"`
 
 	Url string `json:"url,omitempty"`
+
+	IconClass string `json:"iconClass,omitempty"`
 }

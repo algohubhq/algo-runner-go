@@ -23,14 +23,14 @@ func runHTTP(runID string,
 		Status:  "Started",
 		Version: "1",
 		Data: map[string]interface{}{
-			"RunId":                 runID,
-			"EndpointOwnerUserName": config.EndpointOwnerUserName,
-			"EndpointName":          config.EndpointName,
-			"AlgoOwnerUserName":     config.AlgoOwnerUserName,
-			"AlgoName":              config.AlgoName,
-			"AlgoVersionTag":        config.AlgoVersionTag,
-			"AlgoIndex":             config.AlgoIndex,
-			"AlgoInstanceName":      *instanceName,
+			"RunId":                   runID,
+			"DeploymentOwnerUserName": config.DeploymentOwnerUserName,
+			"DeploymentName":          config.DeploymentName,
+			"AlgoOwnerUserName":       config.AlgoOwnerUserName,
+			"AlgoName":                config.AlgoName,
+			"AlgoVersionTag":          config.AlgoVersionTag,
+			"AlgoIndex":               config.AlgoIndex,
+			"AlgoInstanceName":        *instanceName,
 		},
 	}
 
@@ -50,8 +50,8 @@ func runHTTP(runID string,
 	}
 
 	outputTopic := strings.ToLower(fmt.Sprintf("algorun.%s.%s.algo.%s.%s.%d.output.default",
-		config.EndpointOwnerUserName,
-		config.EndpointName,
+		config.DeploymentOwnerUserName,
+		config.DeploymentName,
 		config.AlgoOwnerUserName,
 		config.AlgoName,
 		config.AlgoIndex))
@@ -90,7 +90,7 @@ func runHTTP(runID string,
 				algoLog.log(errReq)
 
 				reqDuration := time.Since(startTime)
-				algoRuntimeHistogram.WithLabelValues(endpointLabel, algoLabel, algoLog.Status).Observe(reqDuration.Seconds())
+				algoRuntimeHistogram.WithLabelValues(deploymentLabel, algoLabel, algoLog.Status).Observe(reqDuration.Seconds())
 
 				continue
 
@@ -107,7 +107,7 @@ func runHTTP(runID string,
 				}
 
 				reqDuration := time.Since(startTime)
-				algoRuntimeHistogram.WithLabelValues(endpointLabel, algoLabel, algoLog.Status).Observe(reqDuration.Seconds())
+				algoRuntimeHistogram.WithLabelValues(deploymentLabel, algoLabel, algoLog.Status).Observe(reqDuration.Seconds())
 
 				if response.StatusCode == 200 {
 					// Send to output topic
