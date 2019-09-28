@@ -121,5 +121,5 @@ FROM minio/mc as mc
 # Create the scratch container that only contains the algo-runner binary
 FROM busybox as final
 
-COPY --from=mc /usr/bin/mc /algo-runner/mc
+COPY --from=mc /usr/bin/mc /usr/bin/mc
 COPY --from=static-build /go/src/algo-runner-go/algo-runner-go /algo-runner/algo-runner
