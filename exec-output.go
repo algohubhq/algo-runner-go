@@ -112,7 +112,12 @@ func (outputHandler *ExecOutputHandler) newCmd(src string, outputMessageDataType
 		},
 	}
 
-	cmd := exec.Command("mc")
+	mcPath := os.Getenv("MC_PATH")
+	if mcPath == "" {
+		mcPath = "mc"
+	}
+
+	cmd := exec.Command(mcPath)
 
 	// If the output is embedded, run a watch, otherwise run a mirror
 	if outputMessageDataType == "embedded" {
