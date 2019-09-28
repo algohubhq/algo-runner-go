@@ -271,7 +271,6 @@ func (output *output) start() {
 			localLog.Status = "Failed"
 			localLog.Msg = fmt.Sprintf("mc command stderr. [%s]", m)
 			localLog.log(nil)
-			fmt.Println(m)
 		}
 	}()
 
@@ -300,6 +299,8 @@ func (output *output) start() {
 	localLog.Status = "Terminated"
 	localLog.Msg = fmt.Sprintf("mc Terminated unexpectedly!")
 	localLog.log(nil)
+
+	os.Exit(1)
 
 	return
 
