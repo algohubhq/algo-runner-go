@@ -98,7 +98,7 @@ func (outputHandler *ExecOutputHandler) newCmd(src string, outputMessageDataType
 
 	// Create the base log message
 	localLog := logMessage{
-		Type_:   "Data",
+		Type_:   "Runner",
 		Status:  "Started",
 		Version: "1",
 		Data: map[string]interface{}{
@@ -155,7 +155,7 @@ func (output *output) start() {
 
 	// Create the base log message
 	localLog := logMessage{
-		Type_:   "Data",
+		Type_:   "Runner",
 		Status:  "Started",
 		Version: "1",
 		Data: map[string]interface{}{
