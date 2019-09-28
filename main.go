@@ -22,6 +22,7 @@ var (
 	config       swagger.AlgoRunnerConfig
 	logTopic     *string
 	runID        string
+	execRunner   *ExecRunner
 )
 
 func main() {
@@ -116,6 +117,10 @@ func main() {
 		startConsumers()
 		wg.Done()
 	}()
+
+	if strings.ToLower(config.ServerType) == "serverless" {
+		execRunner = newExecRunner()
+	}
 
 	createHTTPHandler()
 

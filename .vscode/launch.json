@@ -10,7 +10,9 @@
             "request": "launch",
             "mode": "auto",
             "program": "${workspaceFolder}",
-            "env": {},
+            "env": {
+                "MC_HOST_algorun": "http://minio:minio123@192.168.99.100:30900"
+            },
             "args": [
                 // "--config", "../algo-test-go/runner-tests-test-image-resize-delimitedfilein-folderout.json",
                  "--config", "../algo-test-go/runner-tests-test-image-resize-filein-fileout.json",

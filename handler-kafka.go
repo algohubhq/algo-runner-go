@@ -39,8 +39,6 @@ func startConsumers() {
 		},
 	}
 
-	execRunner := newExecRunner()
-
 	topicInputs := make(topicInputs)
 	var topics []string
 	algoName := fmt.Sprintf("%s/%s:%s[%d]", config.AlgoOwnerUserName, config.AlgoName, config.AlgoVersionTag, config.AlgoIndex)
@@ -108,11 +106,11 @@ func startConsumers() {
 
 	err = c.SubscribeTopics(topics, nil)
 
-	waitForMessages(c, execRunner, topicInputs)
+	waitForMessages(c, topicInputs)
 
 }
 
-func waitForMessages(c *kafka.Consumer, execRunner *ExecRunner, topicInputs topicInputs) {
+func waitForMessages(c *kafka.Consumer, topicInputs topicInputs) {
 
 	// Create the base log message
 	runnerLog := logMessage{

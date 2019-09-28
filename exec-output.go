@@ -4,6 +4,7 @@ import (
 	"algo-runner-go/swagger"
 	"bufio"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -50,12 +51,18 @@ type mirrorMessage struct {
 	TotalSize  int64  `json:"totalSize"`
 }
 
+// causeMessage container for golang error messages
+type causeMessage struct {
+	Message string `json:"message"`
+	Error   error  `json:"error"`
+}
+
 // errorMessage container for error messages
 type errorMessage struct {
 	Status string `json:"status"`
 	Error  struct {
 		Message   string            `json:"message"`
-		Cause     string            `json:"cause"`
+		Cause     causeMessage      `json:"cause"`
 		Type      string            `json:"type"`
 		CallTrace string            `json:"trace,omitempty"`
 		SysInfo   map[string]string `json:"sysinfo"`
@@ -73,7 +80,7 @@ func newOutputHandler() *ExecOutputHandler {
 
 func (outputHandler *ExecOutputHandler) watch(fileFolder string, algoIndex int32, algoOutput *swagger.AlgoOutputModel, outputMessageDataType string) (err error) {
 
-	execCmd := outputHandler.newCmd(fileFolder, "/output-dest", outputMessageDataType)
+	execCmd := outputHandler.newCmd(fileFolder, outputMessageDataType)
 	outputHandler.outputs[fileFolder] = &output{
 		execCmd:               execCmd,
 		algoOutput:            algoOutput,
@@ -87,7 +94,23 @@ func (outputHandler *ExecOutputHandler) watch(fileFolder string, algoIndex int32
 
 }
 
-func (outputHandler *ExecOutputHandler) newCmd(src string, dest string, outputMessageDataType string) (execCmd *exec.Cmd) {
+func (outputHandler *ExecOutputHandler) newCmd(src string, outputMessageDataType string) (execCmd *exec.Cmd) {
+
+	// Create the base log message
+	localLog := logMessage{
+		Type_:   "Data",
+		Status:  "Started",
+		Version: "1",
+		Data: map[string]interface{}{
+			"DeploymentOwnerUserName": config.DeploymentOwnerUserName,
+			"DeploymentName":          config.DeploymentName,
+			"AlgoOwnerUserName":       config.AlgoOwnerUserName,
+			"AlgoName":                config.AlgoName,
+			"AlgoVersionTag":          config.AlgoVersionTag,
+			"AlgoIndex":               config.AlgoIndex,
+			"AlgoInstanceName":        *instanceName,
+		},
+	}
 
 	cmd := exec.Command("mc")
 
@@ -95,7 +118,28 @@ func (outputHandler *ExecOutputHandler) newCmd(src string, dest string, outputMe
 	if outputMessageDataType == "embedded" {
 		cmd.Args = append(cmd.Args, "watch", "--json", "--quiet", src)
 	} else {
-		cmd.Args = append(cmd.Args, "mirror", "--json", "--quiet", "-w", src, dest)
+
+		// The destination for the mc command uses an alias called "algorun" which is
+		// mapped from an environment variable ex:
+		// export MC_HOST_algorun=https://Q3AM3UQ867SPQQA43P2F:zuf+tfteSlswRu7BJ86wekitnifILbZam1KYY3TG@my.min.io
+		// The bucket name is the deployment name
+
+		// Ensure the envvar exists
+		bucketAlias := os.Getenv("MC_HOST_algorun")
+		if bucketAlias != "" {
+			destBucket := strings.ToLower(fmt.Sprintf("algorun/%s/%s",
+				config.DeploymentOwnerUserName,
+				config.DeploymentName))
+
+			cmd.Args = append(cmd.Args, "mirror", "--json", "--quiet", "-w", src, destBucket)
+		} else {
+			localLog.Status = "Failed"
+			localLog.Msg = "The mc alias is required for any file replication. Shutting down..."
+			localLog.log(errors.New("MC_HOST_algorun environment variable missing"))
+
+			os.Exit(1)
+		}
+
 	}
 
 	return cmd
@@ -165,10 +209,10 @@ func (output *output) start() {
 				if jsonErr != nil || wm.Status == "error" || wm.Status == "" {
 					if wm.Status != "" {
 						var em errorMessage
-						jsonErr := json.Unmarshal(m, &em)
+						_ = json.Unmarshal(m, &em)
 						localLog.Status = "Failed"
-						localLog.Msg = fmt.Sprintf("mc watch command error. [%s]", em.Error.Message)
-						localLog.log(jsonErr)
+						localLog.Msg = fmt.Sprintf("mc watch command error. [%s]", em.Error)
+						localLog.log(em.Error.Cause.Error)
 					}
 				}
 
@@ -193,10 +237,10 @@ func (output *output) start() {
 
 					if mm.Status != "" {
 						var em errorMessage
-						jsonErr := json.Unmarshal(m, &em)
+						_ = json.Unmarshal(m, &em)
 						localLog.Status = "Failed"
-						localLog.Msg = fmt.Sprintf("mc watch command error. [%s]", em.Error.Message)
-						localLog.log(jsonErr)
+						localLog.Msg = fmt.Sprintf("mc mirror command error. [%s]", em.Error)
+						localLog.log(em.Error.Cause.Error)
 					}
 
 				} else {
@@ -224,7 +268,9 @@ func (output *output) start() {
 		scanner := bufio.NewScanner(stderrIn)
 		for scanner.Scan() {
 			m := scanner.Text()
-
+			localLog.Status = "Failed"
+			localLog.Msg = fmt.Sprintf("mc command stderr. [%s]", m)
+			localLog.log(nil)
 			fmt.Println(m)
 		}
 	}()

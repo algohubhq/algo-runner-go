@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"os/exec"
 	"os/signal"
 	"path"
 	"strings"
@@ -18,8 +19,9 @@ import (
 
 // ExecRunner holds the configuration for the external process and any file mirroring
 type ExecRunner struct {
-	command    []string
-	sendStdout bool
+	command        []string
+	fileParameters map[string]string
+	sendStdout     bool
 }
 
 // New creates a new ExecRunner.
@@ -52,6 +54,8 @@ func newExecRunner() *ExecRunner {
 
 	outputHandler := newOutputHandler()
 	var sendStdout bool
+	fileParameters := make(map[string]string)
+
 	// Set the arguments for the output
 	for _, output := range config.Outputs {
 
@@ -84,10 +88,18 @@ func newExecRunner() *ExecRunner {
 						localLog.log(err)
 					}
 				}
-				// Set the output parameter
-				if output.Parameter != "" {
-					command = append(command, output.Parameter)
-					command = append(command, folder)
+
+				if strings.ToLower(output.OutputDeliveryType) == "fileparameter" {
+					// Set the output folder name parameter
+					if output.Parameter != "" {
+						fileParameters[output.Parameter] = folder
+					}
+				} else if strings.ToLower(output.OutputDeliveryType) == "folderparameter" {
+					// Set the output folder name parameter
+					if output.Parameter != "" {
+						command = append(command, output.Parameter)
+						command = append(command, folder)
+					}
 				}
 
 				// Watch a folder folder
@@ -104,9 +116,18 @@ func newExecRunner() *ExecRunner {
 	}
 
 	return &ExecRunner{
-		command:    command,
-		sendStdout: sendStdout,
+		command:        command,
+		fileParameters: fileParameters,
+		sendStdout:     sendStdout,
 	}
+
+}
+
+// New creates a new ExecCmd.
+func (execRunner *ExecRunner) newExecCmd() *exec.Cmd {
+
+	execCmd := exec.Command(execRunner.command[0], execRunner.command[1:]...)
+	return execCmd
 
 }
 
@@ -232,6 +253,16 @@ func (execRunner *ExecRunner) run(runID string,
 			}
 			targetCmd.Args = append(targetCmd.Args, buffer.String())
 		}
+	}
+
+	// Iterate the fileParameters to append the runid as the filename
+	for parameter, folder := range execRunner.fileParameters {
+		fileUUID, _ := uuid.NewV4()
+		fileID := strings.Replace(fileUUID.String(), "-", "", -1)
+		fileFolder := path.Join(folder, fileID)
+
+		targetCmd.Args = append(targetCmd.Args, parameter)
+		targetCmd.Args = append(targetCmd.Args, fileFolder)
 	}
 
 	stdout, err := targetCmd.StdoutPipe()
