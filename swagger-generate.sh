@@ -20,6 +20,7 @@ cp ./algorun-go-client/data_connector_version_model.go ./swagger/
 cp ./algorun-go-client/data_connector_option_model.go ./swagger/
 cp ./algorun-go-client/algo_config.go ./swagger/
 cp ./algorun-go-client/log_entry_model.go ./swagger/
+cp ./algorun-go-client/file_reference.go ./swagger/
 
 rm -rf ./algorun-go-client/
 

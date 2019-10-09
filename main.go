@@ -23,6 +23,7 @@ var (
 	logTopic     *string
 	runID        string
 	execRunner   *ExecRunner
+	s3Config     *S3Config
 )
 
 func main() {
@@ -40,6 +41,7 @@ func main() {
 	kafkaBrokersPtr := flag.String("kafka-brokers", "", "Kafka broker addresses separated by a comma")
 	logTopicPtr := flag.String("log-topic", "", "Kafka topic name for logs")
 	instanceNamePtr := flag.String("instance-name", "", "The Algo Instance Name (typically Container ID")
+	s3Ptr := flag.String("instance-name", "", "The Algo Instance Name (typically Container ID")
 
 	flag.Parse()
 
@@ -75,6 +77,37 @@ func main() {
 
 	} else {
 		kafkaBrokers = kafkaBrokersPtr
+	}
+
+	if *s3Ptr == "" {
+
+		// Try to load from environment variable
+		s3Env := os.Getenv("MC_HOST_algorun")
+		if s3Env != "" {
+			s3Config = &S3Config{}
+			host, accessKey, secret, err := parseEnvURLStr(s3Env)
+			if err != nil {
+				localLog.Status = "Failed"
+				localLog.Msg = "S3 Connection String is not valid. [] Shutting down..."
+				localLog.log(errors.New("S3 Connection String is not valid"))
+
+				os.Exit(1)
+			}
+			s3Config.connectionString = s3Env
+			s3Config.host = host.Host
+			s3Config.accessKeyID = accessKey
+			s3Config.secretAccessKey = secret
+			s3Config.useSSL = host.Scheme == "https"
+		} else {
+			localLog.Status = "Failed"
+			localLog.Msg = "Missing the Kafka Brokers argument and no environment variable KAFKA-BROKERS exists. ( --kafka-brokers={broker1,broker2} ) Shutting down..."
+			localLog.log(errors.New("KAFKA-BROKERS missing"))
+
+			os.Exit(1)
+		}
+
+	} else {
+		instanceName = instanceNamePtr
 	}
 
 	if *logTopicPtr == "" {

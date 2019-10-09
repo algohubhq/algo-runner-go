@@ -9,8 +9,10 @@ type InputData struct {
 	data            []byte
 }
 
-// FileReference the path and filename
-type FileReference struct {
-	FilePath string `json:"filePath"`
-	FileName string `json:"fileName"`
+type S3Config struct {
+	connectionString string `json:"connectionString"`
+	host             string `json:"host"`
+	accessKeyID      string `json:"accessKeyID"`
+	secretAccessKey  string `json:"secretAccessKey"`
+	useSSL           bool   `json:"useSSL"`
 }

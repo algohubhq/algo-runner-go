@@ -130,17 +130,13 @@ func (outputHandler *ExecOutputHandler) newCmd(src string, outputMessageDataType
 		// The bucket name is the deployment name
 
 		// Ensure the envvar exists
-		bucketAlias := os.Getenv("MC_HOST_algorun")
-		if bucketAlias != "" {
-			destBucket := strings.ToLower(fmt.Sprintf("algorun/%s/%s",
-				config.DeploymentOwnerUserName,
-				config.DeploymentName))
+		if s3Config.connectionString != "" {
 
 			cmd.Args = append(cmd.Args, "mirror", "--json", "--quiet", "-w", src, destBucket)
 		} else {
 			localLog.Status = "Failed"
-			localLog.Msg = "The mc alias is required for any file replication. Shutting down..."
-			localLog.log(errors.New("MC_HOST_algorun environment variable missing"))
+			localLog.Msg = "The s3 connection string is required for any file replication. Shutting down..."
+			localLog.log(errors.New("S3 connection string missing"))
 
 			os.Exit(1)
 		}
@@ -251,7 +247,11 @@ func (output *output) start() {
 				} else {
 					// Send the file reference to Kafka
 					// Try to create the json
-					fileReference := FileReference{FilePath: mm.Target, FileName: mm.Target}
+					fileReference := swagger.FileReference{
+						ServerAlias: s3Config.host,
+						Bucket: mm.Target
+						File: mm.Target,
+					}
 					jsonBytes, jsonErr := json.Marshal(fileReference)
 
 					if jsonErr != nil {

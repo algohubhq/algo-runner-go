@@ -322,7 +322,7 @@ func processMessage(msg *kafka.Message,
 		// If messageDataType is file reference then load file
 		if messageDataType == "FileReference" {
 			// Try to read the json
-			var fileReference FileReference
+			var fileReference swagger.FileReference
 			jsonErr := json.Unmarshal(msg.Value, &fileReference)
 
 			if jsonErr != nil {
@@ -331,7 +331,7 @@ func processMessage(msg *kafka.Message,
 				runnerLog.log(jsonErr)
 			}
 
-			// Read the file
+			// TODO: Read the file from s3
 			fullPathFile := path.Join(fileReference.FilePath, fileReference.FileName)
 			fileBytes, err := ioutil.ReadFile(fullPathFile)
 			if err != nil {
@@ -355,7 +355,7 @@ func processMessage(msg *kafka.Message,
 		if messageDataType == "FileReference" {
 
 			// Try to read the json
-			var fileReference FileReference
+			var fileReference swagger.FileReference
 			jsonErr := json.Unmarshal(msg.Value, &fileReference)
 
 			if jsonErr != nil {
