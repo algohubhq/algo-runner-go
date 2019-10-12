@@ -130,12 +130,14 @@ func (outputHandler *ExecOutputHandler) newCmd(src string, outputMessageDataType
 		// The bucket name is the deployment name
 
 		// Ensure the envvar exists
-		if s3Config.connectionString != "" {
-
-			cmd.Args = append(cmd.Args, "mirror", "--json", "--quiet", "-w", src, destBucket)
+		if storageConfig.connectionString != "" {
+			bucketName := fmt.Sprintf("%s.%s",
+				strings.ToLower(config.DeploymentOwnerUserName),
+				strings.ToLower(config.DeploymentName))
+			cmd.Args = append(cmd.Args, "mirror", "--json", "--quiet", "-w", src, bucketName)
 		} else {
 			localLog.Status = "Failed"
-			localLog.Msg = "The s3 connection string is required for any file replication. Shutting down..."
+			localLog.Msg = "The storage connection string is required for any file replication. Shutting down..."
 			localLog.log(errors.New("S3 connection string missing"))
 
 			os.Exit(1)
@@ -247,10 +249,13 @@ func (output *output) start() {
 				} else {
 					// Send the file reference to Kafka
 					// Try to create the json
+					bucketName := fmt.Sprintf("%s.%s",
+						strings.ToLower(config.DeploymentOwnerUserName),
+						strings.ToLower(config.DeploymentName))
 					fileReference := swagger.FileReference{
-						ServerAlias: s3Config.host,
-						Bucket: mm.Target
-						File: mm.Target,
+						Host:   storageConfig.host,
+						Bucket: bucketName,
+						File:   mm.Target,
 					}
 					jsonBytes, jsonErr := json.Marshal(fileReference)
 

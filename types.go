@@ -1,18 +1,19 @@
 package main
 
+import "algo-runner-go/swagger"
+
 // InputData contains either the byte slice of raw data or the file name and path to the saved data
 type InputData struct {
 	isFileReference bool
 	contentType     string
-	fileName        string
-	filePath        string
+	fileReference   *swagger.FileReference
 	data            []byte
 }
 
-type S3Config struct {
-	connectionString string `json:"connectionString"`
-	host             string `json:"host"`
-	accessKeyID      string `json:"accessKeyID"`
-	secretAccessKey  string `json:"secretAccessKey"`
-	useSSL           bool   `json:"useSSL"`
+type StorageConfig struct {
+	connectionString string
+	host             string
+	accessKeyID      string
+	secretAccessKey  string
+	useSSL           bool
 }

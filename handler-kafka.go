@@ -6,10 +6,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"os/signal"
-	"os/user"
 	"path"
 	"strconv"
 	"strings"
@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/confluentinc/confluent-kafka-go/kafka"
+	"github.com/minio/minio-go"
 	uuid "github.com/nu7hatch/gouuid"
 )
 
@@ -315,6 +316,7 @@ func processMessage(msg *kafka.Message,
 	inputData = InputData{}
 	inputData.contentType = contentType
 
+	// These input delivery types expect a byte stream
 	if input.InputDeliveryType == "StdIn" ||
 		input.InputDeliveryType == "Http" ||
 		input.InputDeliveryType == "Https" {
@@ -331,17 +333,30 @@ func processMessage(msg *kafka.Message,
 				runnerLog.log(jsonErr)
 			}
 
-			// TODO: Read the file from s3
-			fullPathFile := path.Join(fileReference.FilePath, fileReference.FileName)
-			fileBytes, err := ioutil.ReadFile(fullPathFile)
+			// Read the file from storage
+			// Initialize minio client object.
+			minioClient, err := minio.New(storageConfig.host, storageConfig.accessKeyID, storageConfig.secretAccessKey, storageConfig.useSSL)
 			if err != nil {
 				runnerLog.Status = "Failed"
-				runnerLog.Msg = fmt.Sprintf("Failed to read the file reference.")
+				runnerLog.Msg = fmt.Sprintf("Failed to create minio client.")
+				runnerLog.log(err)
+			}
+			object, err := minioClient.GetObject(fileReference.Bucket, fileReference.File, minio.GetObjectOptions{})
+			if err != nil {
+				runnerLog.Status = "Failed"
+				runnerLog.Msg = fmt.Sprintf("Failed to get file reference object from storage. [%v]", fileReference)
+				runnerLog.log(err)
+			}
+
+			objectBytes, err := ioutil.ReadAll(object)
+			if err != nil {
+				runnerLog.Status = "Failed"
+				runnerLog.Msg = fmt.Sprintf("Failed to read file reference bytes from storage. [%v]", fileReference)
 				runnerLog.log(err)
 			}
 
 			inputData.isFileReference = false
-			inputData.data = fileBytes
+			inputData.data = objectBytes
 
 		} else {
 			// If the data is embedded then copy the message value
@@ -350,42 +365,68 @@ func processMessage(msg *kafka.Message,
 		}
 
 	} else {
+		// These input delivery types expect a file
 
 		// If messageDataType is file reference then ensure file exists and convert to container path
 		if messageDataType == "FileReference" {
 
+			// Write the file locally
+			inputData.isFileReference = true
 			// Try to read the json
 			var fileReference swagger.FileReference
 			jsonErr := json.Unmarshal(msg.Value, &fileReference)
 
 			if jsonErr != nil {
 				runnerLog.Status = "Failed"
-				runnerLog.Msg = fmt.Sprintf("Failed to parse the FileReference json")
+				runnerLog.Msg = fmt.Sprintf("Failed to parse the FileReference json.")
 				runnerLog.log(jsonErr)
 			}
-			// Check if the file exists
-			fullPathFile := path.Join(fileReference.FilePath, fileReference.FileName)
-			if _, err := os.Stat(fullPathFile); os.IsNotExist(err) {
-				// Log error, File doesn't exist!
+
+			// Read the file from storage
+			// Initialize minio client object.
+			minioClient, err := minio.New(storageConfig.host, storageConfig.accessKeyID, storageConfig.secretAccessKey, storageConfig.useSSL)
+			if err != nil {
 				runnerLog.Status = "Failed"
-				runnerLog.Msg = fmt.Sprintf("The file reference doesn't exist or is not accessible: [%s]", fullPathFile)
+				runnerLog.Msg = fmt.Sprintf("Failed to create minio client.")
 				runnerLog.log(err)
 			}
-			inputData.data = []byte(fullPathFile)
+			object, err := minioClient.GetObject(fileReference.Bucket, fileReference.File, minio.GetObjectOptions{})
+			if err != nil {
+				runnerLog.Status = "Failed"
+				runnerLog.Msg = fmt.Sprintf("Failed to get file reference object from storage. [%v]", fileReference)
+				runnerLog.log(err)
+			}
+
+			filePath := path.Join("/input", fileReference.File)
+			localFile, err := os.Create(filePath)
+			if err != nil {
+				runnerLog.Status = "Failed"
+				runnerLog.Msg = fmt.Sprintf("Failed to create local file from reference object. [%v]", fileReference)
+				runnerLog.log(err)
+			}
+			if _, err = io.Copy(localFile, object); err != nil {
+				runnerLog.Status = "Failed"
+				runnerLog.Msg = fmt.Sprintf("Failed to copy byte stream from reference object to local file. [%v]", fileReference)
+				runnerLog.log(err)
+			}
+
+			inputData.fileReference = &fileReference
 
 		} else {
 
 			// The data is embedded so write the file locally as the algo expects a file
 			inputData.isFileReference = true
-
-			usr, _ := user.Current()
-			dir := usr.HomeDir
-
-			folder := path.Join(dir, "algorun", "data", runID, input.Name)
-			if _, err := os.Stat(folder); os.IsNotExist(err) {
-				os.MkdirAll(folder, os.ModePerm)
+			if fileName == "" {
+				uuidRunID, _ := uuid.NewV4()
+				fileName = strings.Replace(uuidRunID.String(), "-", "", -1)
 			}
-			fullPathFile := path.Join(folder, fileName)
+
+			fullPathFile := path.Join("/input", fileName)
+
+			fileReference := swagger.FileReference{
+				File: fileName,
+			}
+
 			err := ioutil.WriteFile(fullPathFile, msg.Value, 0644)
 			if err != nil {
 				runnerLog.Status = "Failed"
@@ -393,7 +434,8 @@ func processMessage(msg *kafka.Message,
 				runnerLog.log(err)
 			}
 
-			inputData.data = []byte(fullPathFile)
+			inputData.fileReference = &fileReference
+
 		}
 	}
 

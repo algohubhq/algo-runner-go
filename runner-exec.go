@@ -227,7 +227,7 @@ func (execRunner *ExecRunner) run(runID string,
 				targetCmd.Args = append(targetCmd.Args, input.Parameter)
 			}
 			for _, data := range inputData {
-				targetCmd.Args = append(targetCmd.Args, string(data.data))
+				targetCmd.Args = append(targetCmd.Args, path.Join("/input", data.fileReference.File))
 			}
 
 		case "repeatedparameter":
@@ -236,7 +236,7 @@ func (execRunner *ExecRunner) run(runID string,
 				if input.Parameter != "" {
 					targetCmd.Args = append(targetCmd.Args, input.Parameter)
 				}
-				targetCmd.Args = append(targetCmd.Args, string(data.data))
+				targetCmd.Args = append(targetCmd.Args, path.Join("/input", data.fileReference.File))
 			}
 
 		case "delimitedparameter":
@@ -246,7 +246,7 @@ func (execRunner *ExecRunner) run(runID string,
 			}
 			var buffer bytes.Buffer
 			for i := 0; i < len(inputData); i++ {
-				buffer.WriteString(string(inputData[i].data))
+				buffer.WriteString(path.Join("/input", inputData[i].fileReference.File))
 				if i != len(inputData)-1 {
 					buffer.WriteString(input.ParameterDelimiter)
 				}

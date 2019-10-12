@@ -12,7 +12,7 @@ package swagger
 
 type FileReference struct {
 
-	ServerAlias string `json:"serverAlias,omitempty"`
+	Host string `json:"host,omitempty"`
 
 	Bucket string `json:"bucket,omitempty"`
 

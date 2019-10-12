@@ -15,15 +15,15 @@ import (
 
 // Global variables
 var (
-	log          logr.Logger
-	healthy      bool
-	instanceName *string
-	kafkaBrokers *string
-	config       swagger.AlgoRunnerConfig
-	logTopic     *string
-	runID        string
-	execRunner   *ExecRunner
-	s3Config     *S3Config
+	log           logr.Logger
+	healthy       bool
+	instanceName  *string
+	kafkaBrokers  *string
+	config        swagger.AlgoRunnerConfig
+	logTopic      *string
+	runID         string
+	execRunner    *ExecRunner
+	storageConfig *StorageConfig
 )
 
 func main() {
@@ -84,7 +84,7 @@ func main() {
 		// Try to load from environment variable
 		s3Env := os.Getenv("MC_HOST_algorun")
 		if s3Env != "" {
-			s3Config = &S3Config{}
+			storageConfig = &StorageConfig{}
 			host, accessKey, secret, err := parseEnvURLStr(s3Env)
 			if err != nil {
 				localLog.Status = "Failed"
@@ -93,11 +93,11 @@ func main() {
 
 				os.Exit(1)
 			}
-			s3Config.connectionString = s3Env
-			s3Config.host = host.Host
-			s3Config.accessKeyID = accessKey
-			s3Config.secretAccessKey = secret
-			s3Config.useSSL = host.Scheme == "https"
+			storageConfig.connectionString = s3Env
+			storageConfig.host = host.Host
+			storageConfig.accessKeyID = accessKey
+			storageConfig.secretAccessKey = secret
+			storageConfig.useSSL = host.Scheme == "https"
 		} else {
 			localLog.Status = "Failed"
 			localLog.Msg = "Missing the Kafka Brokers argument and no environment variable KAFKA-BROKERS exists. ( --kafka-brokers={broker1,broker2} ) Shutting down..."
