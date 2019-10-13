@@ -97,7 +97,7 @@ func startConsumers() {
 	})
 
 	if err != nil {
-		healthy = false
+		healthyChan <- false
 		runnerLog.Status = "Failed"
 		runnerLog.Msg = fmt.Sprintf("Failed to create consumer.")
 		runnerLog.log(err)
@@ -148,7 +148,7 @@ func waitForMessages(c *kafka.Consumer, topicInputs topicInputs) {
 			runnerLog.Msg = fmt.Sprintf("Caught signal %v: terminating the Kafka Consumer process.", sig)
 			runnerLog.log(errors.New("Terminating"))
 
-			healthy = false
+			healthyChan <- false
 			waiting = false
 
 		default:
@@ -156,7 +156,7 @@ func waitForMessages(c *kafka.Consumer, topicInputs topicInputs) {
 			ev := c.Poll(100)
 			if ev == nil {
 				if firstPoll {
-					healthy = true
+					healthyChan <- true
 					firstPoll = false
 				}
 				continue
@@ -165,7 +165,7 @@ func waitForMessages(c *kafka.Consumer, topicInputs topicInputs) {
 			switch e := ev.(type) {
 			case *kafka.Message:
 
-				healthy = true
+				healthyChan <- true
 
 				startTime := time.Now()
 
@@ -239,7 +239,7 @@ func waitForMessages(c *kafka.Consumer, topicInputs topicInputs) {
 				}
 
 			case kafka.AssignedPartitions:
-				healthy = true
+				healthyChan <- true
 				runnerLog.Msg = fmt.Sprintf("%v", e)
 				runnerLog.log(nil)
 				c.Assign(e.Partitions)
@@ -250,14 +250,14 @@ func waitForMessages(c *kafka.Consumer, topicInputs topicInputs) {
 			case kafka.Error:
 				runnerLog.Msg = fmt.Sprintf("Kafka Error: %v", e)
 				runnerLog.log(nil)
-				healthy = false
+				healthyChan <- false
 				waiting = false
 
 			}
 		}
 	}
 
-	healthy = false
+	healthyChan <- false
 
 }
 
@@ -499,7 +499,7 @@ func produceOutputMessage(fileName string, topic string, data []byte) {
 			case kafka.Error:
 				runnerLog.Msg = fmt.Sprintf("Failed to deliver output message to Kafka: %v", e)
 				runnerLog.log(nil)
-				healthy = false
+				healthyChan <- false
 
 			default:
 

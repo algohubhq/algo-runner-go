@@ -17,6 +17,7 @@ import (
 var (
 	log           logr.Logger
 	healthy       bool
+	healthyChan   chan bool
 	instanceName  *string
 	kafkaBrokers  *string
 	config        swagger.AlgoRunnerConfig
@@ -28,7 +29,12 @@ var (
 
 func main() {
 
-	healthy = false
+	healthyChan := make(chan bool)
+	go func() {
+		for h := range healthyChan {
+			healthy = h
+		}
+	}()
 
 	// Create the base log message
 	localLog := logMessage{
