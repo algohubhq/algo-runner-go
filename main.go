@@ -47,7 +47,7 @@ func main() {
 	kafkaBrokersPtr := flag.String("kafka-brokers", "", "Kafka broker addresses separated by a comma")
 	logTopicPtr := flag.String("log-topic", "", "Kafka topic name for logs")
 	instanceNamePtr := flag.String("instance-name", "", "The Algo Instance Name (typically Container ID")
-	s3Ptr := flag.String("instance-name", "", "The Algo Instance Name (typically Container ID")
+	storagePtr := flag.String("storage-config", "", "The block storage connection string.")
 
 	flag.Parse()
 
@@ -85,13 +85,13 @@ func main() {
 		kafkaBrokers = kafkaBrokersPtr
 	}
 
-	if *s3Ptr == "" {
+	if *storagePtr == "" {
 
 		// Try to load from environment variable
-		s3Env := os.Getenv("MC_HOST_algorun")
-		if s3Env != "" {
+		storageEnv := os.Getenv("MC_HOST_algorun")
+		if storageEnv != "" {
 			storageConfig = &StorageConfig{}
-			host, accessKey, secret, err := parseEnvURLStr(s3Env)
+			host, accessKey, secret, err := parseEnvURLStr(storageEnv)
 			if err != nil {
 				localLog.Status = "Failed"
 				localLog.Msg = "S3 Connection String is not valid. [] Shutting down..."
@@ -99,7 +99,7 @@ func main() {
 
 				os.Exit(1)
 			}
-			storageConfig.connectionString = s3Env
+			storageConfig.connectionString = storageEnv
 			storageConfig.host = host.Host
 			storageConfig.accessKeyID = accessKey
 			storageConfig.secretAccessKey = secret
