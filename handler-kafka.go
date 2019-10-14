@@ -173,7 +173,7 @@ func waitForMessages(c *kafka.Consumer, topicInputs topicInputs) {
 				runnerLog.log(nil)
 
 				input := topicInputs[*e.TopicPartition.Topic]
-				inputData, run := processMessage(e, input)
+				inputData, run, endpointParams := processMessage(e, input)
 
 				if data[runID] == nil {
 					data[runID] = make(map[*swagger.AlgoInputModel][]InputData)
@@ -188,9 +188,9 @@ func waitForMessages(c *kafka.Consumer, topicInputs topicInputs) {
 
 					var runError error
 					if strings.ToLower(config.ServerType) == "serverless" {
-						runError = execRunner.run(runID, data[runID])
+						runError = execRunner.run(runID, endpointParams, data[runID])
 					} else if strings.ToLower(config.ServerType) == "http" {
-						runError = runHTTP(runID, data[runID])
+						runError = runHTTP(runID, endpointParams, data[runID])
 					}
 
 					if runError == nil {
@@ -262,7 +262,7 @@ func waitForMessages(c *kafka.Consumer, topicInputs topicInputs) {
 }
 
 func processMessage(msg *kafka.Message,
-	input *swagger.AlgoInputModel) (inputData InputData, run bool) {
+	input *swagger.AlgoInputModel) (inputData InputData, run bool, endpointParams string) {
 
 	// runID is the message key
 	runID = string(msg.Key)
@@ -294,6 +294,8 @@ func processMessage(msg *kafka.Message,
 			fileName = string(header.Value)
 		case "messageDataType":
 			messageDataType = string(header.Value)
+		case "endpointParams":
+			endpointParams = string(header.Value)
 		case "run":
 			b, _ := strconv.ParseBool(string(header.Value))
 			run = b

@@ -14,7 +14,7 @@ import (
 	uuid "github.com/nu7hatch/gouuid"
 )
 
-func runHTTP(runID string,
+func runHTTP(runID string, endpointParams string,
 	inputMap map[*swagger.AlgoInputModel][]InputData) (err error) {
 
 	// Create the base message
@@ -59,6 +59,8 @@ func runHTTP(runID string,
 	for input, inputData := range inputMap {
 
 		u, _ := url.Parse("localhost")
+		// Include the endpoint params as querystring parameters
+		u.RawQuery = endpointParams
 
 		u.Scheme = strings.ToLower(input.InputDeliveryType)
 		if input.HttpPort > 0 {
@@ -70,6 +72,7 @@ func runHTTP(runID string,
 		for _, param := range config.AlgoParams {
 			q.Set(param.Name, param.Value)
 		}
+
 		u.RawQuery = q.Encode()
 
 		for _, data := range inputData {

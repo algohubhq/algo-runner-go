@@ -131,7 +131,7 @@ func (execRunner *ExecRunner) newExecCmd() *exec.Cmd {
 
 }
 
-func (execRunner *ExecRunner) run(runID string,
+func (execRunner *ExecRunner) run(runID string, endpointParams string,
 	inputMap map[*swagger.AlgoInputModel][]InputData) (err error) {
 
 	// Create the base message
@@ -206,6 +206,9 @@ func (execRunner *ExecRunner) run(runID string,
 			}
 		}()
 	}
+
+	// Set the endpoint params as an environment variable
+	targetCmd.Env = append(targetCmd.Env, fmt.Sprintf("ENDPOINT_PARAMS=%s", endpointParams))
 
 	// Write the stdin data or set the arguments for the input
 	for input, inputData := range inputMap {
