@@ -131,10 +131,10 @@ func (outputHandler *ExecOutputHandler) newCmd(src string, outputMessageDataType
 
 		// Ensure the envvar exists
 		if storageConfig.connectionString != "" {
-			bucketName := fmt.Sprintf("%s.%s",
-				strings.ToLower(config.DeploymentOwnerUserName),
-				strings.ToLower(config.DeploymentName))
-			cmd.Args = append(cmd.Args, "mirror", "--json", "--quiet", "-w", src, bucketName)
+			destBucket := strings.ToLower(fmt.Sprintf("algorun/%s.%s",
+				config.DeploymentOwnerUserName,
+				config.DeploymentName))
+			cmd.Args = append(cmd.Args, "mirror", "--json", "--quiet", "-w", src, destBucket)
 		} else {
 			localLog.Status = "Failed"
 			localLog.Msg = "The storage connection string is required for any file replication. Shutting down..."
