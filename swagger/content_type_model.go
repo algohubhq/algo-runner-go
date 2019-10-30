@@ -10,7 +10,7 @@
 
 package swagger
 
-type MediaTypeModel struct {
+type ContentTypeModel struct {
 
 	Title string `json:"title,omitempty"`
 

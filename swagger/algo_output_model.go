@@ -20,5 +20,5 @@ type AlgoOutputModel struct {
 
 	Parameter string `json:"parameter,omitempty"`
 
-	MediaType *MediaTypeModel `json:"mediaType"`
+	ContentType *ContentTypeModel `json:"contentType"`
 }

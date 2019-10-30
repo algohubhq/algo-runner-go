@@ -34,5 +34,5 @@ type AlgoInputModel struct {
 
 	HttpHeaders string `json:"httpHeaders,omitempty"`
 
-	MediaTypes []MediaTypeModel `json:"mediaTypes"`
+	ContentTypes []ContentTypeModel `json:"contentTypes"`
 }
