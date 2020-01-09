@@ -9,12 +9,12 @@ import (
 // Global metrics variables
 var (
 	deploymentLabel string
-	algoLabel     string
+	algoLabel       string
 
 	runnerRuntimeHistogram = prometheus.NewHistogramVec(prometheus.HistogramOpts{
 		Name:    "algorunner_run_duration_seconds",
 		Help:    "The complete message processing duration in seconds",
-		Buckets: []float64{0.005, 0.05, 0.25, 1},
+		Buckets: []float64{0.005, 0.05, 0.25, 1, 2.5, 5, 7.5, 10, 20, 30},
 	}, []string{"deployment", "algo", "status"})
 
 	algoRuntimeHistogram = prometheus.NewHistogramVec(prometheus.HistogramOpts{
