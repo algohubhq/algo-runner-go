@@ -187,10 +187,19 @@ func waitForMessages(c *kafka.Consumer, topicInputs topicInputs) {
 					// Can check to be sure all required inputs are fulfilled as well
 
 					var runError error
-					if strings.ToLower(config.ServerType) == "serverless" {
+
+					switch executor := strings.ToLower(config.Executor); executor {
+					case "executable", "deletegated":
 						runError = execRunner.run(runID, endpointParams, data[runID])
-					} else if strings.ToLower(config.ServerType) == "http" {
+					case "http":
 						runError = runHTTP(runID, endpointParams, data[runID])
+					case "grpc":
+						runError = errors.New("gRPC runner is not implemented")
+					case "spark":
+						runError = errors.New("Spark runner is not implemented")
+					default:
+						// Not implemented
+						runError = errors.New("Unknown runner is not supported")
 					}
 
 					if runError == nil {

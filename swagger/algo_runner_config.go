@@ -30,7 +30,7 @@ type AlgoRunnerConfig struct {
 
 	Entrypoint string `json:"entrypoint,omitempty"`
 
-	ServerType string `json:"serverType,omitempty"`
+	Executor string `json:"executor,omitempty"`
 
 	AlgoParams []AlgoParamModel `json:"algoParams,omitempty"`
 

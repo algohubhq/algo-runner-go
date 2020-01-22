@@ -25,6 +25,4 @@ type PipeModel struct {
 	DestName string `json:"destName,omitempty"`
 
 	DestInputName string `json:"destInputName,omitempty"`
-
-	DestInputMessageDataType string `json:"destInputMessageDataType,omitempty"`
 }

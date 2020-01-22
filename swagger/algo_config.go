@@ -11,7 +11,6 @@
 package swagger
 
 type AlgoConfig struct {
-
 	Applied bool `json:"applied,omitempty"`
 
 	DeploymentName string `json:"deploymentName,omitempty"`
@@ -30,7 +29,7 @@ type AlgoConfig struct {
 
 	Entrypoint string `json:"entrypoint,omitempty"`
 
-	ServerType string `json:"serverType,omitempty"`
+	Executor string `json:"executor,omitempty"`
 
 	AlgoParams []AlgoParamModel `json:"algoParams,omitempty"`
 
@@ -44,25 +43,7 @@ type AlgoConfig struct {
 
 	TimeoutSeconds int32 `json:"timeoutSeconds,omitempty"`
 
-	MemoryRequestBytes int64 `json:"memoryRequestBytes,omitempty"`
-
-	MemoryLimitBytes int64 `json:"memoryLimitBytes,omitempty"`
-
-	CpuRequestUnits float64 `json:"cpuRequestUnits,omitempty"`
-
-	CpuLimitUnits float64 `json:"cpuLimitUnits,omitempty"`
-
-	GpuLimitUnits float64 `json:"gpuLimitUnits,omitempty"`
-
-	Instances int32 `json:"instances,omitempty"`
-
-	AutoScale bool `json:"autoScale,omitempty"`
-
-	MinInstances int32 `json:"minInstances,omitempty"`
-
-	MaxInstances int32 `json:"maxInstances,omitempty"`
-
-	AutoScaleCPUPercent int32 `json:"autoScaleCPUPercent,omitempty"`
+	Resource *ResourceModel `json:"resource,omitempty"`
 
 	AlgoRunnerImage string `json:"algoRunnerImage,omitempty"`
 

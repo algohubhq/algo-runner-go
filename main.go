@@ -157,7 +157,8 @@ func main() {
 		wg.Done()
 	}()
 
-	if strings.ToLower(config.ServerType) == "serverless" {
+	if strings.ToLower(config.Executor) == "Executable" ||
+		strings.ToLower(config.Executor) == "Delegated" {
 		execRunner = newExecRunner()
 	}
 
