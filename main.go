@@ -157,8 +157,8 @@ func main() {
 		wg.Done()
 	}()
 
-	if strings.ToLower(config.Executor) == "Executable" ||
-		strings.ToLower(config.Executor) == "Delegated" {
+	if strings.ToLower(config.Executor) == "executable" ||
+		strings.ToLower(config.Executor) == "delegated" {
 		execRunner = newExecRunner()
 	}
 
