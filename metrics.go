@@ -24,17 +24,17 @@ var (
 	}, []string{"deployment", "algo", "status"})
 
 	bytesProcessedCounter = prometheus.NewCounterVec(prometheus.CounterOpts{
-		Name: "algorunner_bytes_processed_total",
+		Name: "algorunner_bytes_processed",
 		Help: "The total number of bytes processed by the runner",
 	}, []string{"deployment", "algo", "status"})
 
 	algoErrorCounter = prometheus.NewCounterVec(prometheus.CounterOpts{
-		Name: "algorunner_algo_error_total",
+		Name: "algorunner_algo_error",
 		Help: "The total number of errors from the algo",
 	}, []string{"deployment", "algo"})
 
 	runnerErrorCounter = prometheus.NewCounterVec(prometheus.CounterOpts{
-		Name: "algorunner_runner_error_total",
+		Name: "algorunner_runner_error",
 		Help: "The total number of errors from the runner",
 	}, []string{"deployment", "algo"})
 )
