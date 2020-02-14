@@ -87,14 +87,24 @@ func startConsumers() {
 		config.AlgoOwnerUserName,
 		config.AlgoName)
 
-	c, err := kafka.NewConsumer(&kafka.ConfigMap{
+	kafkaConfig := kafka.ConfigMap{
 		"bootstrap.servers":        *kafkaBrokers,
 		"group.id":                 groupID,
 		"client.id":                "algo-runner-go-client",
 		"enable.auto.commit":       false,
 		"enable.auto.offset.store": false,
 		"auto.offset.reset":        "earliest",
-	})
+	}
+
+	// Set the ssl config if enabled
+	if CheckForKafkaTLS() {
+		kafkaConfig["security.protocol"] = "ssl"
+		kafkaConfig["ssl.ca.location"] = "/var/run/secrets/algo.run/kafka-ca.crt"
+		kafkaConfig["ssl.certificate.location"] = "/var/run/secrets/algo.run/kafka-user.crt"
+		kafkaConfig["ssl.key.location"] = "/var/run/secrets/algo.run/kafka-user.key"
+	}
+
+	c, err := kafka.NewConsumer(&kafkaConfig)
 
 	if err != nil {
 		healthy = false
@@ -479,9 +489,19 @@ func produceOutputMessage(fileName string, topic string, data []byte) {
 		},
 	}
 
-	p, err := kafka.NewProducer(&kafka.ConfigMap{
+	kafkaConfig := kafka.ConfigMap{
 		"bootstrap.servers": *kafkaBrokers,
-	})
+	}
+
+	// Set the ssl config if enabled
+	if CheckForKafkaTLS() {
+		kafkaConfig["security.protocol"] = "ssl"
+		kafkaConfig["ssl.ca.location"] = "/var/run/secrets/algo.run/kafka-ca.crt"
+		kafkaConfig["ssl.certificate.location"] = "/var/run/secrets/algo.run/kafka-user.crt"
+		kafkaConfig["ssl.key.location"] = "/var/run/secrets/algo.run/kafka-user.key"
+	}
+
+	p, err := kafka.NewProducer(&kafkaConfig)
 
 	if err != nil {
 		runnerLog.Status = "Failed"
