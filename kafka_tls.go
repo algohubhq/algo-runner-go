@@ -21,15 +21,15 @@ func CheckForKafkaTLS() bool {
 
 	if kafkaTLS {
 		// Be sure the certs exist
-		if !fileExists("/var/run/secrets/algo.run/kafka-ca.crt") {
+		if !fileExists("/etc/ssl/certs/kafka-ca.crt") {
 			log.Error(err, "KAFKA-TLS Enabled but no /var/run/secrets/algo.run/kafka-ca.crt file exists")
 			return false
 		}
-		if !fileExists("/var/run/secrets/algo.run/kafka-user.crt") {
+		if !fileExists("/etc/ssl/certs/kafka-user.crt") {
 			log.Error(err, "KAFKA-TLS Enabled but no /var/run/secrets/algo.run/kafka-user.crt file exists")
 			return false
 		}
-		if !fileExists("/var/run/secrets/algo.run/kafka-user.key") {
+		if !fileExists("/etc/ssl/certs/kafka-user.key") {
 			log.Error(err, "KAFKA-TLS Enabled but no /var/run/secrets/algo.run/kafka-user.key file exists")
 			return false
 		}
