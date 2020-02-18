@@ -35,7 +35,7 @@ func CheckForKafkaTLS() bool {
 		}
 	}
 
-	return true
+	return kafkaTLS
 
 }
 
