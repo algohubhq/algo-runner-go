@@ -4,6 +4,7 @@ import (
 	"algo-runner-go/swagger"
 	"errors"
 	"flag"
+	"fmt"
 	"os"
 	"strings"
 	"sync"
@@ -27,6 +28,10 @@ var (
 )
 
 func main() {
+
+	for _, pair := range os.Environ() {
+		fmt.Println(pair)
+	}
 
 	// Create the base log message
 	localLog := logMessage{
@@ -98,10 +103,8 @@ func main() {
 			storageConfig.useSSL = host.Scheme == "https"
 		} else {
 			localLog.Status = "Failed"
-			localLog.Msg = "Missing the Kafka Brokers argument and no environment variable KAFKA-BROKERS exists. ( --kafka-brokers={broker1,broker2} ) Shutting down..."
-			localLog.log(errors.New("KAFKA-BROKERS missing"))
-
-			os.Exit(1)
+			localLog.Msg = "Missing the S3 Storage Connection String argument and no environment variable MC_HOST_algorun exists."
+			localLog.log(errors.New("MC_HOST_algorun missing"))
 		}
 
 	} else {
