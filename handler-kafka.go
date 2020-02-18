@@ -99,11 +99,10 @@ func startConsumers() {
 	// Set the ssl config if enabled
 	if CheckForKafkaTLS() {
 		kafkaConfig["security.protocol"] = "ssl"
-		kafkaConfig["ssl.ca.location"] = "/var/run/secrets/algo.run/kafka-ca.crt"
-		kafkaConfig["ssl.certificate.location"] = "/var/run/secrets/algo.run/kafka-user.crt"
-		kafkaConfig["ssl.key.location"] = "/var/run/secrets/algo.run/kafka-user.key"
+		kafkaConfig["ssl.ca.location"] = "/etc/ssl/certs/kafka-ca.crt"
+		kafkaConfig["ssl.certificate.location"] = "/etc/ssl/certs/kafka-user.crt"
+		kafkaConfig["ssl.key.location"] = "/etc/ssl/certs/kafka-user.key"
 		kafkaConfig["enable.ssl.certificate.verification"] = "false"
-		kafkaConfig["ssl.endpoint.identification.algorithm"] = "none"
 	}
 
 	c, err := kafka.NewConsumer(&kafkaConfig)
@@ -498,11 +497,10 @@ func produceOutputMessage(fileName string, topic string, data []byte) {
 	// Set the ssl config if enabled
 	if CheckForKafkaTLS() {
 		kafkaConfig["security.protocol"] = "ssl"
-		kafkaConfig["ssl.ca.location"] = "/var/run/secrets/algo.run/kafka-ca.crt"
-		kafkaConfig["ssl.certificate.location"] = "/var/run/secrets/algo.run/kafka-user.crt"
-		kafkaConfig["ssl.key.location"] = "/var/run/secrets/algo.run/kafka-user.key"
+		kafkaConfig["ssl.ca.location"] = "/etc/ssl/certs/kafka-ca.crt"
+		kafkaConfig["ssl.certificate.location"] = "/etc/ssl/certs/kafka-user.crt"
+		kafkaConfig["ssl.key.location"] = "/etc/ssl/certs/kafka-user.key"
 		kafkaConfig["enable.ssl.certificate.verification"] = "false"
-		kafkaConfig["ssl.endpoint.identification.algorithm"] = "none"
 	}
 
 	p, err := kafka.NewProducer(&kafkaConfig)
