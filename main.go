@@ -4,7 +4,6 @@ import (
 	"algo-runner-go/swagger"
 	"errors"
 	"flag"
-	"fmt"
 	"os"
 	"strings"
 	"sync"
@@ -28,10 +27,6 @@ var (
 )
 
 func main() {
-
-	for _, pair := range os.Environ() {
-		fmt.Println(pair)
-	}
 
 	// Create the base log message
 	localLog := logMessage{
