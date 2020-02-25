@@ -81,11 +81,13 @@ func startConsumers() {
 
 	}
 
-	groupID := fmt.Sprintf("%s-%s-%s-%s",
+	groupID := fmt.Sprintf("algorun-%s-%s-%s-%s-%d",
 		config.DeploymentOwnerUserName,
 		config.DeploymentName,
 		config.AlgoOwnerUserName,
-		config.AlgoName)
+		config.AlgoName,
+		config.AlgoIndex,
+	)
 
 	kafkaConfig := kafka.ConfigMap{
 		"bootstrap.servers":        *kafkaBrokers,
