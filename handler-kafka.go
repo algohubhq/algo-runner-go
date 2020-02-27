@@ -292,6 +292,8 @@ func waitForMessages(c *kafka.Consumer, topicInputs topicInputs) {
 func processMessage(msg *kafka.Message,
 	input *swagger.AlgoInputModel) (inputData InputData, run bool, endpointParams string) {
 
+	// Default to run - if header is set to false, then don't run
+	run = true
 	// runID is the message key
 	runID = string(msg.Key)
 
