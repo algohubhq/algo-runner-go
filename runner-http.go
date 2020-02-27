@@ -49,12 +49,20 @@ func runHTTP(runID string, endpointParams string,
 		netClient.Timeout = time.Second * time.Duration(config.TimeoutSeconds)
 	}
 
-	outputTopic := strings.ToLower(fmt.Sprintf("algorun.%s.%s.algo.%s.%s.%d.output.default",
-		config.DeploymentOwnerUserName,
-		config.DeploymentName,
-		config.AlgoOwnerUserName,
-		config.AlgoName,
-		config.AlgoIndex))
+	var outputTopic string
+	// get the httpresponse output
+	for _, output := range config.Outputs {
+
+		if strings.ToLower(output.OutputDeliveryType) == "httpresponse" {
+			outputTopic = strings.ToLower(fmt.Sprintf("algorun.%s.%s.algo.%s.%s.%d.output.%s",
+				config.DeploymentOwnerUserName,
+				config.DeploymentName,
+				config.AlgoOwnerUserName,
+				config.AlgoName,
+				config.AlgoIndex,
+				output.Name))
+		}
+	}
 
 	for input, inputData := range inputMap {
 
@@ -119,11 +127,17 @@ func runHTTP(runID string, endpointParams string,
 					// Send to output topic
 					fileName, _ := uuid.NewV4()
 
-					algoLog.Status = "Success"
-					algoLog.Msg = fmt.Sprintf("successful run. now output to: %s, data: %s", outputTopic, string(contents))
-					algoLog.log(nil)
-
-					produceOutputMessage(fileName.String(), outputTopic, contents)
+					if outputTopic != "" {
+						algoLog.Status = "Success"
+						algoLog.Msg = fmt.Sprintf("successful run. now output to: %s, data: %s", outputTopic, string(contents))
+						algoLog.log(nil)
+						produceOutputMessage(fileName.String(), outputTopic, contents)
+					} else {
+						algoLog.Status = "Failed"
+						algoLog.Msg = fmt.Sprintf("No output topic with outputDeliveryType as HttpResponse for input that is an http request")
+						algoLog.log(nil)
+						return nil
+					}
 
 					algoLog.Status = "Success"
 					algoLog.Msg = ""
