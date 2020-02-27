@@ -79,6 +79,9 @@ func runHTTP(runID string, endpointParams string,
 
 			startTime := time.Now()
 			request, reqErr := http.NewRequest(strings.ToUpper(input.HttpVerb), u.String(), bytes.NewReader(data.data))
+			if data.contentType != "" {
+				request.Header.Set("Content-Type", data.contentType)
+			}
 			if reqErr != nil {
 				algoLog.Status = "Failed"
 				algoLog.Msg = fmt.Sprintf("Error building request")

@@ -337,6 +337,13 @@ func processMessage(msg *kafka.Message,
 		runID = strings.Replace(uuidRunID.String(), "-", "", -1)
 	}
 
+	// If the content type is empty, use the first accepted content type
+	if contentType == "" {
+		if len(input.ContentTypes) > 0 {
+			contentType = input.ContentTypes[0].Name
+		}
+	}
+
 	// Check if the content is empty then this message is to trigger a run only
 	if run && len(msg.Value) < 1 {
 		return
