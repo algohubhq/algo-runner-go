@@ -563,7 +563,6 @@ func produceOutputMessage(fileName string, topic string, data []byte) {
 	// Create the headers
 	var headers []kafka.Header
 	headers = append(headers, kafka.Header{Key: "fileName", Value: []byte(fileName)})
-	headers = append(headers, kafka.Header{Key: "run", Value: []byte("true")})
 
 	p.ProduceChannel() <- &kafka.Message{TopicPartition: kafka.TopicPartition{Topic: &topic, Partition: kafka.PartitionAny},
 		Key: []byte(runID), Value: data}

@@ -118,6 +118,11 @@ func runHTTP(runID string, endpointParams string,
 				if response.StatusCode == 200 {
 					// Send to output topic
 					fileName, _ := uuid.NewV4()
+
+					algoLog.Status = "Success"
+					algoLog.Msg = fmt.Sprintf("successful run. now output to: %s, data: %s", outputTopic, string(contents))
+					algoLog.log(nil)
+
 					produceOutputMessage(fileName.String(), outputTopic, contents)
 
 					algoLog.Status = "Success"
