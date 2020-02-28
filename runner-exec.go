@@ -29,7 +29,7 @@ func newExecRunner() *ExecRunner {
 
 	// Create the base log message
 	localLog := logMessage{
-		Type_:   "Data",
+		Type_:   "Runner",
 		Status:  "Started",
 		Version: "1",
 		Data: map[string]interface{}{
