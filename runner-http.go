@@ -18,8 +18,8 @@ func runHTTP(runID string, endpointParams string,
 	inputMap map[*swagger.AlgoInputModel][]InputData) (err error) {
 
 	// Create the base message
-	algoLog := logMessage{
-		Type_:   "Algo",
+	runnerLog := logMessage{
+		Type_:   "Runner",
 		Status:  "Started",
 		Version: "1",
 		Data: map[string]interface{}{
@@ -49,14 +49,22 @@ func runHTTP(runID string, endpointParams string,
 		netClient.Timeout = time.Second * time.Duration(config.TimeoutSeconds)
 	}
 
-	outputTopic := strings.ToLower(fmt.Sprintf("algorun.%s.%s.algo.%s.%s.%d.output.default",
-		config.DeploymentOwnerUserName,
-		config.DeploymentName,
-		config.AlgoOwnerUserName,
-		config.AlgoName,
-		config.AlgoIndex))
-
 	for input, inputData := range inputMap {
+
+		var outputTopic string
+		// get the httpresponse output
+		for _, output := range config.Outputs {
+			if strings.ToLower(output.OutputDeliveryType) == "httpresponse" &&
+				strings.ToLower(output.Name) == strings.ToLower(input.Name) {
+				outputTopic = strings.ToLower(fmt.Sprintf("algorun.%s.%s.algo.%s.%s.%d.output.%s",
+					config.DeploymentOwnerUserName,
+					config.DeploymentName,
+					config.AlgoOwnerUserName,
+					config.AlgoName,
+					config.AlgoIndex,
+					output.Name))
+			}
+		}
 
 		u, _ := url.Parse("localhost")
 		// Include the endpoint params as querystring parameters
@@ -79,21 +87,24 @@ func runHTTP(runID string, endpointParams string,
 
 			startTime := time.Now()
 			request, reqErr := http.NewRequest(strings.ToUpper(input.HttpVerb), u.String(), bytes.NewReader(data.data))
+			if data.contentType != "" {
+				request.Header.Set("Content-Type", data.contentType)
+			}
 			if reqErr != nil {
-				algoLog.Status = "Failed"
-				algoLog.Msg = fmt.Sprintf("Error building request")
-				algoLog.log(reqErr)
+				runnerLog.Status = "Failed"
+				runnerLog.Msg = fmt.Sprintf("Error building request")
+				runnerLog.log(reqErr)
 				continue
 			}
 			response, errReq := netClient.Do(request)
 
 			if errReq != nil {
-				algoLog.Status = "Failed"
-				algoLog.Msg = fmt.Sprintf("Error getting response from http server.")
-				algoLog.log(errReq)
+				runnerLog.Status = "Failed"
+				runnerLog.Msg = fmt.Sprintf("Error getting response from http server.")
+				runnerLog.log(errReq)
 
 				reqDuration := time.Since(startTime)
-				algoRuntimeHistogram.WithLabelValues(deploymentLabel, algoLabel, algoLog.Status).Observe(reqDuration.Seconds())
+				algoRuntimeHistogram.WithLabelValues(deploymentLabel, algoLabel, runnerLog.Status).Observe(reqDuration.Seconds())
 
 				continue
 
@@ -103,39 +114,47 @@ func runHTTP(runID string, endpointParams string,
 				// For example if multipart-form, get each file and load into kafka separately
 				contents, errRead := ioutil.ReadAll(response.Body)
 				if errRead != nil {
-					algoLog.Status = "Failed"
-					algoLog.Msg = fmt.Sprintf("Error reading response from http server")
-					algoLog.log(errRead)
+					runnerLog.Status = "Failed"
+					runnerLog.Msg = fmt.Sprintf("Error reading response from http server")
+					runnerLog.log(errRead)
 					continue
 				}
 
 				reqDuration := time.Since(startTime)
-				algoRuntimeHistogram.WithLabelValues(deploymentLabel, algoLabel, algoLog.Status).Observe(reqDuration.Seconds())
+				algoRuntimeHistogram.WithLabelValues(deploymentLabel, algoLabel, runnerLog.Status).Observe(reqDuration.Seconds())
 
 				if response.StatusCode == 200 {
 					// Send to output topic
 					fileName, _ := uuid.NewV4()
-					produceOutputMessage(fileName.String(), outputTopic, contents)
 
-					algoLog.Status = "Success"
-					algoLog.Msg = ""
-					algoLog.log(nil)
+					if outputTopic != "" {
+						produceOutputMessage(fileName.String(), outputTopic, contents)
+					} else {
+						runnerLog.Status = "Failed"
+						runnerLog.Msg = fmt.Sprintf("No output topic with outputDeliveryType as HttpResponse for input that is an http request")
+						runnerLog.log(nil)
+						return nil
+					}
+
+					runnerLog.Status = "Success"
+					runnerLog.Msg = ""
+					runnerLog.log(nil)
 
 					return nil
 				}
 
 				// Produce the error to the log
-				algoLog.Status = "Failed"
-				algoLog.Msg = fmt.Sprintf("Server returned non-success http status code: %d", response.StatusCode)
-				algoLog.log(errors.New(string(contents)))
+				runnerLog.Status = "Failed"
+				runnerLog.Msg = fmt.Sprintf("Server returned non-success http status code: %d", response.StatusCode)
+				runnerLog.log(errors.New(string(contents)))
 
-				return errors.New(algoLog.Msg)
+				return errors.New(runnerLog.Msg)
 
 			}
 		}
 
 	}
 
-	return errors.New(algoLog.Msg)
+	return errors.New(runnerLog.Msg)
 
 }

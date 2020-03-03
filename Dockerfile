@@ -118,8 +118,12 @@ RUN CGO_ENABLED=1 GOOS=linux go build -tags static_all -ldflags "${ldflags}" -a 
 
 FROM minio/mc as mc
 
+FROM alpine as certs
+RUN apk update && apk add ca-certificates
+
 # Create the scratch container that only contains the algo-runner binary
 FROM busybox as final
 
 COPY --from=mc /usr/bin/mc /algo-runner/mc
+COPY --from=certs /etc/ssl/certs /etc/ssl/certs
 COPY --from=static-build /go/src/algo-runner-go/algo-runner-go /algo-runner/algo-runner

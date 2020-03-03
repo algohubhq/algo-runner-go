@@ -11,7 +11,10 @@
             "mode": "auto",
             "program": "${workspaceFolder}",
             "env": {
-                "MC_HOST_algorun": "http://minio:minio123@192.168.99.100:30900"
+                "INSTANCE-NAME": "algo-run-debug",
+                "MC_HOST_algorun": "http://minio:minio123@192.168.99.100:30900",
+                "KAFKA-BROKERS": "localhost:32100",
+                "KAFKA-TLS": "true"
             },
             "args": [
                 // "--config", "../algo-test-go/runner-tests-test-image-resize-delimitedfilein-folderout.json",
@@ -21,8 +24,6 @@
                 // "--config", "../algo-test-go/runner-tests-test-image-resize-stdin-stdout.json",
                 // "--config", "../algo-test-go/runner-tests-test-text-transform-http.json",
                 // "--config", "../algo-test-go/runner-tests-test-text-transform-stdin-stdout.json",
-                "--kafka-brokers", "192.168.99.100:32100",
-                "--instance-name", "algo-run-debug"
             ],
             "cwd": "${workspaceRoot}",
             "showLog": false,

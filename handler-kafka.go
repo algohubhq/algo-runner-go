@@ -81,20 +81,33 @@ func startConsumers() {
 
 	}
 
-	groupID := fmt.Sprintf("%s-%s-%s-%s",
+	groupID := fmt.Sprintf("algorun-%s-%s-%s-%s-%d",
 		config.DeploymentOwnerUserName,
 		config.DeploymentName,
 		config.AlgoOwnerUserName,
-		config.AlgoName)
+		config.AlgoName,
+		config.AlgoIndex,
+	)
 
-	c, err := kafka.NewConsumer(&kafka.ConfigMap{
+	kafkaConfig := kafka.ConfigMap{
 		"bootstrap.servers":        *kafkaBrokers,
 		"group.id":                 groupID,
 		"client.id":                "algo-runner-go-client",
 		"enable.auto.commit":       false,
 		"enable.auto.offset.store": false,
 		"auto.offset.reset":        "earliest",
-	})
+	}
+
+	// Set the ssl config if enabled
+	if CheckForKafkaTLS() {
+		kafkaConfig["security.protocol"] = "ssl"
+		kafkaConfig["ssl.ca.location"] = "/etc/ssl/certs/kafka-ca.crt"
+		kafkaConfig["ssl.certificate.location"] = "/etc/ssl/certs/kafka-user.crt"
+		kafkaConfig["ssl.key.location"] = "/etc/ssl/certs/kafka-user.key"
+		kafkaConfig["enable.ssl.certificate.verification"] = "false"
+	}
+
+	c, err := kafka.NewConsumer(&kafkaConfig)
 
 	if err != nil {
 		healthy = false
@@ -279,6 +292,8 @@ func waitForMessages(c *kafka.Consumer, topicInputs topicInputs) {
 func processMessage(msg *kafka.Message,
 	input *swagger.AlgoInputModel) (inputData InputData, run bool, endpointParams string) {
 
+	// Default to run - if header is set to false, then don't run
+	run = true
 	// runID is the message key
 	runID = string(msg.Key)
 
@@ -320,6 +335,13 @@ func processMessage(msg *kafka.Message,
 	if runID == "" {
 		uuidRunID, _ := uuid.NewV4()
 		runID = strings.Replace(uuidRunID.String(), "-", "", -1)
+	}
+
+	// If the content type is empty, use the first accepted content type
+	if contentType == "" {
+		if len(input.ContentTypes) > 0 {
+			contentType = input.ContentTypes[0].Name
+		}
 	}
 
 	// Check if the content is empty then this message is to trigger a run only
@@ -479,9 +501,20 @@ func produceOutputMessage(fileName string, topic string, data []byte) {
 		},
 	}
 
-	p, err := kafka.NewProducer(&kafka.ConfigMap{
+	kafkaConfig := kafka.ConfigMap{
 		"bootstrap.servers": *kafkaBrokers,
-	})
+	}
+
+	// Set the ssl config if enabled
+	if CheckForKafkaTLS() {
+		kafkaConfig["security.protocol"] = "ssl"
+		kafkaConfig["ssl.ca.location"] = "/etc/ssl/certs/kafka-ca.crt"
+		kafkaConfig["ssl.certificate.location"] = "/etc/ssl/certs/kafka-user.crt"
+		kafkaConfig["ssl.key.location"] = "/etc/ssl/certs/kafka-user.key"
+		kafkaConfig["enable.ssl.certificate.verification"] = "false"
+	}
+
+	p, err := kafka.NewProducer(&kafkaConfig)
 
 	if err != nil {
 		runnerLog.Status = "Failed"
@@ -530,7 +563,6 @@ func produceOutputMessage(fileName string, topic string, data []byte) {
 	// Create the headers
 	var headers []kafka.Header
 	headers = append(headers, kafka.Header{Key: "fileName", Value: []byte(fileName)})
-	headers = append(headers, kafka.Header{Key: "run", Value: []byte("true")})
 
 	p.ProduceChannel() <- &kafka.Message{TopicPartition: kafka.TopicPartition{Topic: &topic, Partition: kafka.PartitionAny},
 		Key: []byte(runID), Value: data}
