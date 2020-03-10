@@ -104,7 +104,6 @@ func startConsumers() {
 		kafkaConfig["ssl.ca.location"] = "/etc/ssl/certs/kafka-ca.crt"
 		kafkaConfig["ssl.certificate.location"] = "/etc/ssl/certs/kafka-user.crt"
 		kafkaConfig["ssl.key.location"] = "/etc/ssl/certs/kafka-user.key"
-		kafkaConfig["enable.ssl.certificate.verification"] = "false"
 	}
 
 	c, err := kafka.NewConsumer(&kafkaConfig)
@@ -511,7 +510,6 @@ func produceOutputMessage(fileName string, topic string, data []byte) {
 		kafkaConfig["ssl.ca.location"] = "/etc/ssl/certs/kafka-ca.crt"
 		kafkaConfig["ssl.certificate.location"] = "/etc/ssl/certs/kafka-user.crt"
 		kafkaConfig["ssl.key.location"] = "/etc/ssl/certs/kafka-user.key"
-		kafkaConfig["enable.ssl.certificate.verification"] = "false"
 	}
 
 	p, err := kafka.NewProducer(&kafkaConfig)
