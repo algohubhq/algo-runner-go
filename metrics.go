@@ -8,41 +8,45 @@ import (
 
 // Global metrics variables
 var (
-	deploymentLabel string
-	algoLabel       string
+	deploymentLabel  string
+	algoLabel        string
+	algoVersionLabel string
+	algoIndexLabel   string
 
 	runnerRuntimeHistogram = prometheus.NewHistogramVec(prometheus.HistogramOpts{
 		Name:    "algorunner_run_duration_seconds",
 		Help:    "The complete message processing duration in seconds",
 		Buckets: []float64{0.005, 0.05, 0.25, 1, 2.5, 5, 7.5, 10, 20, 30},
-	}, []string{"deployment", "algo", "status"})
+	}, []string{"deployment", "algo", "version", "index"})
 
 	algoRuntimeHistogram = prometheus.NewHistogramVec(prometheus.HistogramOpts{
 		Name:    "algorunner_algo_duration_seconds",
 		Help:    "The algo run duration in seconds",
 		Buckets: []float64{0.005, 0.05, 0.25, 1, 2.5, 5, 7.5, 10, 20, 30},
-	}, []string{"deployment", "algo", "status"})
+	}, []string{"deployment", "algo", "version", "index"})
 
 	bytesProcessedCounter = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "algorunner_bytes_processed",
 		Help: "The total number of bytes processed by the runner",
-	}, []string{"deployment", "algo", "status"})
+	}, []string{"deployment", "algo", "version", "index"})
 
 	algoErrorCounter = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "algorunner_algo_error",
 		Help: "The total number of errors from the algo",
-	}, []string{"deployment", "algo"})
+	}, []string{"deployment", "algo", "version", "index"})
 
 	runnerErrorCounter = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "algorunner_runner_error",
 		Help: "The total number of errors from the runner",
-	}, []string{"deployment", "algo"})
+	}, []string{"deployment", "algo", "version", "index"})
 )
 
 func registerMetrics() {
 
 	deploymentLabel = fmt.Sprintf("%s/%s", config.DeploymentOwnerUserName, config.DeploymentName)
-	algoLabel = fmt.Sprintf("%s/%s", config.AlgoOwnerUserName, config.AlgoName)
+	algoLabel = fmt.Sprintf("%s/%s:%s[%d]", config.AlgoOwnerUserName, config.AlgoName, config.AlgoVersionTag, config.AlgoIndex)
+	algoVersionLabel = config.AlgoVersionTag
+	algoIndexLabel = string(config.AlgoIndex)
 
 	prometheus.MustRegister(runnerRuntimeHistogram)
 	prometheus.MustRegister(algoRuntimeHistogram)
