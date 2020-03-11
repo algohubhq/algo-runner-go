@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -44,9 +45,9 @@ var (
 func registerMetrics() {
 
 	deploymentLabel = fmt.Sprintf("%s/%s", config.DeploymentOwnerUserName, config.DeploymentName)
-	algoLabel = fmt.Sprintf("%s/%s:%s[%d]", config.AlgoOwnerUserName, config.AlgoName, config.AlgoVersionTag, config.AlgoIndex)
+	algoLabel = fmt.Sprintf("%s/%s", config.AlgoOwnerUserName, config.AlgoName)
 	algoVersionLabel = config.AlgoVersionTag
-	algoIndexLabel = string(config.AlgoIndex)
+	algoIndexLabel = strconv.Itoa(int(config.AlgoIndex))
 
 	prometheus.MustRegister(runnerRuntimeHistogram)
 	prometheus.MustRegister(algoRuntimeHistogram)
