@@ -104,7 +104,7 @@ func runHTTP(runID string, endpointParams string,
 				runnerLog.log(errReq)
 
 				reqDuration := time.Since(startTime)
-				algoRuntimeHistogram.WithLabelValues(deploymentLabel, algoLabel, algoVersionLabel, algoIndexLabel).Observe(reqDuration.Seconds())
+				algoRuntimeHistogram.WithLabelValues(deploymentLabel, componentLabel, algoLabel, algoVersionLabel, algoIndexLabel).Observe(reqDuration.Seconds())
 
 				continue
 
@@ -121,7 +121,7 @@ func runHTTP(runID string, endpointParams string,
 				}
 
 				reqDuration := time.Since(startTime)
-				algoRuntimeHistogram.WithLabelValues(deploymentLabel, algoLabel, algoVersionLabel, algoIndexLabel).Observe(reqDuration.Seconds())
+				algoRuntimeHistogram.WithLabelValues(deploymentLabel, componentLabel, algoLabel, algoVersionLabel, algoIndexLabel).Observe(reqDuration.Seconds())
 
 				if response.StatusCode == 200 {
 					// Send to output topic

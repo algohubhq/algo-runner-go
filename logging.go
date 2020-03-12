@@ -28,9 +28,9 @@ func (lm *logMessage) log(errLog error) {
 		// Increment the error metric
 		switch logType := strings.ToLower(lm.Type_); logType {
 		case "algo":
-			algoErrorCounter.WithLabelValues(deploymentLabel, algoLabel, algoVersionLabel, algoIndexLabel).Inc()
+			algoErrorCounter.WithLabelValues(deploymentLabel, componentLabel, algoLabel, algoVersionLabel, algoIndexLabel).Inc()
 		case "runner":
-			runnerErrorCounter.WithLabelValues(deploymentLabel, algoLabel, algoVersionLabel, algoIndexLabel).Inc()
+			runnerErrorCounter.WithLabelValues(deploymentLabel, componentLabel, algoLabel, algoVersionLabel, algoIndexLabel).Inc()
 		}
 
 		log.Error(errLog,

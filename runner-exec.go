@@ -323,7 +323,7 @@ func (execRunner *ExecRunner) run(runID string, endpointParams string,
 	}
 
 	execDuration := time.Since(startTime)
-	algoRuntimeHistogram.WithLabelValues(deploymentLabel, algoLabel, algoVersionLabel, algoIndexLabel).Observe(execDuration.Seconds())
+	algoRuntimeHistogram.WithLabelValues(deploymentLabel, componentLabel, algoLabel, algoVersionLabel, algoIndexLabel).Observe(execDuration.Seconds())
 
 	return nil
 
