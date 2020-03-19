@@ -136,10 +136,6 @@ func runHTTP(runID string, endpointParams string,
 						return nil
 					}
 
-					runnerLog.Status = "Success"
-					runnerLog.Msg = ""
-					runnerLog.log(nil)
-
 					return nil
 				}
 

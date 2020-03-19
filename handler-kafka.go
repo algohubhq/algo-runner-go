@@ -212,12 +212,12 @@ func waitForMessages(c *kafka.Consumer, topicInputs topicInputs) {
 					case "http":
 						runError = runHTTP(runID, endpointParams, data[runID])
 					case "grpc":
-						runError = errors.New("gRPC runner is not implemented")
+						runError = errors.New("gRPC executor is not implemented")
 					case "spark":
-						runError = errors.New("Spark runner is not implemented")
+						runError = errors.New("Spark executor is not implemented")
 					default:
 						// Not implemented
-						runError = errors.New("Unknown runner is not supported")
+						runError = errors.New("Unknown executor is not supported")
 					}
 
 					if runError == nil {

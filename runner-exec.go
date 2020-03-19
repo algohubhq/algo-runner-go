@@ -315,11 +315,6 @@ func (execRunner *ExecRunner) run(runID string, endpointParams string,
 			produceOutputMessage(fileName.String(), stdoutTopic, stdoutBytes)
 		}
 
-		// Write completion to log topic
-		algoLog.Status = "Success"
-		algoLog.Msg = fmt.Sprintf("Stdout: %s | Stderr: %s", stdout, stderr)
-		algoLog.log(nil)
-
 	}
 
 	execDuration := time.Since(startTime)
