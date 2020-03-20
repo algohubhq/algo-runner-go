@@ -1,7 +1,7 @@
 package main
 
 import (
-	"algo-runner-go/swagger"
+	"algo-runner-go/openapi"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -9,27 +9,24 @@ import (
 	"regexp"
 )
 
-func loadConfigFromFile(fileName string) swagger.AlgoRunnerConfig {
+func loadConfigFromFile(fileName string) openapi.AlgoRunnerConfig {
 
 	// Create the base log message
 	localLog := logMessage{
-		Type_:   "Local",
-		Status:  "Started",
+		Type:    "Local",
 		Version: "1",
 	}
 
 	raw, err := ioutil.ReadFile(fileName)
 	if err != nil {
-		localLog.Status = "Failed"
 		localLog.Msg = fmt.Sprintf("Unable to read the config file [%s].", fileName)
 		localLog.log(err)
 	}
 
-	var c swagger.AlgoRunnerConfig
+	var c openapi.AlgoRunnerConfig
 	jsonErr := json.Unmarshal(raw, &c)
 
 	if jsonErr != nil {
-		localLog.Status = "Failed"
 		localLog.Msg = fmt.Sprintf("Unable to deserialize the config file [%s].", fileName)
 		localLog.log(jsonErr)
 	}
@@ -38,20 +35,18 @@ func loadConfigFromFile(fileName string) swagger.AlgoRunnerConfig {
 
 }
 
-func loadConfigFromString(jsonConfig string) swagger.AlgoRunnerConfig {
+func loadConfigFromString(jsonConfig string) openapi.AlgoRunnerConfig {
 
 	// Create the base log message
 	localLog := logMessage{
-		Type_:   "Local",
-		Status:  "Started",
+		Type:    "Local",
 		Version: "1",
 	}
 
-	var c swagger.AlgoRunnerConfig
+	var c openapi.AlgoRunnerConfig
 	jsonErr := json.Unmarshal([]byte(jsonConfig), &c)
 
 	if jsonErr != nil {
-		localLog.Status = "Failed"
 		localLog.Msg = fmt.Sprintf("Unable to deserialize the config from string [%s].", jsonConfig)
 		localLog.log(jsonErr)
 	}

@@ -1,7 +1,7 @@
 package main
 
 import (
-	"algo-runner-go/swagger"
+	"algo-runner-go/openapi"
 	"bufio"
 	"encoding/json"
 	"errors"
@@ -12,6 +12,8 @@ import (
 	"os/signal"
 	"strings"
 	"syscall"
+
+	uuid "github.com/nu7hatch/gouuid"
 )
 
 // ExecOutputHandler handles all output files.
@@ -21,8 +23,8 @@ type ExecOutputHandler struct {
 
 type output struct {
 	execCmd               *exec.Cmd
-	outputMessageDataType string
-	algoOutput            *swagger.AlgoOutputModel
+	outputMessageDataType openapi.MessageDataTypes
+	algoOutput            *openapi.AlgoOutputModel
 	algoIndex             int32
 }
 
@@ -78,7 +80,7 @@ func newOutputHandler() *ExecOutputHandler {
 
 }
 
-func (outputHandler *ExecOutputHandler) watch(fileFolder string, algoIndex int32, algoOutput *swagger.AlgoOutputModel, outputMessageDataType string) (err error) {
+func (outputHandler *ExecOutputHandler) watch(fileFolder string, algoIndex int32, algoOutput *openapi.AlgoOutputModel, outputMessageDataType openapi.MessageDataTypes) (err error) {
 
 	execCmd := outputHandler.newCmd(fileFolder, outputMessageDataType)
 	outputHandler.outputs[fileFolder] = &output{
@@ -94,12 +96,11 @@ func (outputHandler *ExecOutputHandler) watch(fileFolder string, algoIndex int32
 
 }
 
-func (outputHandler *ExecOutputHandler) newCmd(src string, outputMessageDataType string) (execCmd *exec.Cmd) {
+func (outputHandler *ExecOutputHandler) newCmd(src string, outputMessageDataType openapi.MessageDataTypes) (execCmd *exec.Cmd) {
 
 	// Create the base log message
 	localLog := logMessage{
-		Type_:   "Runner",
-		Status:  "Started",
+		Type:    openapi.LOGTYPES_RUNNER,
 		Version: "1",
 		Data: map[string]interface{}{
 			"DeploymentOwnerUserName": config.DeploymentOwnerUserName,
@@ -120,7 +121,7 @@ func (outputHandler *ExecOutputHandler) newCmd(src string, outputMessageDataType
 	cmd := exec.Command(mcPath)
 
 	// If the output is embedded, run a watch, otherwise run a mirror
-	if outputMessageDataType == "embedded" {
+	if outputMessageDataType == openapi.MESSAGEDATATYPES_EMBEDDED {
 		cmd.Args = append(cmd.Args, "watch", "--json", "--quiet", src)
 	} else {
 
@@ -136,7 +137,6 @@ func (outputHandler *ExecOutputHandler) newCmd(src string, outputMessageDataType
 				config.DeploymentName))
 			cmd.Args = append(cmd.Args, "mirror", "--json", "--quiet", "-w", src, destBucket)
 		} else {
-			localLog.Status = "Failed"
 			localLog.Msg = "The storage connection string is required for any file replication. Shutting down..."
 			localLog.log(errors.New("S3 connection string missing"))
 
@@ -153,8 +153,7 @@ func (output *output) start() {
 
 	// Create the base log message
 	localLog := logMessage{
-		Type_:   "Runner",
-		Status:  "Started",
+		Type:    "Runner",
 		Version: "1",
 		Data: map[string]interface{}{
 			"DeploymentOwnerUserName": config.DeploymentOwnerUserName,
@@ -174,14 +173,12 @@ func (output *output) start() {
 	go func() {
 		sig := <-sigchan
 
-		localLog.Status = "Terminated"
 		localLog.Msg = fmt.Sprintf("Caught signal %v. Killing server process: mc\n", sig)
 		localLog.log(nil)
 
 		if output.execCmd != nil && output.execCmd.Process != nil {
 			val := output.execCmd.Process.Kill()
 			if val != nil {
-				localLog.Status = "Terminated"
 				localLog.Msg = fmt.Sprintf("Killed server process: mc - error %s\n", val.Error())
 				localLog.log(nil)
 			}
@@ -205,7 +202,7 @@ func (output *output) start() {
 		scanner := bufio.NewScanner(stdoutIn)
 		for scanner.Scan() {
 			m := scanner.Bytes()
-			if output.outputMessageDataType == "embedded" {
+			if output.outputMessageDataType == openapi.MESSAGEDATATYPES_EMBEDDED {
 				// If embedded then the mc command is a watch
 				var wm watchMessage
 				jsonErr := json.Unmarshal(m, &wm)
@@ -213,7 +210,6 @@ func (output *output) start() {
 					if wm.Status != "" {
 						var em errorMessage
 						_ = json.Unmarshal(m, &em)
-						localLog.Status = "Failed"
 						localLog.Msg = fmt.Sprintf("mc watch command error. [%s]", em.Error)
 						localLog.log(em.Error.Cause.Error)
 					}
@@ -223,12 +219,15 @@ func (output *output) start() {
 					// Send contents of the file to kafka
 					fileBytes, err := ioutil.ReadFile(wm.Event.Path)
 					if err != nil {
-						localLog.Status = "Failed"
 						localLog.Msg = fmt.Sprintf("Output watcher unable to read the file [%s] from disk.", wm.Event.Path)
 						localLog.log(err)
 					}
 
-					produceOutputMessage(wm.Event.Path, fileOutputTopic, fileBytes)
+					// TODO: Figure out how to get the traceID from the filename
+					uuidTraceID, _ := uuid.NewV4()
+					traceID := strings.Replace(uuidTraceID.String(), "-", "", -1)
+
+					produceOutputMessage(traceID, wm.Event.Path, fileOutputTopic, fileBytes)
 				}
 
 			} else {
@@ -241,7 +240,6 @@ func (output *output) start() {
 					if mm.Status != "" {
 						var em errorMessage
 						_ = json.Unmarshal(m, &em)
-						localLog.Status = "Failed"
 						localLog.Msg = fmt.Sprintf("mc mirror command error. [%s]", em.Error)
 						localLog.log(em.Error.Cause.Error)
 					}
@@ -252,7 +250,7 @@ func (output *output) start() {
 					bucketName := fmt.Sprintf("%s.%s",
 						strings.ToLower(config.DeploymentOwnerUserName),
 						strings.ToLower(config.DeploymentName))
-					fileReference := swagger.FileReference{
+					fileReference := openapi.FileReference{
 						Host:   storageConfig.host,
 						Bucket: bucketName,
 						File:   mm.Target,
@@ -260,12 +258,15 @@ func (output *output) start() {
 					jsonBytes, jsonErr := json.Marshal(fileReference)
 
 					if jsonErr != nil {
-						localLog.Status = "Failed"
 						localLog.Msg = fmt.Sprintf("Unable to create the file reference json.")
 						localLog.log(jsonErr)
 					}
 
-					produceOutputMessage(mm.Target, fileOutputTopic, jsonBytes)
+					// TODO: Figure out how to get the traceID from the filename
+					uuidTraceID, _ := uuid.NewV4()
+					traceID := strings.Replace(uuidTraceID.String(), "-", "", -1)
+
+					produceOutputMessage(traceID, mm.Target, fileOutputTopic, jsonBytes)
 				}
 
 			}
@@ -278,7 +279,6 @@ func (output *output) start() {
 		scanner := bufio.NewScanner(stderrIn)
 		for scanner.Scan() {
 			m := scanner.Text()
-			localLog.Status = "Failed"
 			localLog.Msg = fmt.Sprintf("mc command stderr. [%s]", m)
 			localLog.log(nil)
 		}
@@ -287,11 +287,9 @@ func (output *output) start() {
 	err := output.execCmd.Start()
 
 	if err != nil {
-		localLog.Status = "Failed"
 		localLog.Msg = fmt.Sprintf("mc start failed with error '%s'\n", err)
 		localLog.log(err)
 	} else {
-		localLog.Status = "Running"
 		localLog.Msg = fmt.Sprintf("mc started with command '%s'\n", output.execCmd.String())
 		localLog.log(nil)
 	}
@@ -299,14 +297,11 @@ func (output *output) start() {
 	errWait := output.execCmd.Wait()
 
 	if errWait != nil {
-		localLog.Status = "Failed"
 		localLog.Msg = fmt.Sprintf("mc start failed with %s\n", errWait)
 		localLog.log(errWait)
 	}
 
 	// If this is reached, the mc command has terminated (bad)
-
-	localLog.Status = "Terminated"
 	localLog.Msg = fmt.Sprintf("mc Terminated unexpectedly!")
 	localLog.log(nil)
 

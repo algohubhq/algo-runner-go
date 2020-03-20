@@ -1,7 +1,7 @@
 package main
 
 import (
-	"algo-runner-go/swagger"
+	"algo-runner-go/openapi"
 	"fmt"
 	"os"
 	"os/user"
@@ -12,11 +12,11 @@ import (
 	"go.uber.org/zap"
 )
 
-type logMessage swagger.LogEntryModel
+type logMessage openapi.LogEntryModel
 
 func (lm *logMessage) log(errLog error) {
 
-	zapLog, err := newLogger(lm.Type_)
+	zapLog, err := newLogger(string(lm.Type))
 	if err != nil {
 		panic(fmt.Sprintf("Failed to create logger! [%v]", err))
 	}
@@ -26,7 +26,7 @@ func (lm *logMessage) log(errLog error) {
 	if errLog != nil {
 
 		// Increment the error metric
-		switch logType := strings.ToLower(lm.Type_); logType {
+		switch logType := strings.ToLower(string(lm.Type)); logType {
 		case "algo":
 			algoErrorCounter.WithLabelValues(deploymentLabel, componentLabel, algoLabel, algoVersionLabel, algoIndexLabel).Inc()
 		case "runner":
@@ -36,16 +36,14 @@ func (lm *logMessage) log(errLog error) {
 		log.Error(errLog,
 			lm.Msg,
 			"version", lm.Version,
-			"type", lm.Type_,
-			"status", lm.Status,
-			"runId", lm.RunId,
+			"type", lm.Type,
+			"traceId", lm.TraceId,
 			"data", lm.Data)
 	} else {
 		log.Info(lm.Msg,
 			"version", lm.Version,
-			"type", lm.Type_,
-			"status", lm.Status,
-			"runId", lm.RunId,
+			"type", lm.Type,
+			"traceId", lm.TraceId,
 			"data", lm.Data)
 	}
 

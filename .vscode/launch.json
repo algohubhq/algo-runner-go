@@ -14,11 +14,15 @@
                 "INSTANCE-NAME": "algo-run-debug",
                 "MC_HOST_algorun": "http://minio:minio123@192.168.99.100:30900",
                 "KAFKA-BROKERS": "localhost:32100",
-                "KAFKA-TLS": "true"
+                "KAFKA_TLS": "true",
+                "KAFKA_TLS_CA_LOCATION": "/Users/mike/.ssh/kafka_ca.crt",
+                "KAFKA_TLS_USER_LOCATION": "/Users/mike/.ssh/kafka_user.crt",
+                "KAFKA_TLS_KEY_LOCATION": "/Users/mike/.ssh/kafka_user.key",
             },
             "args": [
+                "--config", "./sample-config/test.json",
                 // "--config", "../algo-test-go/runner-tests-test-image-resize-delimitedfilein-folderout.json",
-                 "--config", "../algo-test-go/runner-tests-test-image-resize-filein-fileout.json",
+                // "--config", "../algo-test-go/runner-tests-test-image-resize-filein-fileout.json",
                 // "--config", "../algo-test-go/runner-tests-test-image-resize-http.json",
                 // "--config", "../algo-test-go/runner-tests-test-image-resize-repeatedfilein-folderout.json",
                 // "--config", "../algo-test-go/runner-tests-test-image-resize-stdin-stdout.json",

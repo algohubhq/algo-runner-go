@@ -1,7 +1,7 @@
 package main
 
 import (
-	"algo-runner-go/swagger"
+	"algo-runner-go/openapi"
 	"errors"
 	"flag"
 	"os"
@@ -19,9 +19,8 @@ var (
 	healthy       bool
 	instanceName  *string
 	kafkaBrokers  *string
-	config        swagger.AlgoRunnerConfig
+	config        openapi.AlgoRunnerConfig
 	logTopic      *string
-	runID         string
 	execRunner    *ExecRunner
 	storageConfig *StorageConfig
 )
@@ -30,8 +29,7 @@ func main() {
 
 	// Create the base log message
 	localLog := logMessage{
-		Type_:   "Local",
-		Status:  "Started",
+		Type:    "Local",
 		Version: "1",
 	}
 
@@ -49,7 +47,6 @@ func main() {
 		if configEnv != "" {
 			config = loadConfigFromString(configEnv)
 		} else {
-			localLog.Status = "Failed"
 			localLog.Msg = "Missing the config file path argument and no environment variable ALGO-RUNNER-CONFIG exists. ( --config=./config.json ) Shutting down..."
 			localLog.log(errors.New("ALGO-RUNNER-CONFIG missing"))
 
@@ -66,7 +63,6 @@ func main() {
 		if kafkaBrokersEnv != "" {
 			kafkaBrokers = &kafkaBrokersEnv
 		} else {
-			localLog.Status = "Failed"
 			localLog.Msg = "Missing the Kafka Brokers argument and no environment variable KAFKA-BROKERS exists. ( --kafka-brokers={broker1,broker2} ) Shutting down..."
 			localLog.log(errors.New("KAFKA-BROKERS missing"))
 
@@ -85,7 +81,6 @@ func main() {
 			storageConfig = &StorageConfig{}
 			host, accessKey, secret, err := parseEnvURLStr(storageEnv)
 			if err != nil {
-				localLog.Status = "Failed"
 				localLog.Msg = "S3 Connection String is not valid. [] Shutting down..."
 				localLog.log(errors.New("S3 Connection String is not valid"))
 
@@ -97,7 +92,6 @@ func main() {
 			storageConfig.secretAccessKey = secret
 			storageConfig.useSSL = host.Scheme == "https"
 		} else {
-			localLog.Status = "Failed"
 			localLog.Msg = "Missing the S3 Storage Connection String argument and no environment variable MC_HOST_algorun exists."
 			localLog.log(errors.New("MC_HOST_algorun missing"))
 		}
@@ -147,8 +141,8 @@ func main() {
 		wg.Done()
 	}()
 
-	if strings.ToLower(config.Executor) == "executable" ||
-		strings.ToLower(config.Executor) == "delegated" {
+	if config.Executor == openapi.EXECUTORS_EXECUTABLE ||
+		config.Executor == openapi.EXECUTORS_DELEGATED {
 		execRunner = newExecRunner()
 	}
 

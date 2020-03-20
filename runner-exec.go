@@ -1,7 +1,7 @@
 package main
 
 import (
-	"algo-runner-go/swagger"
+	"algo-runner-go/openapi"
 	"bytes"
 	"errors"
 	"fmt"
@@ -29,8 +29,7 @@ func newExecRunner() *ExecRunner {
 
 	// Create the base log message
 	localLog := logMessage{
-		Type_:   "Runner",
-		Status:  "Started",
+		Type:    "Runner",
 		Version: "1",
 		Data: map[string]interface{}{
 			"DeploymentOwnerUserName": config.DeploymentOwnerUserName,
@@ -60,21 +59,21 @@ func newExecRunner() *ExecRunner {
 	for _, output := range config.Outputs {
 
 		handleOutput := config.WriteAllOutputs
-		outputMessageDataType := "embedded"
+		outputMessageDataType := openapi.MESSAGEDATATYPES_EMBEDDED
 
 		// Check to see if there are any mapped routes for this output and get the message data type
 		for i := range config.Pipes {
 			if config.Pipes[i].SourceName == algoName {
 				handleOutput = true
-				outputMessageDataType = strings.ToLower(config.Pipes[i].SourceOutputMessageDataType)
+				outputMessageDataType = config.Pipes[i].SourceOutputMessageDataType
 				break
 			}
 		}
 
 		if handleOutput {
 
-			if strings.ToLower(output.OutputDeliveryType) == "fileparameter" ||
-				strings.ToLower(output.OutputDeliveryType) == "folderparameter" {
+			if output.OutputDeliveryType == openapi.OUTPUTDELIVERYTYPES_FILE_PARAMETER ||
+				output.OutputDeliveryType == openapi.OUTPUTDELIVERYTYPES_FOLDER_PARAMETER {
 
 				// Watch folder for changes.
 
@@ -83,21 +82,20 @@ func newExecRunner() *ExecRunner {
 				if _, err := os.Stat(folder); os.IsNotExist(err) {
 					err = os.MkdirAll(folder, os.ModePerm)
 					if err != nil {
-						localLog.Status = "Failed"
 						localLog.Msg = fmt.Sprintf("Failed to create output folder: %s\n", folder)
 						localLog.log(err)
 					}
 				}
 
-				if strings.ToLower(output.OutputDeliveryType) == "fileparameter" {
+				if output.OutputDeliveryType == openapi.OUTPUTDELIVERYTYPES_FILE_PARAMETER {
 					// Set the output folder name parameter
-					if output.Parameter != "" {
-						fileParameters[output.Parameter] = folder
+					if *output.Parameter != "" {
+						fileParameters[*output.Parameter] = folder
 					}
-				} else if strings.ToLower(output.OutputDeliveryType) == "folderparameter" {
+				} else if output.OutputDeliveryType == openapi.OUTPUTDELIVERYTYPES_FOLDER_PARAMETER {
 					// Set the output folder name parameter
-					if output.Parameter != "" {
-						command = append(command, output.Parameter)
+					if *output.Parameter != "" {
+						command = append(command, *output.Parameter)
 						command = append(command, folder)
 					}
 				}
@@ -108,7 +106,7 @@ func newExecRunner() *ExecRunner {
 					outputHandler.watch(folder, config.AlgoIndex, &output, outputMessageDataType)
 				}()
 
-			} else if strings.ToLower(output.OutputDeliveryType) == "stdout" {
+			} else if output.OutputDeliveryType == openapi.OUTPUTDELIVERYTYPES_STD_OUT {
 				sendStdout = true
 			}
 
@@ -131,16 +129,15 @@ func (execRunner *ExecRunner) newExecCmd() *exec.Cmd {
 
 }
 
-func (execRunner *ExecRunner) run(runID string, endpointParams string,
-	inputMap map[*swagger.AlgoInputModel][]InputData) (err error) {
+func (execRunner *ExecRunner) run(traceID string, endpointParams string,
+	inputMap map[*openapi.AlgoInputModel][]InputData) (err error) {
 
 	// Create the base message
 	algoLog := logMessage{
-		Type_:   "Algo",
-		Status:  "Started",
+		Type:    "Algo",
 		Version: "1",
 		Data: map[string]interface{}{
-			"RunId":                   runID,
+			"TraceId":                 traceID,
 			"DeploymentOwnerUserName": config.DeploymentOwnerUserName,
 			"DeploymentName":          config.DeploymentName,
 			"AlgoOwnerUserName":       config.AlgoOwnerUserName,
@@ -167,7 +164,6 @@ func (execRunner *ExecRunner) run(runID string, endpointParams string,
 		if targetCmd != nil && targetCmd.Process != nil {
 			val := targetCmd.Process.Kill()
 			if val != nil {
-				algoLog.Status = "Terminated"
 				algoLog.Msg = fmt.Sprintf("Killed algo process: %s", config.Entrypoint)
 				algoLog.log(val)
 			}
@@ -176,7 +172,6 @@ func (execRunner *ExecRunner) run(runID string, endpointParams string,
 
 	// Write to the topic as error if no value
 	if inputMap == nil {
-		algoLog.Status = "Failed"
 		algoLog.Msg = "Attempted to run but input data is empty."
 		algoLog.log(errors.New("Input data was empty"))
 
@@ -192,14 +187,12 @@ func (execRunner *ExecRunner) run(runID string, endpointParams string,
 		go func() {
 			<-timer.C
 
-			algoLog.Status = "Timeout"
 			algoLog.Msg = fmt.Sprintf("Algo timed out. Timeout value: %d seconds", config.TimeoutSeconds)
 			algoLog.log(nil)
 
 			if targetCmd != nil && targetCmd.Process != nil {
 				val := targetCmd.Process.Kill()
 				if val != nil {
-					algoLog.Status = "Timeout"
 					algoLog.Msg = fmt.Sprintf("Killed algo process due to timeout: %s", config.Entrypoint)
 					algoLog.log(val)
 				}
@@ -213,8 +206,8 @@ func (execRunner *ExecRunner) run(runID string, endpointParams string,
 	// Write the stdin data or set the arguments for the input
 	for input, inputData := range inputMap {
 
-		switch inputDeliveryType := strings.ToLower(input.InputDeliveryType); inputDeliveryType {
-		case "stdin":
+		switch inputDeliveryType := input.InputDeliveryType; inputDeliveryType {
+		case openapi.INPUTDELIVERYTYPES_STD_IN:
 
 			// get the writer for stdin
 			writer, _ := targetCmd.StdinPipe()
@@ -224,45 +217,34 @@ func (execRunner *ExecRunner) run(runID string, endpointParams string,
 			}
 			writer.Close()
 
-		case "parameter":
+		case openapi.INPUTDELIVERYTYPES_FILE_PARAMETER:
 
-			if input.Parameter != "" {
-				targetCmd.Args = append(targetCmd.Args, input.Parameter)
+			if *input.Parameter != "" {
+				targetCmd.Args = append(targetCmd.Args, *input.Parameter)
 			}
 			for _, data := range inputData {
-				targetCmd.Args = append(targetCmd.Args, path.Join("/input", data.fileReference.File))
-			}
-
-		case "repeatedparameter":
-
-			for _, data := range inputData {
-				if input.Parameter != "" {
-					targetCmd.Args = append(targetCmd.Args, input.Parameter)
-				}
 				targetCmd.Args = append(targetCmd.Args, path.Join("/input", data.fileReference.File))
 			}
 
 		case "delimitedparameter":
 
-			if input.Parameter != "" {
-				targetCmd.Args = append(targetCmd.Args, input.Parameter)
+			if *input.Parameter != "" {
+				targetCmd.Args = append(targetCmd.Args, *input.Parameter)
 			}
 			var buffer bytes.Buffer
 			for i := 0; i < len(inputData); i++ {
 				buffer.WriteString(path.Join("/input", inputData[i].fileReference.File))
 				if i != len(inputData)-1 {
-					buffer.WriteString(input.ParameterDelimiter)
+					buffer.WriteString(*input.ParameterDelimiter)
 				}
 			}
 			targetCmd.Args = append(targetCmd.Args, buffer.String())
 		}
 	}
 
-	// Iterate the fileParameters to append the runid as the filename
+	// Iterate the fileParameters to append the traceid as the filename
 	for parameter, folder := range execRunner.fileParameters {
-		fileUUID, _ := uuid.NewV4()
-		fileID := strings.Replace(fileUUID.String(), "-", "", -1)
-		fileFolder := path.Join(folder, fileID)
+		fileFolder := path.Join(folder, traceID)
 
 		targetCmd.Args = append(targetCmd.Args, parameter)
 		targetCmd.Args = append(targetCmd.Args, fileFolder)
@@ -295,7 +277,6 @@ func (execRunner *ExecRunner) run(runID string, endpointParams string,
 
 	if cmdErr != nil {
 
-		algoLog.Status = "Failed"
 		// algoLog.AlgoLogData.RuntimeMs = int64(execDuration / time.Millisecond)
 		algoLog.Msg = fmt.Sprintf("Stdout: %s | Stderr: %s", stdout, stderr)
 		algoLog.log(cmdErr)
@@ -312,7 +293,7 @@ func (execRunner *ExecRunner) run(runID string, endpointParams string,
 
 			// Write to stdout output topic
 			fileName, _ := uuid.NewV4()
-			produceOutputMessage(fileName.String(), stdoutTopic, stdoutBytes)
+			produceOutputMessage(traceID, fileName.String(), stdoutTopic, stdoutBytes)
 		}
 
 	}
@@ -324,7 +305,7 @@ func (execRunner *ExecRunner) run(runID string, endpointParams string,
 
 }
 
-func getCommand(config swagger.AlgoRunnerConfig) []string {
+func getCommand(config openapi.AlgoRunnerConfig) []string {
 
 	cmd := strings.Split(config.Entrypoint, " ")
 
@@ -338,7 +319,7 @@ func getCommand(config swagger.AlgoRunnerConfig) []string {
 	return cmd
 }
 
-func getEnvironment(config swagger.AlgoRunnerConfig) []string {
+func getEnvironment(config openapi.AlgoRunnerConfig) []string {
 
 	env := strings.Split(config.Entrypoint, " ")
 
