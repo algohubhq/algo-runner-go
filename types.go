@@ -10,6 +10,7 @@ type InputData struct {
 	data            []byte
 }
 
+// StorageConfig defines the S3 compatible storage configuration
 type StorageConfig struct {
 	connectionString string
 	host             string

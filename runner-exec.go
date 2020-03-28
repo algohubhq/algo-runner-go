@@ -299,7 +299,7 @@ func (execRunner *ExecRunner) run(traceID string, endpointParams string,
 	}
 
 	execDuration := time.Since(startTime)
-	algoRuntimeHistogram.WithLabelValues(deploymentLabel, componentLabel, algoLabel, algoVersionLabel, algoIndexLabel).Observe(execDuration.Seconds())
+	algoRuntimeHistogram.WithLabelValues(deploymentLabel, pipelineLabel, componentLabel, algoLabel, algoVersionLabel, algoIndexLabel).Observe(execDuration.Seconds())
 
 	return nil
 

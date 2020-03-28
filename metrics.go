@@ -10,6 +10,7 @@ import (
 // Global metrics variables
 var (
 	deploymentLabel  string
+	pipelineLabel    string
 	componentLabel   string
 	algoLabel        string
 	algoVersionLabel string
@@ -19,23 +20,23 @@ var (
 		Name:    "algorunner_run_duration_seconds",
 		Help:    "The complete message processing duration in seconds",
 		Buckets: []float64{0.005, 0.05, 0.25, 1, 2.5, 5, 7.5, 10, 20, 30},
-	}, []string{"deployment", "component", "name", "version", "index"})
+	}, []string{"deployment", "pipeline", "component", "name", "version", "index"})
 
 	algoRuntimeHistogram = prometheus.NewHistogramVec(prometheus.HistogramOpts{
 		Name:    "algorunner_algo_duration_seconds",
 		Help:    "The algo run duration in seconds",
 		Buckets: []float64{0.005, 0.05, 0.25, 1, 2.5, 5, 7.5, 10, 20, 30},
-	}, []string{"deployment", "component", "name", "version", "index"})
+	}, []string{"deployment", "pipeline", "component", "name", "version", "index"})
 
 	bytesProcessedCounter = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "algorunner_bytes_processed",
 		Help: "The total number of bytes processed by the runner",
-	}, []string{"deployment", "component", "name", "version", "index"})
+	}, []string{"deployment", "pipeline", "component", "name", "version", "index"})
 
 	algoErrorCounter = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "algorunner_algo_error",
 		Help: "The total number of errors from the algo",
-	}, []string{"deployment", "component", "name", "version", "index"})
+	}, []string{"deployment", "pipeline", "component", "name", "version", "index"})
 
 	runnerErrorCounter = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "algorunner_runner_error",
@@ -46,6 +47,7 @@ var (
 func registerMetrics() {
 
 	deploymentLabel = fmt.Sprintf("%s/%s", config.DeploymentOwnerUserName, config.DeploymentName)
+	pipelineLabel = fmt.Sprintf("%s/%s", config.PipelineOwnerUserName, config.PipelineName)
 	componentLabel = "algo"
 	algoLabel = fmt.Sprintf("%s/%s", config.AlgoOwnerUserName, config.AlgoName)
 	algoVersionLabel = config.AlgoVersionTag

@@ -250,7 +250,7 @@ func waitForMessages(c *kafka.Consumer, topicInputs topicInputs) {
 					}
 
 					reqDuration := time.Since(startTime)
-					runnerRuntimeHistogram.WithLabelValues(deploymentLabel, componentLabel, algoLabel, algoVersionLabel, algoIndexLabel).Observe(reqDuration.Seconds())
+					runnerRuntimeHistogram.WithLabelValues(deploymentLabel, pipelineLabel, componentLabel, algoLabel, algoVersionLabel, algoIndexLabel).Observe(reqDuration.Seconds())
 
 				} else {
 					// Save the offset for the data that was only stored but not executed
@@ -458,7 +458,7 @@ func processMessage(msg *kafka.Message,
 		}
 	}
 
-	bytesProcessedCounter.WithLabelValues(deploymentLabel, componentLabel, algoLabel, algoVersionLabel, algoIndexLabel).Add(float64(binary.Size(msg.Value)))
+	bytesProcessedCounter.WithLabelValues(deploymentLabel, pipelineLabel, componentLabel, algoLabel, algoVersionLabel, algoIndexLabel).Add(float64(binary.Size(msg.Value)))
 
 	return
 
