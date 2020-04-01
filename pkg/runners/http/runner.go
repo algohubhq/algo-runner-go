@@ -1,4 +1,4 @@
-package main
+package httprunner
 
 import (
 	"algo-runner-go/openapi"
@@ -18,7 +18,7 @@ func runHTTP(traceID string, endpointParams string,
 	inputMap map[*openapi.AlgoInputModel][]InputData) (err error) {
 
 	// Create the base message
-	runnerLog := logMessage{
+	runnerLog := openapi.LogEntryModel{
 		Type:    "Runner",
 		Version: "1",
 		Data: map[string]interface{}{

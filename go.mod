@@ -14,6 +14,7 @@ require (
 	github.com/nu7hatch/gouuid v0.0.0-20131221200532-179d4d0c4d8d
 	github.com/pkg/errors v0.8.1 // indirect
 	github.com/prometheus/client_golang v1.1.0
+	github.com/prometheus/common v0.6.0
 	github.com/radovskyb/watcher v1.0.7 // indirect
 	github.com/xorcare/pointer v1.1.0 // indirect
 	go.uber.org/atomic v1.4.0 // indirect

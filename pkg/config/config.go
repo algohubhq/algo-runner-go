@@ -1,7 +1,8 @@
-package main
+package config
 
 import (
-	"algo-runner-go/openapi"
+	"algo-runner-go/pkg/logging"
+	"algo-runner-go/pkg/openapi"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -9,46 +10,45 @@ import (
 	"regexp"
 )
 
-func loadConfigFromFile(fileName string) openapi.AlgoRunnerConfig {
+type ConfigLoader struct {
+	Logger *logging.Logger
+}
 
-	// Create the base log message
-	localLog := logMessage{
-		Type:    "Local",
-		Version: "1",
+// NewConfigLoader returns a new ConfigLoader struct
+func NewConfigLoader(logger *logging.Logger) ConfigLoader {
+	return ConfigLoader{
+		Logger: logger,
 	}
+}
+
+func (cl *ConfigLoader) LoadConfigFromFile(fileName string) openapi.AlgoRunnerConfig {
 
 	raw, err := ioutil.ReadFile(fileName)
 	if err != nil {
-		localLog.Msg = fmt.Sprintf("Unable to read the config file [%s].", fileName)
-		localLog.log(err)
+		cl.Logger.LogMessage.Msg = fmt.Sprintf("Unable to read the config file [%s].", fileName)
+		cl.Logger.Log(err)
 	}
 
 	var c openapi.AlgoRunnerConfig
 	jsonErr := json.Unmarshal(raw, &c)
 
 	if jsonErr != nil {
-		localLog.Msg = fmt.Sprintf("Unable to deserialize the config file [%s].", fileName)
-		localLog.log(jsonErr)
+		cl.Logger.LogMessage.Msg = fmt.Sprintf("Unable to deserialize the config file [%s].", fileName)
+		cl.Logger.Log(jsonErr)
 	}
 
 	return c
 
 }
 
-func loadConfigFromString(jsonConfig string) openapi.AlgoRunnerConfig {
-
-	// Create the base log message
-	localLog := logMessage{
-		Type:    "Local",
-		Version: "1",
-	}
+func (cl *ConfigLoader) LoadConfigFromString(jsonConfig string) openapi.AlgoRunnerConfig {
 
 	var c openapi.AlgoRunnerConfig
 	jsonErr := json.Unmarshal([]byte(jsonConfig), &c)
 
 	if jsonErr != nil {
-		localLog.Msg = fmt.Sprintf("Unable to deserialize the config from string [%s].", jsonConfig)
-		localLog.log(jsonErr)
+		cl.Logger.LogMessage.Msg = fmt.Sprintf("Unable to deserialize the config from string [%s].", jsonConfig)
+		cl.Logger.Log(jsonErr)
 	}
 
 	return c

@@ -1,41 +1,40 @@
 package main
 
 import (
-	"algo-runner-go/openapi"
+	configloader "algo-runner-go/pkg/config"
+	kafka "algo-runner-go/pkg/kafka"
+	"algo-runner-go/pkg/logging"
+	"algo-runner-go/pkg/metrics"
+	"algo-runner-go/pkg/openapi"
 	"errors"
 	"flag"
 	"os"
 	"strings"
 	"sync"
 
-	"github.com/go-logr/logr"
-
 	uuid "github.com/nu7hatch/gouuid"
 )
 
 // Global variables
 var (
-	log           logr.Logger
-	healthy       bool
-	instanceName  *string
-	kafkaBrokers  *string
-	config        openapi.AlgoRunnerConfig
-	logTopic      *string
-	execRunner    *ExecRunner
-	storageConfig *StorageConfig
+	config       openapi.AlgoRunnerConfig
+	instanceName string
 )
 
 func main() {
 
-	// Create the base log message
-	localLog := logMessage{
-		Type:    "Local",
-		Version: "1",
-	}
+	// Create the local logger
+	localLogger := logging.NewLogger(
+		&openapi.LogEntryModel{
+			Type:    "Local",
+			Version: "1",
+		},
+		nil)
+
+	configLoader := configloader.NewConfigLoader(&localLogger)
 
 	configFilePtr := flag.String("config", "", "JSON config file to load")
 	kafkaBrokersPtr := flag.String("kafka-brokers", "", "Kafka broker addresses separated by a comma")
-	logTopicPtr := flag.String("log-topic", "", "Kafka topic name for logs")
 	instanceNamePtr := flag.String("instance-name", "", "The Algo Instance Name (typically Container ID")
 	storagePtr := flag.String("storage-config", "", "The block storage connection string.")
 
@@ -45,26 +44,26 @@ func main() {
 		// Try to load from environment variable
 		configEnv := os.Getenv("ALGO-RUNNER-CONFIG")
 		if configEnv != "" {
-			config = loadConfigFromString(configEnv)
+			config = configLoader.LoadConfigFromString(configEnv)
 		} else {
-			localLog.Msg = "Missing the config file path argument and no environment variable ALGO-RUNNER-CONFIG exists. ( --config=./config.json ) Shutting down..."
-			localLog.log(errors.New("ALGO-RUNNER-CONFIG missing"))
+			localLogger.LogMessage.Msg = "Missing the config file path argument and no environment variable ALGO-RUNNER-CONFIG exists. ( --config=./config.json ) Shutting down..."
+			localLogger.Log(errors.New("ALGO-RUNNER-CONFIG missing"))
 
 			os.Exit(1)
 		}
 	} else {
-		config = loadConfigFromFile(*configFilePtr)
+		config = configLoader.LoadConfigFromFile(*configFilePtr)
 	}
 
 	if *kafkaBrokersPtr == "" {
 
 		// Try to load from environment variable
-		kafkaBrokersEnv := os.Getenv("KAFKA-BROKERS")
+		kafkaBrokersEnv := os.Getenv("KAFKA_BROKERS")
 		if kafkaBrokersEnv != "" {
 			kafkaBrokers = &kafkaBrokersEnv
 		} else {
-			localLog.Msg = "Missing the Kafka Brokers argument and no environment variable KAFKA-BROKERS exists. ( --kafka-brokers={broker1,broker2} ) Shutting down..."
-			localLog.log(errors.New("KAFKA-BROKERS missing"))
+			localLogger.LogMessage.Msg = "Missing the Kafka Brokers argument and no environment variable KAFKA-BROKERS exists. ( --kafka-brokers={broker1,broker2} ) Shutting down..."
+			localLogger.Log(errors.New("KAFKA_BROKERS missing"))
 
 			os.Exit(1)
 		}
@@ -81,8 +80,8 @@ func main() {
 			storageConfig = &StorageConfig{}
 			host, accessKey, secret, err := parseEnvURLStr(storageEnv)
 			if err != nil {
-				localLog.Msg = "S3 Connection String is not valid. [] Shutting down..."
-				localLog.log(errors.New("S3 Connection String is not valid"))
+				localLogger.LogMessage.Msg = "S3 Connection String is not valid. [] Shutting down..."
+				localLogger.Log(errors.New("S3 Connection String is not valid"))
 
 				os.Exit(1)
 			}
@@ -92,27 +91,12 @@ func main() {
 			storageConfig.secretAccessKey = secret
 			storageConfig.useSSL = host.Scheme == "https"
 		} else {
-			localLog.Msg = "Missing the S3 Storage Connection String argument and no environment variable MC_HOST_algorun exists."
-			localLog.log(errors.New("MC_HOST_algorun missing"))
+			localLogger.LogMessage.Msg = "Missing the S3 Storage Connection String argument and no environment variable MC_HOST_algorun exists."
+			localLogger.Log(errors.New("MC_HOST_algorun missing"))
 		}
 
 	} else {
 		instanceName = instanceNamePtr
-	}
-
-	if *logTopicPtr == "" {
-
-		// Try to load from environment variable
-		logTopicEnv := os.Getenv("LOG-TOPIC")
-		if logTopicEnv == "" {
-			logTopicEnv = "algorun.logs"
-			logTopic = &logTopicEnv
-		} else {
-			logTopic = &logTopicEnv
-		}
-
-	} else {
-		logTopic = logTopicPtr
 	}
 
 	if *instanceNamePtr == "" {
@@ -122,22 +106,40 @@ func main() {
 		if instanceNameEnv == "" {
 			instanceNameUUID, _ := uuid.NewV4()
 			instanceNameEnv = strings.Replace(instanceNameUUID.String(), "-", "", -1)
-			instanceName = &instanceNameEnv
+			instanceName = instanceNameEnv
 		} else {
-			instanceName = &instanceNameEnv
+			instanceName = instanceNameEnv
 		}
 
 	} else {
-		instanceName = instanceNamePtr
+		instanceName = *instanceNamePtr
 	}
 
-	registerMetrics()
+	// Create the runner logger
+	runnerLogger := logging.NewLogger(
+		&openapi.LogEntryModel{
+			Type:    "Runner",
+			Version: "1",
+			Data: map[string]interface{}{
+				"DeploymentOwnerUserName": config.DeploymentOwnerUserName,
+				"DeploymentName":          config.DeploymentName,
+				"AlgoOwnerUserName":       config.AlgoOwnerUserName,
+				"AlgoName":                config.AlgoName,
+				"AlgoVersionTag":          config.AlgoVersionTag,
+				"AlgoIndex":               config.AlgoIndex,
+				"AlgoInstanceName":        instanceName,
+			},
+		},
+		nil)
+
+	metrics := metrics.NewMetrics(&config)
 
 	var wg sync.WaitGroup
 	wg.Add(1)
 
 	go func() {
-		startConsumers()
+		consumer := kafka.NewConsumer(&config, &runnerLogger, &metrics)
+		consumer.StartConsumers()
 		wg.Done()
 	}()
 
@@ -146,7 +148,7 @@ func main() {
 		execRunner = newExecRunner()
 	}
 
-	createHTTPHandler()
+	metrics.CreateHTTPHandler()
 
 	wg.Wait()
 

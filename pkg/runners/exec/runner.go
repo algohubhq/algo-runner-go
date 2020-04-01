@@ -1,4 +1,4 @@
-package main
+package execrunner
 
 import (
 	"algo-runner-go/openapi"
@@ -28,7 +28,7 @@ type ExecRunner struct {
 func newExecRunner() *ExecRunner {
 
 	// Create the base log message
-	localLog := logMessage{
+	localLog := openapi.LogEntryModel{
 		Type:    "Runner",
 		Version: "1",
 		Data: map[string]interface{}{
@@ -133,7 +133,7 @@ func (execRunner *ExecRunner) run(traceID string, endpointParams string,
 	inputMap map[*openapi.AlgoInputModel][]InputData) (err error) {
 
 	// Create the base message
-	algoLog := logMessage{
+	algoLog := openapi.LogEntryModel{
 		Type:    "Algo",
 		Version: "1",
 		Data: map[string]interface{}{

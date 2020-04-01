@@ -1,4 +1,4 @@
-package main
+package file-watcher
 
 import (
 	"algo-runner-go/openapi"
@@ -99,7 +99,7 @@ func (outputHandler *ExecOutputHandler) watch(fileFolder string, algoIndex int32
 func (outputHandler *ExecOutputHandler) newCmd(src string, outputMessageDataType openapi.MessageDataTypes) (execCmd *exec.Cmd) {
 
 	// Create the base log message
-	localLog := logMessage{
+	localLog := openapi.LogEntryModel{
 		Type:    openapi.LOGTYPES_RUNNER,
 		Version: "1",
 		Data: map[string]interface{}{
@@ -152,7 +152,7 @@ func (outputHandler *ExecOutputHandler) newCmd(src string, outputMessageDataType
 func (output *output) start() {
 
 	// Create the base log message
-	localLog := logMessage{
+	localLog := openapi.LogEntryModel{
 		Type:    "Runner",
 		Version: "1",
 		Data: map[string]interface{}{

@@ -1,9 +1,11 @@
-package main
+package kafka
 
 import (
 	"fmt"
 	"os"
 	"strconv"
+
+	"github.com/prometheus/common/log"
 )
 
 var kafkaTLS bool
