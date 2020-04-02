@@ -1,7 +1,10 @@
-package file-watcher
+package outputfilewatcher
 
 import (
-	"algo-runner-go/openapi"
+	kafkaproducer "algo-runner-go/pkg/kafka/producer"
+	"algo-runner-go/pkg/logging"
+	"algo-runner-go/pkg/openapi"
+	"algo-runner-go/pkg/types"
 	"bufio"
 	"encoding/json"
 	"errors"
@@ -16,12 +19,39 @@ import (
 	uuid "github.com/nu7hatch/gouuid"
 )
 
-// ExecOutputHandler handles all output files.
-type ExecOutputHandler struct {
-	outputs map[string]*output
+// New creates a new Output File Watcher.
+func NewOutputFileWatcher(config *openapi.AlgoRunnerConfig,
+	producer *kafkaproducer.Producer,
+	storageConfig *types.StorageConfig,
+	instanceName string,
+	logger *logging.Logger) *OutputFileWatcher {
+
+	return &OutputFileWatcher{
+		Outputs:       make(map[string]*Output),
+		Config:        config,
+		Producer:      producer,
+		StorageConfig: storageConfig,
+		InstanceName:  instanceName,
+		Logger:        logger,
+	}
+
 }
 
-type output struct {
+// OutputFileWatcher handles all output files.
+type OutputFileWatcher struct {
+	Outputs       map[string]*Output
+	Config        *openapi.AlgoRunnerConfig
+	Producer      *kafkaproducer.Producer
+	StorageConfig *types.StorageConfig
+	InstanceName  string
+	Logger        *logging.Logger
+}
+
+type Output struct {
+	Logger                *logging.Logger
+	Config                *openapi.AlgoRunnerConfig
+	Producer              *kafkaproducer.Producer
+	StorageConfig         *types.StorageConfig
 	execCmd               *exec.Cmd
 	outputMessageDataType openapi.MessageDataTypes
 	algoOutput            *openapi.AlgoOutputModel
@@ -71,47 +101,27 @@ type errorMessage struct {
 	} `json:"error,omitempty"`
 }
 
-// New creates a new Output Watcher.
-func newOutputHandler() *ExecOutputHandler {
+func (o *OutputFileWatcher) Watch(fileFolder string, algoIndex int32, algoOutput *openapi.AlgoOutputModel, outputMessageDataType openapi.MessageDataTypes) (err error) {
 
-	return &ExecOutputHandler{
-		outputs: make(map[string]*output),
-	}
-
-}
-
-func (outputHandler *ExecOutputHandler) watch(fileFolder string, algoIndex int32, algoOutput *openapi.AlgoOutputModel, outputMessageDataType openapi.MessageDataTypes) (err error) {
-
-	execCmd := outputHandler.newCmd(fileFolder, outputMessageDataType)
-	outputHandler.outputs[fileFolder] = &output{
+	execCmd := o.newCmd(fileFolder, outputMessageDataType)
+	o.Outputs[fileFolder] = &Output{
+		Logger:                o.Logger,
+		Config:                o.Config,
+		Producer:              o.Producer,
+		StorageConfig:         o.StorageConfig,
 		execCmd:               execCmd,
 		algoOutput:            algoOutput,
 		algoIndex:             algoIndex,
 		outputMessageDataType: outputMessageDataType,
 	}
 
-	outputHandler.outputs[fileFolder].start()
+	o.Outputs[fileFolder].start()
 
 	return nil
 
 }
 
-func (outputHandler *ExecOutputHandler) newCmd(src string, outputMessageDataType openapi.MessageDataTypes) (execCmd *exec.Cmd) {
-
-	// Create the base log message
-	localLog := openapi.LogEntryModel{
-		Type:    openapi.LOGTYPES_RUNNER,
-		Version: "1",
-		Data: map[string]interface{}{
-			"DeploymentOwnerUserName": config.DeploymentOwnerUserName,
-			"DeploymentName":          config.DeploymentName,
-			"AlgoOwnerUserName":       config.AlgoOwnerUserName,
-			"AlgoName":                config.AlgoName,
-			"AlgoVersionTag":          config.AlgoVersionTag,
-			"AlgoIndex":               config.AlgoIndex,
-			"AlgoInstanceName":        *instanceName,
-		},
-	}
+func (o *OutputFileWatcher) newCmd(src string, outputMessageDataType openapi.MessageDataTypes) (execCmd *exec.Cmd) {
 
 	mcPath := os.Getenv("MC_PATH")
 	if mcPath == "" {
@@ -131,14 +141,14 @@ func (outputHandler *ExecOutputHandler) newCmd(src string, outputMessageDataType
 		// The bucket name is the deployment name
 
 		// Ensure the envvar exists
-		if storageConfig.connectionString != "" {
+		if o.StorageConfig.ConnectionString != "" {
 			destBucket := strings.ToLower(fmt.Sprintf("algorun/%s.%s",
-				config.DeploymentOwnerUserName,
-				config.DeploymentName))
+				o.Config.DeploymentOwnerUserName,
+				o.Config.DeploymentName))
 			cmd.Args = append(cmd.Args, "mirror", "--json", "--quiet", "-w", src, destBucket)
 		} else {
-			localLog.Msg = "The storage connection string is required for any file replication. Shutting down..."
-			localLog.log(errors.New("S3 connection string missing"))
+			o.Logger.LogMessage.Msg = "The storage connection string is required for any file replication. Shutting down..."
+			o.Logger.Log(errors.New("S3 connection string missing"))
 
 			os.Exit(1)
 		}
@@ -149,22 +159,7 @@ func (outputHandler *ExecOutputHandler) newCmd(src string, outputMessageDataType
 
 }
 
-func (output *output) start() {
-
-	// Create the base log message
-	localLog := openapi.LogEntryModel{
-		Type:    "Runner",
-		Version: "1",
-		Data: map[string]interface{}{
-			"DeploymentOwnerUserName": config.DeploymentOwnerUserName,
-			"DeploymentName":          config.DeploymentName,
-			"AlgoOwnerUserName":       config.AlgoOwnerUserName,
-			"AlgoName":                config.AlgoName,
-			"AlgoVersionTag":          config.AlgoVersionTag,
-			"AlgoIndex":               config.AlgoIndex,
-			"AlgoInstanceName":        *instanceName,
-		},
-	}
+func (output *Output) start() {
 
 	// setup termination on kill signals
 	sigchan := make(chan os.Signal)
@@ -173,14 +168,14 @@ func (output *output) start() {
 	go func() {
 		sig := <-sigchan
 
-		localLog.Msg = fmt.Sprintf("Caught signal %v. Killing server process: mc\n", sig)
-		localLog.log(nil)
+		output.Logger.LogMessage.Msg = fmt.Sprintf("Caught signal %v. Killing server process: mc\n", sig)
+		output.Logger.Log(nil)
 
 		if output.execCmd != nil && output.execCmd.Process != nil {
 			val := output.execCmd.Process.Kill()
 			if val != nil {
-				localLog.Msg = fmt.Sprintf("Killed server process: mc - error %s\n", val.Error())
-				localLog.log(nil)
+				output.Logger.LogMessage.Msg = fmt.Sprintf("Killed server process: mc - error %s\n", val.Error())
+				output.Logger.Log(nil)
 			}
 		}
 	}()
@@ -191,10 +186,10 @@ func (output *output) start() {
 	go func() {
 
 		fileOutputTopic := strings.ToLower(fmt.Sprintf("algorun.%s.%s.algo.%s.%s.%d.output.%s",
-			config.DeploymentOwnerUserName,
-			config.DeploymentName,
-			config.AlgoOwnerUserName,
-			config.AlgoName,
+			output.Config.DeploymentOwnerUserName,
+			output.Config.DeploymentName,
+			output.Config.AlgoOwnerUserName,
+			output.Config.AlgoName,
 			output.algoIndex,
 			output.algoOutput.Name))
 
@@ -210,8 +205,8 @@ func (output *output) start() {
 					if wm.Status != "" {
 						var em errorMessage
 						_ = json.Unmarshal(m, &em)
-						localLog.Msg = fmt.Sprintf("mc watch command error. [%s]", em.Error)
-						localLog.log(em.Error.Cause.Error)
+						output.Logger.LogMessage.Msg = fmt.Sprintf("mc watch command error. [%s]", em.Error)
+						output.Logger.Log(em.Error.Cause.Error)
 					}
 				}
 
@@ -219,15 +214,15 @@ func (output *output) start() {
 					// Send contents of the file to kafka
 					fileBytes, err := ioutil.ReadFile(wm.Event.Path)
 					if err != nil {
-						localLog.Msg = fmt.Sprintf("Output watcher unable to read the file [%s] from disk.", wm.Event.Path)
-						localLog.log(err)
+						output.Logger.LogMessage.Msg = fmt.Sprintf("Output watcher unable to read the file [%s] from disk.", wm.Event.Path)
+						output.Logger.Log(err)
 					}
 
 					// TODO: Figure out how to get the traceID from the filename
 					uuidTraceID, _ := uuid.NewV4()
 					traceID := strings.Replace(uuidTraceID.String(), "-", "", -1)
 
-					produceOutputMessage(traceID, wm.Event.Path, fileOutputTopic, fileBytes)
+					output.Producer.ProduceOutputMessage(traceID, wm.Event.Path, fileOutputTopic, fileBytes)
 				}
 
 			} else {
@@ -240,33 +235,33 @@ func (output *output) start() {
 					if mm.Status != "" {
 						var em errorMessage
 						_ = json.Unmarshal(m, &em)
-						localLog.Msg = fmt.Sprintf("mc mirror command error. [%s]", em.Error)
-						localLog.log(em.Error.Cause.Error)
+						output.Logger.LogMessage.Msg = fmt.Sprintf("mc mirror command error. [%s]", em.Error)
+						output.Logger.Log(em.Error.Cause.Error)
 					}
 
 				} else {
 					// Send the file reference to Kafka
 					// Try to create the json
 					bucketName := fmt.Sprintf("%s.%s",
-						strings.ToLower(config.DeploymentOwnerUserName),
-						strings.ToLower(config.DeploymentName))
+						strings.ToLower(output.Config.DeploymentOwnerUserName),
+						strings.ToLower(output.Config.DeploymentName))
 					fileReference := openapi.FileReference{
-						Host:   storageConfig.host,
+						Host:   output.StorageConfig.Host,
 						Bucket: bucketName,
 						File:   mm.Target,
 					}
 					jsonBytes, jsonErr := json.Marshal(fileReference)
 
 					if jsonErr != nil {
-						localLog.Msg = fmt.Sprintf("Unable to create the file reference json.")
-						localLog.log(jsonErr)
+						output.Logger.LogMessage.Msg = fmt.Sprintf("Unable to create the file reference json.")
+						output.Logger.Log(jsonErr)
 					}
 
 					// TODO: Figure out how to get the traceID from the filename
 					uuidTraceID, _ := uuid.NewV4()
 					traceID := strings.Replace(uuidTraceID.String(), "-", "", -1)
 
-					produceOutputMessage(traceID, mm.Target, fileOutputTopic, jsonBytes)
+					output.Producer.ProduceOutputMessage(traceID, mm.Target, fileOutputTopic, jsonBytes)
 				}
 
 			}
@@ -279,31 +274,31 @@ func (output *output) start() {
 		scanner := bufio.NewScanner(stderrIn)
 		for scanner.Scan() {
 			m := scanner.Text()
-			localLog.Msg = fmt.Sprintf("mc command stderr. [%s]", m)
-			localLog.log(nil)
+			output.Logger.LogMessage.Msg = fmt.Sprintf("mc command stderr. [%s]", m)
+			output.Logger.Log(nil)
 		}
 	}()
 
 	err := output.execCmd.Start()
 
 	if err != nil {
-		localLog.Msg = fmt.Sprintf("mc start failed with error '%s'\n", err)
-		localLog.log(err)
+		output.Logger.LogMessage.Msg = fmt.Sprintf("mc start failed with error '%s'\n", err)
+		output.Logger.Log(err)
 	} else {
-		localLog.Msg = fmt.Sprintf("mc started with command '%s'\n", output.execCmd.String())
-		localLog.log(nil)
+		output.Logger.LogMessage.Msg = fmt.Sprintf("mc started with command '%s'\n", output.execCmd.String())
+		output.Logger.Log(nil)
 	}
 
 	errWait := output.execCmd.Wait()
 
 	if errWait != nil {
-		localLog.Msg = fmt.Sprintf("mc start failed with %s\n", errWait)
-		localLog.log(errWait)
+		output.Logger.LogMessage.Msg = fmt.Sprintf("mc start failed with %s\n", errWait)
+		output.Logger.Log(errWait)
 	}
 
 	// If this is reached, the mc command has terminated (bad)
-	localLog.Msg = fmt.Sprintf("mc Terminated unexpectedly!")
-	localLog.log(nil)
+	output.Logger.LogMessage.Msg = fmt.Sprintf("mc Terminated unexpectedly!")
+	output.Logger.Log(nil)
 
 	os.Exit(1)
 

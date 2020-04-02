@@ -11,6 +11,7 @@ import (
 )
 
 type Metrics struct {
+	HealthyChan            chan bool
 	RunnerRuntimeHistogram *prometheus.HistogramVec
 	AlgoRuntimeHistogram   *prometheus.HistogramVec
 	BytesInputCounter      *prometheus.CounterVec
@@ -26,7 +27,13 @@ type Metrics struct {
 }
 
 // NewMetrics returns a new Metrics struct
-func NewMetrics(config *openapi.AlgoRunnerConfig) Metrics {
+func NewMetrics(healthyChan chan bool, config *openapi.AlgoRunnerConfig) Metrics {
+
+	go func() {
+		for h := range healthyChan {
+			healthy = h
+		}
+	}()
 
 	registerMetrics(config)
 
@@ -47,6 +54,8 @@ func NewMetrics(config *openapi.AlgoRunnerConfig) Metrics {
 }
 
 var (
+	healthy bool
+
 	deploymentLabel  string
 	pipelineLabel    string
 	componentLabel   string

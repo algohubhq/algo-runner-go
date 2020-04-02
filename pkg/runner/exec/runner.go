@@ -1,7 +1,12 @@
 package execrunner
 
 import (
-	"algo-runner-go/openapi"
+	kafkaproducer "algo-runner-go/pkg/kafka/producer"
+	"algo-runner-go/pkg/logging"
+	"algo-runner-go/pkg/metrics"
+	"algo-runner-go/pkg/openapi"
+	ofw "algo-runner-go/pkg/outputfilewatcher"
+	"algo-runner-go/pkg/types"
 	"bytes"
 	"errors"
 	"fmt"
@@ -13,34 +18,29 @@ import (
 	"strings"
 	"syscall"
 	"time"
-
-	uuid "github.com/nu7hatch/gouuid"
 )
 
 // ExecRunner holds the configuration for the external process and any file mirroring
 type ExecRunner struct {
+	types.IRunner
+	Config         *openapi.AlgoRunnerConfig
+	Logger         *logging.Logger
+	Metrics        *metrics.Metrics
+	Producer       *kafkaproducer.Producer
+	StorageConfig  *types.StorageConfig
+	InstanceName   string
 	command        []string
 	fileParameters map[string]string
 	sendStdout     bool
 }
 
 // New creates a new ExecRunner.
-func newExecRunner() *ExecRunner {
-
-	// Create the base log message
-	localLog := openapi.LogEntryModel{
-		Type:    "Runner",
-		Version: "1",
-		Data: map[string]interface{}{
-			"DeploymentOwnerUserName": config.DeploymentOwnerUserName,
-			"DeploymentName":          config.DeploymentName,
-			"AlgoOwnerUserName":       config.AlgoOwnerUserName,
-			"AlgoName":                config.AlgoName,
-			"AlgoVersionTag":          config.AlgoVersionTag,
-			"AlgoIndex":               config.AlgoIndex,
-			"AlgoInstanceName":        *instanceName,
-		},
-	}
+func NewExecRunner(config *openapi.AlgoRunnerConfig,
+	producer *kafkaproducer.Producer,
+	storageConfig *types.StorageConfig,
+	instanceName string,
+	logger *logging.Logger,
+	metrics *metrics.Metrics) *ExecRunner {
 
 	command := getCommand(config)
 
@@ -51,7 +51,7 @@ func newExecRunner() *ExecRunner {
 
 	algoName := fmt.Sprintf("%s/%s:%s[%d]", config.AlgoOwnerUserName, config.AlgoName, config.AlgoVersionTag, config.AlgoIndex)
 
-	outputHandler := newOutputHandler()
+	outputHandler := ofw.NewOutputFileWatcher(config, producer, storageConfig, instanceName, logger)
 	var sendStdout bool
 	fileParameters := make(map[string]string)
 
@@ -82,8 +82,8 @@ func newExecRunner() *ExecRunner {
 				if _, err := os.Stat(folder); os.IsNotExist(err) {
 					err = os.MkdirAll(folder, os.ModePerm)
 					if err != nil {
-						localLog.Msg = fmt.Sprintf("Failed to create output folder: %s\n", folder)
-						localLog.log(err)
+						logger.LogMessage.Msg = fmt.Sprintf("Failed to create output folder: %s\n", folder)
+						logger.Log(err)
 					}
 				}
 
@@ -103,7 +103,7 @@ func newExecRunner() *ExecRunner {
 				// Watch a folder folder
 				// start a mc exec command
 				go func() {
-					outputHandler.watch(folder, config.AlgoIndex, &output, outputMessageDataType)
+					outputHandler.Watch(folder, config.AlgoIndex, &output, outputMessageDataType)
 				}()
 
 			} else if output.OutputDeliveryType == openapi.OUTPUTDELIVERYTYPES_STD_OUT {
@@ -114,6 +114,12 @@ func newExecRunner() *ExecRunner {
 	}
 
 	return &ExecRunner{
+		Config:         config,
+		Producer:       producer,
+		StorageConfig:  storageConfig,
+		Logger:         logger,
+		Metrics:        metrics,
+		InstanceName:   instanceName,
 		command:        command,
 		fileParameters: fileParameters,
 		sendStdout:     sendStdout,
@@ -121,34 +127,30 @@ func newExecRunner() *ExecRunner {
 
 }
 
-// New creates a new ExecCmd.
-func (execRunner *ExecRunner) newExecCmd() *exec.Cmd {
+// Run starts the Executable
+func (r *ExecRunner) Run(traceID string,
+	endpointParams string,
+	inputMap map[*openapi.AlgoInputModel][]types.InputData) (err error) {
 
-	execCmd := exec.Command(execRunner.command[0], execRunner.command[1:]...)
-	return execCmd
-
-}
-
-func (execRunner *ExecRunner) run(traceID string, endpointParams string,
-	inputMap map[*openapi.AlgoInputModel][]InputData) (err error) {
-
-	// Create the base message
-	algoLog := openapi.LogEntryModel{
-		Type:    "Algo",
-		Version: "1",
-		Data: map[string]interface{}{
-			"TraceId":                 traceID,
-			"DeploymentOwnerUserName": config.DeploymentOwnerUserName,
-			"DeploymentName":          config.DeploymentName,
-			"AlgoOwnerUserName":       config.AlgoOwnerUserName,
-			"AlgoName":                config.AlgoName,
-			"AlgoVersionTag":          config.AlgoVersionTag,
-			"AlgoIndex":               config.AlgoIndex,
-			"AlgoInstanceName":        *instanceName,
+	// Create the runner logger
+	algoLogger := logging.NewLogger(
+		&openapi.LogEntryModel{
+			Type:    "Algo",
+			Version: "1",
+			Data: map[string]interface{}{
+				"TraceId":                 traceID,
+				"DeploymentOwnerUserName": r.Config.DeploymentOwnerUserName,
+				"DeploymentName":          r.Config.DeploymentName,
+				"AlgoOwnerUserName":       r.Config.AlgoOwnerUserName,
+				"AlgoName":                r.Config.AlgoName,
+				"AlgoVersionTag":          r.Config.AlgoVersionTag,
+				"AlgoIndex":               r.Config.AlgoIndex,
+				"AlgoInstanceName":        r.InstanceName,
+			},
 		},
-	}
+		r.Metrics)
 
-	targetCmd := execRunner.newExecCmd()
+	targetCmd := r.newExecCmd()
 
 	startTime := time.Now()
 
@@ -158,22 +160,22 @@ func (execRunner *ExecRunner) run(traceID string, endpointParams string,
 	go func() {
 		sig := <-sigchan
 
-		algoLog.Msg = fmt.Sprintf("Caught signal %v. Killing algo process: %s", sig, config.Entrypoint)
-		algoLog.log(nil)
+		r.Logger.LogMessage.Msg = fmt.Sprintf("Caught signal %v. Killing algo process: %s", sig, r.Config.Entrypoint)
+		r.Logger.Log(nil)
 
 		if targetCmd != nil && targetCmd.Process != nil {
 			val := targetCmd.Process.Kill()
 			if val != nil {
-				algoLog.Msg = fmt.Sprintf("Killed algo process: %s", config.Entrypoint)
-				algoLog.log(val)
+				algoLogger.LogMessage.Msg = fmt.Sprintf("Killed algo process: %s", r.Config.Entrypoint)
+				algoLogger.Log(val)
 			}
 		}
 	}()
 
 	// Write to the topic as error if no value
 	if inputMap == nil {
-		algoLog.Msg = "Attempted to run but input data is empty."
-		algoLog.log(errors.New("Input data was empty"))
+		r.Logger.LogMessage.Msg = "Attempted to run but input data is empty."
+		r.Logger.Log(errors.New("Input data was empty"))
 
 		return
 	}
@@ -181,20 +183,20 @@ func (execRunner *ExecRunner) run(traceID string, endpointParams string,
 	var timer *time.Timer
 
 	// Set the timeout routine
-	if config.TimeoutSeconds > 0 {
-		timer = time.NewTimer(time.Duration(config.TimeoutSeconds) * time.Second)
+	if r.Config.TimeoutSeconds > 0 {
+		timer = time.NewTimer(time.Duration(r.Config.TimeoutSeconds) * time.Second)
 
 		go func() {
 			<-timer.C
 
-			algoLog.Msg = fmt.Sprintf("Algo timed out. Timeout value: %d seconds", config.TimeoutSeconds)
-			algoLog.log(nil)
+			r.Logger.LogMessage.Msg = fmt.Sprintf("Algo timed out. Timeout value: %d seconds", r.Config.TimeoutSeconds)
+			r.Logger.Log(nil)
 
 			if targetCmd != nil && targetCmd.Process != nil {
 				val := targetCmd.Process.Kill()
 				if val != nil {
-					algoLog.Msg = fmt.Sprintf("Killed algo process due to timeout: %s", config.Entrypoint)
-					algoLog.log(val)
+					r.Logger.LogMessage.Msg = fmt.Sprintf("Killed algo process due to timeout: %s", r.Config.Entrypoint)
+					r.Logger.Log(val)
 				}
 			}
 		}()
@@ -213,7 +215,7 @@ func (execRunner *ExecRunner) run(traceID string, endpointParams string,
 			writer, _ := targetCmd.StdinPipe()
 			for _, data := range inputData {
 				// Write to stdin pipe
-				writer.Write(data.data)
+				writer.Write(data.Data)
 			}
 			writer.Close()
 
@@ -223,7 +225,7 @@ func (execRunner *ExecRunner) run(traceID string, endpointParams string,
 				targetCmd.Args = append(targetCmd.Args, *input.Parameter)
 			}
 			for _, data := range inputData {
-				targetCmd.Args = append(targetCmd.Args, path.Join("/input", data.fileReference.File))
+				targetCmd.Args = append(targetCmd.Args, path.Join("/input", data.FileReference.File))
 			}
 
 		case "delimitedparameter":
@@ -233,7 +235,7 @@ func (execRunner *ExecRunner) run(traceID string, endpointParams string,
 			}
 			var buffer bytes.Buffer
 			for i := 0; i < len(inputData); i++ {
-				buffer.WriteString(path.Join("/input", inputData[i].fileReference.File))
+				buffer.WriteString(path.Join("/input", inputData[i].FileReference.File))
 				if i != len(inputData)-1 {
 					buffer.WriteString(*input.ParameterDelimiter)
 				}
@@ -243,7 +245,7 @@ func (execRunner *ExecRunner) run(traceID string, endpointParams string,
 	}
 
 	// Iterate the fileParameters to append the traceid as the filename
-	for parameter, folder := range execRunner.fileParameters {
+	for parameter, folder := range r.fileParameters {
 		fileFolder := path.Join(folder, traceID)
 
 		targetCmd.Args = append(targetCmd.Args, parameter)
@@ -277,35 +279,34 @@ func (execRunner *ExecRunner) run(traceID string, endpointParams string,
 
 	if cmdErr != nil {
 
-		// algoLog.AlgoLogData.RuntimeMs = int64(execDuration / time.Millisecond)
-		algoLog.Msg = fmt.Sprintf("Stdout: %s | Stderr: %s", stdout, stderr)
-		algoLog.log(cmdErr)
-
-	} else {
-
-		if execRunner.sendStdout {
-			stdoutTopic := strings.ToLower(fmt.Sprintf("algorun.%s.%s.algo.%s.%s.%d.output.stdout",
-				config.DeploymentOwnerUserName,
-				config.DeploymentName,
-				config.AlgoOwnerUserName,
-				config.AlgoName,
-				config.AlgoIndex))
-
-			// Write to stdout output topic
-			fileName, _ := uuid.NewV4()
-			produceOutputMessage(traceID, fileName.String(), stdoutTopic, stdoutBytes)
-		}
+		r.Logger.LogMessage.Msg = fmt.Sprintf("Stdout: %s | Stderr: %s", stdout, stderr)
+		r.Logger.Log(cmdErr)
 
 	}
 
+	// Reminder: Successful outputs are handled by the output file watcher
+
 	execDuration := time.Since(startTime)
-	algoRuntimeHistogram.WithLabelValues(deploymentLabel, pipelineLabel, componentLabel, algoLabel, algoVersionLabel, algoIndexLabel).Observe(execDuration.Seconds())
+	r.Metrics.AlgoRuntimeHistogram.WithLabelValues(r.Metrics.DeploymentLabel,
+		r.Metrics.PipelineLabel,
+		r.Metrics.ComponentLabel,
+		r.Metrics.AlgoLabel,
+		r.Metrics.AlgoVersionLabel,
+		r.Metrics.AlgoIndexLabel).Observe(execDuration.Seconds())
 
 	return nil
 
 }
 
-func getCommand(config openapi.AlgoRunnerConfig) []string {
+// New creates a new ExecCmd.
+func (execRunner *ExecRunner) newExecCmd() *exec.Cmd {
+
+	execCmd := exec.Command(execRunner.command[0], execRunner.command[1:]...)
+	return execCmd
+
+}
+
+func getCommand(config *openapi.AlgoRunnerConfig) []string {
 
 	cmd := strings.Split(config.Entrypoint, " ")
 
@@ -319,7 +320,7 @@ func getCommand(config openapi.AlgoRunnerConfig) []string {
 	return cmd
 }
 
-func getEnvironment(config openapi.AlgoRunnerConfig) []string {
+func getEnvironment(config *openapi.AlgoRunnerConfig) []string {
 
 	env := strings.Split(config.Entrypoint, " ")
 

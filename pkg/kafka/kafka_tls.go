@@ -9,7 +9,7 @@ import (
 )
 
 var kafkaTLS bool
-var kafkaTLSCaLocation, kafkaTLSUserLocation, kafkaTLSKeyLocation string
+var KafkaTLSCaLocation, KafkaTLSUserLocation, KafkaTLSKeyLocation string
 
 // CheckForKafkaTLS checks for the KAFKA_TLS envar and certs
 func CheckForKafkaTLS() bool {
@@ -29,36 +29,36 @@ func CheckForKafkaTLS() bool {
 
 		kafkaTLSCaLocationEnv := os.Getenv("KAFKA_TLS_CA_LOCATION")
 		if kafkaTLSCaLocationEnv != "" {
-			kafkaTLSCaLocation = kafkaTLSCaLocationEnv
+			KafkaTLSCaLocation = kafkaTLSCaLocationEnv
 		} else {
-			kafkaTLSCaLocation = "/etc/ssl/certs/kafka-ca.crt"
+			KafkaTLSCaLocation = "/etc/ssl/certs/kafka-ca.crt"
 		}
 
 		kafkaTLSUserLocationEnv := os.Getenv("KAFKA_TLS_USER_LOCATION")
 		if kafkaTLSUserLocationEnv != "" {
-			kafkaTLSUserLocation = kafkaTLSUserLocationEnv
+			KafkaTLSUserLocation = kafkaTLSUserLocationEnv
 		} else {
-			kafkaTLSUserLocation = "/etc/ssl/certs/kafka-user.crt"
+			KafkaTLSUserLocation = "/etc/ssl/certs/kafka-user.crt"
 		}
 
 		kafkaTLSKeyLocationEnv := os.Getenv("KAFKA_TLS_KEY_LOCATION")
 		if kafkaTLSKeyLocationEnv != "" {
-			kafkaTLSKeyLocation = kafkaTLSKeyLocationEnv
+			KafkaTLSKeyLocation = kafkaTLSKeyLocationEnv
 		} else {
-			kafkaTLSKeyLocation = "/etc/ssl/certs/kafka-user.key"
+			KafkaTLSKeyLocation = "/etc/ssl/certs/kafka-user.key"
 		}
 
 		// Be sure the certs exist
-		if !fileExists(kafkaTLSCaLocation) {
-			log.Error(err, fmt.Sprintf("KAFKA-TLS Enabled but no %s (ca crt) file exists", kafkaTLSCaLocation))
+		if !fileExists(KafkaTLSCaLocation) {
+			log.Error(err, fmt.Sprintf("KAFKA-TLS Enabled but no %s (ca crt) file exists", KafkaTLSCaLocation))
 			return false
 		}
-		if !fileExists(kafkaTLSUserLocation) {
-			log.Error(err, fmt.Sprintf("KAFKA-TLS Enabled but no %s (user crt) file exists", kafkaTLSUserLocation))
+		if !fileExists(KafkaTLSUserLocation) {
+			log.Error(err, fmt.Sprintf("KAFKA-TLS Enabled but no %s (user crt) file exists", KafkaTLSUserLocation))
 			return false
 		}
-		if !fileExists(kafkaTLSKeyLocation) {
-			log.Error(err, fmt.Sprintf("KAFKA-TLS Enabled but no %s (user key) file exists", kafkaTLSKeyLocation))
+		if !fileExists(KafkaTLSKeyLocation) {
+			log.Error(err, fmt.Sprintf("KAFKA-TLS Enabled but no %s (user key) file exists", KafkaTLSKeyLocation))
 			return false
 		}
 	}

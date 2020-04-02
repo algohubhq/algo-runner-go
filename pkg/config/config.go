@@ -56,7 +56,7 @@ func (cl *ConfigLoader) LoadConfigFromString(jsonConfig string) openapi.AlgoRunn
 }
 
 // parse url usually obtained from env.
-func parseEnvURL(envURL string) (*url.URL, string, string, error) {
+func (cl *ConfigLoader) ParseEnvURL(envURL string) (*url.URL, string, string, error) {
 	u, e := url.Parse(envURL)
 	if e != nil {
 		return nil, "", "", fmt.Errorf("S3 Endpoint url invalid [%s]", envURL)
@@ -85,9 +85,9 @@ func parseEnvURL(envURL string) (*url.URL, string, string, error) {
 }
 
 // parse url usually obtained from env.
-func parseEnvURLStr(envURL string) (*url.URL, string, string, error) {
+func (cl *ConfigLoader) ParseEnvURLStr(envURL string) (*url.URL, string, string, error) {
 	var envURLStr string
-	u, accessKey, secretKey, err := parseEnvURL(envURL)
+	u, accessKey, secretKey, err := cl.ParseEnvURL(envURL)
 	if err != nil {
 		// url parsing can fail when accessKey/secretKey contains non url encoded values
 		// such as #. Strip accessKey/secretKey from envURL and parse again.
@@ -109,7 +109,7 @@ func parseEnvURLStr(envURL string) (*url.URL, string, string, error) {
 				envURLStr = fmt.Sprintf("%s%s", envURLStr, v)
 			}
 		}
-		u, _, _, err = parseEnvURL(envURLStr)
+		u, _, _, err = cl.ParseEnvURL(envURLStr)
 		if err != nil {
 			return nil, "", "", err
 		}

@@ -1,9 +1,13 @@
-package kafka
+package kafkaconsumer
 
 import (
+	k "algo-runner-go/pkg/kafka"
+	kafkaproducer "algo-runner-go/pkg/kafka/producer"
 	"algo-runner-go/pkg/logging"
 	"algo-runner-go/pkg/metrics"
 	"algo-runner-go/pkg/openapi"
+	"algo-runner-go/pkg/runner"
+	"algo-runner-go/pkg/types"
 	"encoding/binary"
 	"encoding/json"
 	"errors"
@@ -24,41 +28,56 @@ import (
 )
 
 type Consumer struct {
-	Config       *openapi.AlgoRunnerConfig
-	Logger       *logging.Logger
-	Metrics      *metrics.Metrics
-	InstanceName string
+	HealthyChan   chan<- bool
+	Config        *openapi.AlgoRunnerConfig
+	Producer      *kafkaproducer.Producer
+	StorageConfig *types.StorageConfig
+	Logger        *logging.Logger
+	Metrics       *metrics.Metrics
+	InstanceName  string
+	KafkaBrokers  string
+	Runner        *runner.Runner
 }
 
 // NewConsumer returns a new Consumer struct
-func NewConsumer(config *openapi.AlgoRunnerConfig,
+func NewConsumer(healthyChan chan<- bool,
+	config *openapi.AlgoRunnerConfig,
+	producer *kafkaproducer.Producer,
+	storageConfig *types.StorageConfig,
+	instanceName string,
+	kafkaBrokers string,
 	logger *logging.Logger,
 	metrics *metrics.Metrics) Consumer {
 
+	var r runner.Runner
+
+	if config.Executor == openapi.EXECUTORS_EXECUTABLE ||
+		config.Executor == openapi.EXECUTORS_DELEGATED {
+		r = runner.NewRunner(config,
+			producer,
+			storageConfig,
+			instanceName,
+			kafkaBrokers,
+			logger,
+			metrics)
+	}
+
 	return Consumer{
-		Config:  config,
-		Logger:  logger,
-		Metrics: metrics,
+		HealthyChan:   healthyChan,
+		Config:        config,
+		Producer:      producer,
+		StorageConfig: storageConfig,
+		Logger:        logger,
+		Metrics:       metrics,
+		InstanceName:  instanceName,
+		KafkaBrokers:  kafkaBrokers,
+		Runner:        &r,
 	}
 }
 
 type topicInputs map[string]*openapi.AlgoInputModel
 
 func (c *Consumer) StartConsumers() {
-
-	// Create the base log message
-	runnerLog := openapi.LogEntryModel{
-		Type:    "Runner",
-		Version: "1",
-		Data: map[string]interface{}{
-			"DeploymentOwnerUserName": c.Config.DeploymentOwnerUserName,
-			"DeploymentName":          c.Config.DeploymentName,
-			"AlgoOwnerUserName":       c.Config.AlgoOwnerUserName,
-			"AlgoName":                c.Config.AlgoName,
-			"AlgoVersionTag":          c.Config.AlgoVersionTag,
-			"AlgoInstanceName":        c.InstanceName,
-		},
-	}
 
 	topicInputs := make(topicInputs)
 	var topics []string
@@ -94,14 +113,14 @@ func (c *Consumer) StartConsumers() {
 			topicInputs[topicName] = &input
 			topics = append(topics, topicName)
 
-			runnerLog.Msg = fmt.Sprintf("Listening to topic %s", topicName)
-			runnerLog.Log(nil)
+			c.Logger.LogMessage.Msg = fmt.Sprintf("Listening to topic %s", topicName)
+			c.Logger.Log(nil)
 
 		}
 
 	}
 
-	groupID := fmt.Sprintf("algorun-%s-%s-%s-%s-%d-dev",
+	groupID := fmt.Sprintf("algorun-%s-%s-%s-%s-%d",
 		c.Config.DeploymentOwnerUserName,
 		c.Config.DeploymentName,
 		c.Config.AlgoOwnerUserName,
@@ -110,7 +129,7 @@ func (c *Consumer) StartConsumers() {
 	)
 
 	kafkaConfig := kafka.ConfigMap{
-		"bootstrap.servers":        *kafkaBrokers,
+		"bootstrap.servers":        c.KafkaBrokers,
 		"group.id":                 groupID,
 		"client.id":                "algo-runner-go-client",
 		"enable.auto.commit":       false,
@@ -119,19 +138,19 @@ func (c *Consumer) StartConsumers() {
 	}
 
 	// Set the ssl c.Config if enabled
-	if CheckForKafkaTLS() {
+	if k.CheckForKafkaTLS() {
 		kafkaConfig["security.protocol"] = "ssl"
-		kafkaConfig["ssl.ca.location"] = kafkaTLSCaLocation
-		kafkaConfig["ssl.certificate.location"] = kafkaTLSUserLocation
-		kafkaConfig["ssl.key.location"] = kafkaTLSKeyLocation
+		kafkaConfig["ssl.ca.location"] = k.KafkaTLSCaLocation
+		kafkaConfig["ssl.certificate.location"] = k.KafkaTLSUserLocation
+		kafkaConfig["ssl.key.location"] = k.KafkaTLSKeyLocation
 	}
 
 	kc, err := kafka.NewConsumer(&kafkaConfig)
 
 	if err != nil {
-		healthy = false
-		runnerLog.Msg = fmt.Sprintf("Failed to create consumer.")
-		runnerLog.Log(err)
+		c.HealthyChan <- false
+		c.Logger.LogMessage.Msg = fmt.Sprintf("Failed to create consumer.")
+		c.Logger.Log(err)
 
 		os.Exit(1)
 	}
@@ -144,26 +163,12 @@ func (c *Consumer) StartConsumers() {
 
 func (c *Consumer) waitForMessages(kc *kafka.Consumer, topicInputs topicInputs) {
 
-	// Create the base log message
-	runnerLog := openapi.LogEntryModel{
-		Type:    "Runner",
-		Version: "1",
-		Data: map[string]interface{}{
-			"DeploymentOwnerUserName": c.Config.DeploymentOwnerUserName,
-			"DeploymentName":          c.Config.DeploymentName,
-			"AlgoOwnerUserName":       c.Config.AlgoOwnerUserName,
-			"AlgoName":                c.Config.AlgoName,
-			"AlgoVersionTag":          c.Config.AlgoVersionTag,
-			"AlgoInstanceName":        c.InstanceName,
-		},
-	}
-
 	defer kc.Close()
 
 	sigchan := make(chan os.Signal, 1)
 	signal.Notify(sigchan, syscall.SIGINT, syscall.SIGTERM)
 
-	data := make(map[string]map[*openapi.AlgoInputModel][]InputData)
+	data := make(map[string]map[*openapi.AlgoInputModel][]types.InputData)
 
 	offsets := make(map[string]kafka.TopicPartition)
 
@@ -174,10 +179,10 @@ func (c *Consumer) waitForMessages(kc *kafka.Consumer, topicInputs topicInputs) 
 		select {
 		case sig := <-sigchan:
 
-			runnerLog.Msg = fmt.Sprintf("Caught signal %v: terminating the Kafka Consumer process.", sig)
-			runnerLog.Log(errors.New("Terminating"))
+			c.Logger.LogMessage.Msg = fmt.Sprintf("Caught signal %v: terminating the Kafka Consumer process.", sig)
+			c.Logger.Log(errors.New("Terminating"))
 
-			healthy = false
+			c.HealthyChan <- false
 			waiting = false
 
 		default:
@@ -191,7 +196,7 @@ func (c *Consumer) waitForMessages(kc *kafka.Consumer, topicInputs topicInputs) 
 
 			if ev == nil {
 				if firstPoll {
-					healthy = true
+					c.HealthyChan <- true
 					firstPoll = false
 				}
 				continue
@@ -200,18 +205,18 @@ func (c *Consumer) waitForMessages(kc *kafka.Consumer, topicInputs topicInputs) 
 			switch e := ev.(type) {
 			case *kafka.Message:
 
-				healthy = true
+				c.HealthyChan <- true
 
 				startTime := time.Now()
 
-				runnerLog.Msg = fmt.Sprintf("Kafka Message received on %s", e.TopicPartition)
-				runnerLog.Log(nil)
+				c.Logger.LogMessage.Msg = fmt.Sprintf("Kafka Message received on %s", e.TopicPartition)
+				c.Logger.Log(nil)
 
 				input := topicInputs[*e.TopicPartition.Topic]
 				traceID, inputData, run, endpointParams := c.processMessage(e, input)
 
 				if data[traceID] == nil {
-					data[traceID] = make(map[*openapi.AlgoInputModel][]InputData)
+					data[traceID] = make(map[*openapi.AlgoInputModel][]types.InputData)
 				}
 
 				data[traceID][input] = append(data[traceID][input], inputData)
@@ -221,21 +226,7 @@ func (c *Consumer) waitForMessages(kc *kafka.Consumer, topicInputs topicInputs) 
 					// TODO: iterate over inputs to be sure at least one has data!
 					// Can check to be sure all required inputs are fulfilled as well
 
-					var runError error
-
-					switch executor := c.Config.Executor; executor {
-					case openapi.EXECUTORS_EXECUTABLE, openapi.EXECUTORS_DELEGATED:
-						runError = execRunner.run(traceID, endpointParams, data[traceID])
-					case openapi.EXECUTORS_HTTP:
-						runError = runHTTP(traceID, endpointParams, data[traceID])
-					case openapi.EXECUTORS_GRPC:
-						runError = errors.New("gRPC executor is not implemented")
-					case openapi.EXECUTORS_SPARK:
-						runError = errors.New("Spark executor is not implemented")
-					default:
-						// Not implemented
-						runError = errors.New("Unknown executor is not supported")
-					}
+					runError := c.Runner.Run(traceID, endpointParams, data[traceID])
 
 					if runError == nil {
 
@@ -251,27 +242,32 @@ func (c *Consumer) waitForMessages(kc *kafka.Consumer, topicInputs topicInputs) 
 
 						_, offsetErr := kc.StoreOffsets([]kafka.TopicPartition{offsets[traceID]})
 						if offsetErr != nil {
-							runnerLog.Msg = fmt.Sprintf("Failed to store offsets for [%v]",
+							c.Logger.LogMessage.Msg = fmt.Sprintf("Failed to store offsets for [%v]",
 								[]kafka.TopicPartition{offsets[traceID]})
-							runnerLog.Log(offsetErr)
+							c.Logger.Log(offsetErr)
 						}
 
 						_, commitErr := kc.Commit()
 						if commitErr != nil {
-							runnerLog.Msg = fmt.Sprintf("Failed to commit offsets.")
-							runnerLog.Log(commitErr)
+							c.Logger.LogMessage.Msg = fmt.Sprintf("Failed to commit offsets.")
+							c.Logger.Log(commitErr)
 						}
 
 						delete(data, traceID)
 						delete(offsets, traceID)
 
 					} else {
-						runnerLog.Msg = "Failed to run algo"
-						runnerLog.Log(runError)
+						c.Logger.LogMessage.Msg = "Failed to run algo"
+						c.Logger.Log(runError)
 					}
 
 					reqDuration := time.Since(startTime)
-					runnerRuntimeHistogram.WithLabelValues(deploymentLabel, pipelineLabel, componentLabel, algoLabel, algoVersionLabel, algoIndexLabel).Observe(reqDuration.Seconds())
+					c.Metrics.RunnerRuntimeHistogram.WithLabelValues(c.Metrics.DeploymentLabel,
+						c.Metrics.PipelineLabel,
+						c.Metrics.ComponentLabel,
+						c.Metrics.AlgoLabel,
+						c.Metrics.AlgoVersionLabel,
+						c.Metrics.AlgoIndexLabel).Observe(reqDuration.Seconds())
 
 				} else {
 					// Save the offset for the data that was only stored but not executed
@@ -280,49 +276,35 @@ func (c *Consumer) waitForMessages(kc *kafka.Consumer, topicInputs topicInputs) 
 				}
 
 			case kafka.AssignedPartitions:
-				healthy = true
-				runnerLog.Msg = fmt.Sprintf("%v", e)
-				runnerLog.Log(nil)
+				c.HealthyChan <- true
+				c.Logger.LogMessage.Msg = fmt.Sprintf("%v", e)
+				c.Logger.Log(nil)
 				kc.Assign(e.Partitions)
 			case kafka.RevokedPartitions:
-				runnerLog.Msg = fmt.Sprintf("%v", e)
-				runnerLog.Log(nil)
+				c.Logger.LogMessage.Msg = fmt.Sprintf("%v", e)
+				c.Logger.Log(nil)
 				kc.Unassign()
 			case kafka.Error:
-				runnerLog.Msg = fmt.Sprintf("Kafka Error: %v", e)
-				runnerLog.Log(nil)
-				healthy = false
+				c.Logger.LogMessage.Msg = fmt.Sprintf("Kafka Error: %v", e)
+				c.Logger.Log(nil)
+				c.HealthyChan <- false
 				waiting = false
 
 			}
 		}
 	}
 
-	healthy = false
+	c.HealthyChan <- false
 
 }
 
 func (c *Consumer) processMessage(msg *kafka.Message,
-	input *openapi.AlgoInputModel) (traceID string, inputData InputData, run bool, endpointParams string) {
+	input *openapi.AlgoInputModel) (traceID string, inputData types.InputData, run bool, endpointParams string) {
 
 	// Default to run - if header is set to false, then don't run
 	run = true
 	// traceID is the message key
 	traceID = string(msg.Key)
-
-	// Create the base log message
-	runnerLog := openapi.LogEntryModel{
-		Type:    "Runner",
-		Version: "1",
-		Data: map[string]interface{}{
-			"DeploymentOwnerUserName": c.Config.DeploymentOwnerUserName,
-			"DeploymentName":          c.Config.DeploymentName,
-			"AlgoOwnerUserName":       c.Config.AlgoOwnerUserName,
-			"AlgoName":                c.Config.AlgoName,
-			"AlgoVersionTag":          c.Config.AlgoVersionTag,
-			"AlgoInstanceName":        c.InstanceName,
-		},
-	}
 
 	// Parse the headers
 	var contentType string
@@ -364,8 +346,8 @@ func (c *Consumer) processMessage(msg *kafka.Message,
 	// TODO: Validate the content type
 
 	// Save the data based on the delivery type
-	inputData = InputData{}
-	inputData.contentType = contentType
+	inputData = types.InputData{}
+	inputData.ContentType = contentType
 
 	// These input delivery types expect a byte stream
 	if input.InputDeliveryType == openapi.INPUTDELIVERYTYPES_STD_IN ||
@@ -379,36 +361,39 @@ func (c *Consumer) processMessage(msg *kafka.Message,
 			jsonErr := json.Unmarshal(msg.Value, &fileReference)
 
 			if jsonErr != nil {
-				runnerLog.Msg = fmt.Sprintf("Failed to parse the FileReference json.")
-				runnerLog.Log(jsonErr)
+				c.Logger.LogMessage.Msg = fmt.Sprintf("Failed to parse the FileReference json.")
+				c.Logger.Log(jsonErr)
 			}
 
 			// Read the file from storage
 			// Initialize minio client object.
-			minioClient, err := minio.New(storageConfig.host, storageConfig.accessKeyID, storageConfig.secretAccessKey, storageConfig.useSSL)
+			minioClient, err := minio.New(c.StorageConfig.Host,
+				c.StorageConfig.AccessKeyID,
+				c.StorageConfig.SecretAccessKey,
+				c.StorageConfig.UseSSL)
 			if err != nil {
-				runnerLog.Msg = fmt.Sprintf("Failed to create minio client.")
-				runnerLog.Log(err)
+				c.Logger.LogMessage.Msg = fmt.Sprintf("Failed to create minio client.")
+				c.Logger.Log(err)
 			}
 			object, err := minioClient.GetObject(fileReference.Bucket, fileReference.File, minio.GetObjectOptions{})
 			if err != nil {
-				runnerLog.Msg = fmt.Sprintf("Failed to get file reference object from storage. [%v]", fileReference)
-				runnerLog.Log(err)
+				c.Logger.LogMessage.Msg = fmt.Sprintf("Failed to get file reference object from storage. [%v]", fileReference)
+				c.Logger.Log(err)
 			}
 
 			objectBytes, err := ioutil.ReadAll(object)
 			if err != nil {
-				runnerLog.Msg = fmt.Sprintf("Failed to read file reference bytes from storage. [%v]", fileReference)
-				runnerLog.Log(err)
+				c.Logger.LogMessage.Msg = fmt.Sprintf("Failed to read file reference bytes from storage. [%v]", fileReference)
+				c.Logger.Log(err)
 			}
 
-			inputData.isFileReference = false
-			inputData.data = objectBytes
+			inputData.IsFileReference = false
+			inputData.Data = objectBytes
 
 		} else {
 			// If the data is embedded then copy the message value
-			inputData.isFileReference = false
-			inputData.data = msg.Value
+			inputData.IsFileReference = false
+			inputData.Data = msg.Value
 		}
 
 	} else {
@@ -418,46 +403,49 @@ func (c *Consumer) processMessage(msg *kafka.Message,
 		if messageDataType == openapi.MESSAGEDATATYPES_FILE_REFERENCE {
 
 			// Write the file locally
-			inputData.isFileReference = true
+			inputData.IsFileReference = true
 			// Try to read the json
 			var fileReference openapi.FileReference
 			jsonErr := json.Unmarshal(msg.Value, &fileReference)
 
 			if jsonErr != nil {
-				runnerLog.Msg = fmt.Sprintf("Failed to parse the FileReference json.")
-				runnerLog.Log(jsonErr)
+				c.Logger.LogMessage.Msg = fmt.Sprintf("Failed to parse the FileReference json.")
+				c.Logger.Log(jsonErr)
 			}
 
 			// Read the file from storage
 			// Initialize minio client object.
-			minioClient, err := minio.New(storageConfig.host, storageConfig.accessKeyID, storageConfig.secretAccessKey, storageConfig.useSSL)
+			minioClient, err := minio.New(c.StorageConfig.Host,
+				c.StorageConfig.AccessKeyID,
+				c.StorageConfig.SecretAccessKey,
+				c.StorageConfig.UseSSL)
 			if err != nil {
-				runnerLog.Msg = fmt.Sprintf("Failed to create minio client.")
-				runnerLog.Log(err)
+				c.Logger.LogMessage.Msg = fmt.Sprintf("Failed to create minio client.")
+				c.Logger.Log(err)
 			}
 			object, err := minioClient.GetObject(fileReference.Bucket, fileReference.File, minio.GetObjectOptions{})
 			if err != nil {
-				runnerLog.Msg = fmt.Sprintf("Failed to get file reference object from storage. [%v]", fileReference)
-				runnerLog.Log(err)
+				c.Logger.LogMessage.Msg = fmt.Sprintf("Failed to get file reference object from storage. [%v]", fileReference)
+				c.Logger.Log(err)
 			}
 
 			filePath := path.Join("/input", fileReference.File)
 			localFile, err := os.Create(filePath)
 			if err != nil {
-				runnerLog.Msg = fmt.Sprintf("Failed to create local file from reference object. [%v]", fileReference)
-				runnerLog.Log(err)
+				c.Logger.LogMessage.Msg = fmt.Sprintf("Failed to create local file from reference object. [%v]", fileReference)
+				c.Logger.Log(err)
 			}
 			if _, err = io.Copy(localFile, object); err != nil {
-				runnerLog.Msg = fmt.Sprintf("Failed to copy byte stream from reference object to local file. [%v]", fileReference)
-				runnerLog.Log(err)
+				c.Logger.LogMessage.Msg = fmt.Sprintf("Failed to copy byte stream from reference object to local file. [%v]", fileReference)
+				c.Logger.Log(err)
 			}
 
-			inputData.fileReference = &fileReference
+			inputData.FileReference = &fileReference
 
 		} else {
 
 			// The data is embedded so write the file locally as the algo expects a file
-			inputData.isFileReference = true
+			inputData.IsFileReference = true
 			if fileName == "" {
 				fileName = traceID
 			}
@@ -470,16 +458,21 @@ func (c *Consumer) processMessage(msg *kafka.Message,
 
 			err := ioutil.WriteFile(fullPathFile, msg.Value, 0644)
 			if err != nil {
-				runnerLog.Msg = fmt.Sprintf("Unable to write the embedded data to file [%s]", fullPathFile)
-				runnerLog.Log(err)
+				c.Logger.LogMessage.Msg = fmt.Sprintf("Unable to write the embedded data to file [%s]", fullPathFile)
+				c.Logger.Log(err)
 			}
 
-			inputData.fileReference = &fileReference
+			inputData.FileReference = &fileReference
 
 		}
 	}
 
-	bytesProcessedCounter.WithLabelValues(deploymentLabel, pipelineLabel, componentLabel, algoLabel, algoVersionLabel, algoIndexLabel).Add(float64(binary.Size(msg.Value)))
+	c.Metrics.BytesInputCounter.WithLabelValues(c.Metrics.DeploymentLabel,
+		c.Metrics.PipelineLabel,
+		c.Metrics.ComponentLabel,
+		c.Metrics.AlgoLabel,
+		c.Metrics.AlgoVersionLabel,
+		c.Metrics.AlgoIndexLabel).Add(float64(binary.Size(msg.Value)))
 
 	return
 
