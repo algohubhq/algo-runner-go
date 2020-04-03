@@ -3,8 +3,9 @@ package outputfilewatcher
 import (
 	kafkaproducer "algo-runner-go/pkg/kafka/producer"
 	"algo-runner-go/pkg/logging"
+	"algo-runner-go/pkg/metrics"
 	"algo-runner-go/pkg/openapi"
-	"algo-runner-go/pkg/types"
+	"algo-runner-go/pkg/storage"
 	"bufio"
 	"encoding/json"
 	"errors"
@@ -22,7 +23,8 @@ import (
 // New creates a new Output File Watcher.
 func NewOutputFileWatcher(config *openapi.AlgoRunnerConfig,
 	producer *kafkaproducer.Producer,
-	storageConfig *types.StorageConfig,
+	storageConfig *storage.Storage,
+	metrics *metrics.Metrics,
 	instanceName string,
 	logger *logging.Logger) *OutputFileWatcher {
 
@@ -30,6 +32,7 @@ func NewOutputFileWatcher(config *openapi.AlgoRunnerConfig,
 		Outputs:       make(map[string]*Output),
 		Config:        config,
 		Producer:      producer,
+		Metrics:       metrics,
 		StorageConfig: storageConfig,
 		InstanceName:  instanceName,
 		Logger:        logger,
@@ -42,7 +45,8 @@ type OutputFileWatcher struct {
 	Outputs       map[string]*Output
 	Config        *openapi.AlgoRunnerConfig
 	Producer      *kafkaproducer.Producer
-	StorageConfig *types.StorageConfig
+	StorageConfig *storage.Storage
+	Metrics       *metrics.Metrics
 	InstanceName  string
 	Logger        *logging.Logger
 }
@@ -51,7 +55,8 @@ type Output struct {
 	Logger                *logging.Logger
 	Config                *openapi.AlgoRunnerConfig
 	Producer              *kafkaproducer.Producer
-	StorageConfig         *types.StorageConfig
+	StorageConfig         *storage.Storage
+	Metrics               *metrics.Metrics
 	execCmd               *exec.Cmd
 	outputMessageDataType openapi.MessageDataTypes
 	algoOutput            *openapi.AlgoOutputModel
@@ -109,6 +114,7 @@ func (o *OutputFileWatcher) Watch(fileFolder string, algoIndex int32, algoOutput
 		Config:                o.Config,
 		Producer:              o.Producer,
 		StorageConfig:         o.StorageConfig,
+		Metrics:               o.Metrics,
 		execCmd:               execCmd,
 		algoOutput:            algoOutput,
 		algoIndex:             algoIndex,
@@ -168,7 +174,7 @@ func (output *Output) start() {
 	go func() {
 		sig := <-sigchan
 
-		output.Logger.LogMessage.Msg = fmt.Sprintf("Caught signal %v. Killing server process: mc\n", sig)
+		output.Logger.LogMessage.Msg = fmt.Sprintf("Caught signal %v. Killing mc process: mc\n", sig)
 		output.Logger.Log(nil)
 
 		if output.execCmd != nil && output.execCmd.Process != nil {
@@ -222,7 +228,15 @@ func (output *Output) start() {
 					uuidTraceID, _ := uuid.NewV4()
 					traceID := strings.Replace(uuidTraceID.String(), "-", "", -1)
 
-					output.Producer.ProduceOutputMessage(traceID, wm.Event.Path, fileOutputTopic, fileBytes)
+					output.Metrics.DataBytesOutputCounter.WithLabelValues(output.Metrics.DeploymentLabel,
+						output.Metrics.PipelineLabel,
+						output.Metrics.ComponentLabel,
+						output.Metrics.AlgoLabel,
+						output.Metrics.AlgoVersionLabel,
+						output.Metrics.AlgoIndexLabel,
+						output.algoOutput.Name).Add(float64(wm.Event.Size))
+
+					output.Producer.ProduceOutputMessage(traceID, wm.Event.Path, fileOutputTopic, output.algoOutput.Name, fileBytes)
 				}
 
 			} else {
@@ -261,7 +275,15 @@ func (output *Output) start() {
 					uuidTraceID, _ := uuid.NewV4()
 					traceID := strings.Replace(uuidTraceID.String(), "-", "", -1)
 
-					output.Producer.ProduceOutputMessage(traceID, mm.Target, fileOutputTopic, jsonBytes)
+					output.Metrics.DataBytesOutputCounter.WithLabelValues(output.Metrics.DeploymentLabel,
+						output.Metrics.PipelineLabel,
+						output.Metrics.ComponentLabel,
+						output.Metrics.AlgoLabel,
+						output.Metrics.AlgoVersionLabel,
+						output.Metrics.AlgoIndexLabel,
+						output.algoOutput.Name).Add(float64(mm.TotalSize))
+
+					output.Producer.ProduceOutputMessage(traceID, mm.Target, fileOutputTopic, output.algoOutput.Name, jsonBytes)
 				}
 
 			}

@@ -1,6 +1,8 @@
 package types
 
-import "algo-runner-go/pkg/openapi"
+import (
+	"algo-runner-go/pkg/openapi"
+)
 
 // IRunner is an interface to define the functions of a runner
 type IRunner interface {
@@ -15,13 +17,6 @@ type InputData struct {
 	ContentType     string
 	FileReference   *openapi.FileReference
 	Data            []byte
-}
-
-// StorageConfig defines the S3 compatible storage configuration
-type StorageConfig struct {
-	ConnectionString string
-	Host             string
-	AccessKeyID      string
-	SecretAccessKey  string
-	UseSSL           bool
+	MsgSize         float64
+	DataSize        float64
 }

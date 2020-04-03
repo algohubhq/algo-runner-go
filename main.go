@@ -7,22 +7,23 @@ import (
 	"algo-runner-go/pkg/logging"
 	"algo-runner-go/pkg/metrics"
 	"algo-runner-go/pkg/openapi"
-	"algo-runner-go/pkg/types"
+	"algo-runner-go/pkg/storage"
 	"errors"
 	"flag"
 	"os"
+	"os/signal"
 	"strings"
-	"sync"
+	"syscall"
 
 	uuid "github.com/nu7hatch/gouuid"
 )
 
 // Global variables
 var (
-	config        openapi.AlgoRunnerConfig
-	storageConfig types.StorageConfig
-	instanceName  string
-	kafkaBrokers  string
+	config                  openapi.AlgoRunnerConfig
+	instanceName            string
+	kafkaBrokers            string
+	storageConnectionString string
 )
 
 func main() {
@@ -36,6 +37,10 @@ func main() {
 		nil)
 
 	healthyChan := make(chan bool)
+
+	// We need to shut down gracefully when the user hits Ctrl-C.
+	sig := make(chan os.Signal, 1)
+	signal.Notify(sig, syscall.SIGINT, syscall.SIGUSR1, syscall.SIGTERM, syscall.SIGHUP)
 
 	configLoader := configloader.NewConfigLoader(&localLogger)
 
@@ -82,19 +87,7 @@ func main() {
 		// Try to load from environment variable
 		storageEnv := os.Getenv("MC_HOST_algorun")
 		if storageEnv != "" {
-			storageConfig = types.StorageConfig{}
-			host, accessKey, secret, err := configLoader.ParseEnvURLStr(storageEnv)
-			if err != nil {
-				localLogger.LogMessage.Msg = "S3 Connection String is not valid. [] Shutting down..."
-				localLogger.Log(errors.New("S3 Connection String is not valid"))
-
-				os.Exit(1)
-			}
-			storageConfig.ConnectionString = storageEnv
-			storageConfig.Host = host.Host
-			storageConfig.AccessKeyID = accessKey
-			storageConfig.SecretAccessKey = secret
-			storageConfig.UseSSL = host.Scheme == "https"
+			storageConnectionString = storageEnv
 		} else {
 			localLogger.LogMessage.Msg = "Missing the S3 Storage Connection String argument and no environment variable MC_HOST_algorun exists."
 			localLogger.Log(errors.New("MC_HOST_algorun missing"))
@@ -136,26 +129,38 @@ func main() {
 
 	metrics := metrics.NewMetrics(healthyChan, &config)
 
-	var wg sync.WaitGroup
-	wg.Add(1)
+	storageConfig := storage.NewStorage(healthyChan, &config, storageConnectionString, &runnerLogger)
+	producer, err := kafkaproducer.NewProducer(healthyChan, &config, instanceName, kafkaBrokers, &runnerLogger, &metrics)
+	if err != nil {
+		localLogger.LogMessage.Msg = "Failed to create Kafka Producer... Shutting down..."
+		localLogger.Log(errors.New("Failed to create Kafka Producer"))
+		os.Exit(1)
+	}
 
-	producer := kafkaproducer.NewProducer(healthyChan, &config, instanceName, kafkaBrokers, &runnerLogger, &metrics)
+	go metrics.CreateHTTPHandler()
 
+	// Start Consumers
 	go func() {
 		consumer := kafkaconsumer.NewConsumer(healthyChan,
 			&config,
-			&producer,
-			&storageConfig,
+			producer,
+			storageConfig,
 			instanceName,
 			kafkaBrokers,
 			&runnerLogger,
 			&metrics)
-		consumer.StartConsumers()
-		wg.Done()
+
+		if err == nil {
+			consumer.StartConsumers()
+		}
 	}()
 
-	metrics.CreateHTTPHandler()
-
-	wg.Wait()
+	for {
+		signal := <-sig
+		switch signal {
+		case syscall.SIGTERM, syscall.SIGINT:
+			producer.Producer.Close()
+		}
+	}
 
 }

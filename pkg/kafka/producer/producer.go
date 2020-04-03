@@ -4,11 +4,13 @@ import (
 	"algo-runner-go/pkg/logging"
 	"algo-runner-go/pkg/metrics"
 	"algo-runner-go/pkg/openapi"
+	"encoding/binary"
 	"fmt"
 
 	k "algo-runner-go/pkg/kafka"
 
 	"github.com/confluentinc/confluent-kafka-go/kafka"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 type Producer struct {
@@ -18,6 +20,7 @@ type Producer struct {
 	Metrics      *metrics.Metrics
 	InstanceName string
 	KafkaBrokers string
+	Producer     *kafka.Producer
 }
 
 // NewProducer returns a new Producer struct
@@ -26,22 +29,11 @@ func NewProducer(healthyChan chan<- bool,
 	instanceName string,
 	kafkaBrokers string,
 	logger *logging.Logger,
-	metrics *metrics.Metrics) Producer {
-
-	return Producer{
-		HealthyChan:  healthyChan,
-		Config:       config,
-		Logger:       logger,
-		Metrics:      metrics,
-		InstanceName: instanceName,
-		KafkaBrokers: kafkaBrokers,
-	}
-}
-
-func (p *Producer) ProduceOutputMessage(traceID string, fileName string, topic string, data []byte) {
+	metrics *metrics.Metrics) (producer *Producer, err error) {
 
 	kafkaConfig := kafka.ConfigMap{
-		"bootstrap.servers": p.KafkaBrokers,
+		"bootstrap.servers":      kafkaBrokers,
+		"statistics.interval.ms": 10000,
 	}
 
 	// Set the ssl config if enabled
@@ -55,55 +47,109 @@ func (p *Producer) ProduceOutputMessage(traceID string, fileName string, topic s
 	kp, err := kafka.NewProducer(&kafkaConfig)
 
 	if err != nil {
-		p.Logger.LogMessage.Type = "Local"
-		p.Logger.LogMessage.Msg = "Failed to create Kafka message producer."
-		p.Logger.Log(err)
+		logger.LogMessage.Msg = "Failed to create Kafka message producer."
+		logger.Log(err)
 
-		return
+		return nil, err
 	}
 
-	doneChan := make(chan bool)
+	producer = &Producer{
+		HealthyChan:  healthyChan,
+		Config:       config,
+		Logger:       logger,
+		Metrics:      metrics,
+		InstanceName: instanceName,
+		KafkaBrokers: kafkaBrokers,
+		Producer:     kp,
+	}
 
-	go func() {
-		defer close(doneChan)
-		for e := range kp.Events() {
-			switch ev := e.(type) {
-			case *kafka.Message:
-				m := ev
-				if m.TopicPartition.Error != nil {
-					p.Logger.LogMessage.Type = "Runner"
-					p.Logger.LogMessage.Msg = fmt.Sprintf("Delivery failed for output: %v", m.TopicPartition.Topic)
-					p.Logger.Log(m.TopicPartition.Error)
-				} else {
-					p.Logger.LogMessage.Type = "Runner"
-					p.Logger.LogMessage.Msg = fmt.Sprintf("Delivered message to topic %s [%d] at offset %v",
-						*m.TopicPartition.Topic, m.TopicPartition.Partition, m.TopicPartition.Offset)
-					p.Logger.Log(nil)
-				}
-				return
-			case kafka.Error:
-				p.Logger.LogMessage.Msg = fmt.Sprintf("Failed to deliver output message to Kafka: %v", e)
-				p.Logger.Log(nil)
-				p.HealthyChan <- false
+	go producer.producerEventsHandler()
 
-			default:
-				p.Logger.LogMessage.Type = "Local"
-				p.Logger.LogMessage.Msg = fmt.Sprintf("Ignored event: %s", ev)
+	return producer, nil
+
+}
+
+func (p *Producer) producerEventsHandler() {
+	for e := range p.Producer.Events() {
+		switch ev := e.(type) {
+		case *kafka.Message:
+			m := ev
+			if m.TopicPartition.Error != nil {
+				p.Metrics.MsgNOK.With(prometheus.Labels{
+					"topic": *m.TopicPartition.Topic,
+					"error": m.TopicPartition.Error.Error()}).Inc()
+				p.Logger.LogMessage.Msg = fmt.Sprintf("Delivery failed for output: %v", m.TopicPartition.Topic)
+				p.Logger.Log(m.TopicPartition.Error)
+				// TODO: producer retry logic here
+
+			} else {
+				p.Metrics.MsgOK.With(prometheus.Labels{"topic": *m.TopicPartition.Topic}).Inc()
+				p.Logger.LogMessage.Msg = fmt.Sprintf("Delivered message to topic %s [%d] at offset %v",
+					*m.TopicPartition.Topic, m.TopicPartition.Partition, m.TopicPartition.Offset)
 				p.Logger.Log(nil)
 			}
+		case kafka.Error:
+
+			if ev.Code() == kafka.ErrAllBrokersDown {
+				p.Logger.LogMessage.Msg = "All kafka brokers are down"
+				p.Logger.Log(ev)
+			} else {
+				p.Logger.LogMessage.Msg = "Kafka producer error"
+				p.Logger.Log(ev)
+				p.HealthyChan <- false
+			}
+
+			// TODO: producer retry logic here
+
+		case *kafka.Stats:
+			err := p.Metrics.PopulateRDKafkaMetrics(ev.String())
+			if err != nil {
+				p.Logger.LogMessage.Msg = "Could not populate librdkafka metrics"
+				p.Logger.Log(err)
+			}
+		default:
+			p.Logger.LogMessage.Msg = fmt.Sprintf("Ignored message: %v", ev)
+			p.Logger.Log(nil)
+			p.Metrics.EventIgnored.Inc()
 		}
-	}()
+	}
+
+	close(p.Producer.Events())
+
+}
+
+func (p *Producer) ProduceOutputMessage(traceID string,
+	fileName string,
+	topic string,
+	outputName string,
+	data []byte) {
 
 	// Create the headers
 	var headers []kafka.Header
 	headers = append(headers, kafka.Header{Key: "fileName", Value: []byte(fileName)})
 
-	kp.ProduceChannel() <- &kafka.Message{TopicPartition: kafka.TopicPartition{Topic: &topic, Partition: kafka.PartitionAny},
+	p.Producer.ProduceChannel() <- &kafka.Message{TopicPartition: kafka.TopicPartition{Topic: &topic, Partition: kafka.PartitionAny},
 		Key: []byte(traceID), Value: data}
 
-	// wait for delivery report goroutine to finish
-	_ = <-doneChan
+	p.Metrics.MsgBytesOutputCounter.WithLabelValues(p.Metrics.DeploymentLabel,
+		p.Metrics.PipelineLabel,
+		p.Metrics.ComponentLabel,
+		p.Metrics.AlgoLabel,
+		p.Metrics.AlgoVersionLabel,
+		p.Metrics.AlgoIndexLabel,
+		outputName).Add(float64(binary.Size(data)))
 
-	kp.Close()
+}
 
+func (p *Producer) canRetry(err error) bool {
+	switch e := err.(kafka.Error); e.Code() {
+	// topics are wrong
+	case kafka.ErrTopicException, kafka.ErrUnknownTopic:
+		return false
+	// message is incorrect
+	case kafka.ErrMsgSizeTooLarge, kafka.ErrInvalidMsgSize:
+		return false
+	default:
+		return true
+	}
 }

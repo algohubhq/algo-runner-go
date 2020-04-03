@@ -6,6 +6,7 @@ import (
 	"algo-runner-go/pkg/metrics"
 	"algo-runner-go/pkg/openapi"
 	ofw "algo-runner-go/pkg/outputfilewatcher"
+	"algo-runner-go/pkg/storage"
 	"algo-runner-go/pkg/types"
 	"bytes"
 	"errors"
@@ -27,7 +28,7 @@ type ExecRunner struct {
 	Logger         *logging.Logger
 	Metrics        *metrics.Metrics
 	Producer       *kafkaproducer.Producer
-	StorageConfig  *types.StorageConfig
+	StorageConfig  *storage.Storage
 	InstanceName   string
 	command        []string
 	fileParameters map[string]string
@@ -37,7 +38,7 @@ type ExecRunner struct {
 // New creates a new ExecRunner.
 func NewExecRunner(config *openapi.AlgoRunnerConfig,
 	producer *kafkaproducer.Producer,
-	storageConfig *types.StorageConfig,
+	storageConfig *storage.Storage,
 	instanceName string,
 	logger *logging.Logger,
 	metrics *metrics.Metrics) *ExecRunner {
@@ -51,7 +52,7 @@ func NewExecRunner(config *openapi.AlgoRunnerConfig,
 
 	algoName := fmt.Sprintf("%s/%s:%s[%d]", config.AlgoOwnerUserName, config.AlgoName, config.AlgoVersionTag, config.AlgoIndex)
 
-	outputHandler := ofw.NewOutputFileWatcher(config, producer, storageConfig, instanceName, logger)
+	outputHandler := ofw.NewOutputFileWatcher(config, producer, storageConfig, metrics, instanceName, logger)
 	var sendStdout bool
 	fileParameters := make(map[string]string)
 

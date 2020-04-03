@@ -5,8 +5,11 @@ import (
 	"algo-runner-go/pkg/logging"
 	"algo-runner-go/pkg/metrics"
 	"algo-runner-go/pkg/openapi"
+	"algo-runner-go/pkg/storage"
 	"algo-runner-go/pkg/types"
 	"bytes"
+	"encoding/binary"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -21,27 +24,29 @@ import (
 // HTTPRunner holds the configuration for the the http runner
 type HTTPRunner struct {
 	types.IRunner
-	Config       *openapi.AlgoRunnerConfig
-	Logger       *logging.Logger
-	Metrics      *metrics.Metrics
-	Producer     *kafkaproducer.Producer
-	InstanceName string
+	Config        *openapi.AlgoRunnerConfig
+	Logger        *logging.Logger
+	Metrics       *metrics.Metrics
+	Producer      *kafkaproducer.Producer
+	StorageConfig *storage.Storage
+	InstanceName  string
 }
 
 // New creates a new Http Runner.
 func NewHTTPRunner(config *openapi.AlgoRunnerConfig,
 	producer *kafkaproducer.Producer,
-	storageConfig *types.StorageConfig,
+	storageConfig *storage.Storage,
 	instanceName string,
 	logger *logging.Logger,
 	metrics *metrics.Metrics) *HTTPRunner {
 
 	return &HTTPRunner{
-		Config:       config,
-		Producer:     producer,
-		InstanceName: instanceName,
-		Logger:       logger,
-		Metrics:      metrics,
+		Config:        config,
+		Producer:      producer,
+		StorageConfig: storageConfig,
+		InstanceName:  instanceName,
+		Logger:        logger,
+		Metrics:       metrics,
 	}
 
 }
@@ -65,20 +70,34 @@ func (r *HTTPRunner) Run(traceID string,
 		netClient.Timeout = time.Second * time.Duration(r.Config.TimeoutSeconds)
 	}
 
+	algoName := fmt.Sprintf("%s/%s:%s[%d]", r.Config.AlgoOwnerUserName, r.Config.AlgoName, r.Config.AlgoVersionTag, r.Config.AlgoIndex)
+
 	for input, inputData := range inputMap {
 
 		var outputTopic string
+		var output openapi.AlgoOutputModel
 		// get the httpresponse output
-		for _, output := range r.Config.Outputs {
-			if output.OutputDeliveryType == openapi.OUTPUTDELIVERYTYPES_HTTP_RESPONSE &&
-				strings.ToLower(output.Name) == strings.ToLower(input.Name) {
+		for _, o := range r.Config.Outputs {
+			if o.OutputDeliveryType == openapi.OUTPUTDELIVERYTYPES_HTTP_RESPONSE &&
+				strings.ToLower(o.Name) == strings.ToLower(input.Name) {
+				output = o
 				outputTopic = strings.ToLower(fmt.Sprintf("algorun.%s.%s.algo.%s.%s.%d.output.%s",
 					r.Config.DeploymentOwnerUserName,
 					r.Config.DeploymentName,
 					r.Config.AlgoOwnerUserName,
 					r.Config.AlgoName,
 					r.Config.AlgoIndex,
-					output.Name))
+					o.Name))
+			}
+		}
+
+		outputMessageDataType := openapi.MESSAGEDATATYPES_EMBEDDED
+
+		// Check to see if there are any mapped routes for this output and get the message data type
+		for i := range r.Config.Pipes {
+			if r.Config.Pipes[i].SourceName == algoName {
+				outputMessageDataType = r.Config.Pipes[i].SourceOutputMessageDataType
+				break
 			}
 		}
 
@@ -160,15 +179,63 @@ func (r *HTTPRunner) Run(traceID string,
 					r.Metrics.AlgoIndexLabel).Observe(reqDuration.Seconds())
 
 				if response.StatusCode == 200 {
-					// Send to output topic
-					fileName, _ := uuid.NewV4()
+					// If outputmessage data type is embedded, then send the contents in message
+					if outputMessageDataType == openapi.MESSAGEDATATYPES_EMBEDDED {
+						// Send to output topic
+						fileName, _ := uuid.NewV4()
 
-					if outputTopic != "" {
-						r.Producer.ProduceOutputMessage(traceID, fileName.String(), outputTopic, contents)
+						if outputTopic != "" {
+							r.Metrics.DataBytesOutputCounter.WithLabelValues(r.Metrics.DeploymentLabel,
+								r.Metrics.PipelineLabel,
+								r.Metrics.ComponentLabel,
+								r.Metrics.AlgoLabel,
+								r.Metrics.AlgoVersionLabel,
+								r.Metrics.AlgoIndexLabel,
+								output.Name).Add(float64(binary.Size(contents)))
+
+							r.Producer.ProduceOutputMessage(traceID, fileName.String(), outputTopic, output.Name, contents)
+
+						} else {
+							r.Logger.LogMessage.Msg = fmt.Sprintf("No output topic with outputDeliveryType as HttpResponse for input that is an http request")
+							r.Logger.Log(nil)
+							return nil
+						}
 					} else {
-						r.Logger.LogMessage.Msg = fmt.Sprintf("No output topic with outputDeliveryType as HttpResponse for input that is an http request")
-						r.Logger.Log(nil)
-						return nil
+
+						// Upload the data to storage and send the file reference to Kafka
+						// Try to create the json
+						fileName, _ := uuid.NewV4()
+						bucketName := fmt.Sprintf("%s.%s",
+							strings.ToLower(r.Config.DeploymentOwnerUserName),
+							strings.ToLower(r.Config.DeploymentName))
+						fileReference := openapi.FileReference{
+							Host:   r.StorageConfig.Host,
+							Bucket: bucketName,
+							File:   fileName.String(),
+						}
+						jsonBytes, jsonErr := json.Marshal(fileReference)
+						if jsonErr != nil {
+							r.Logger.LogMessage.Msg = fmt.Sprintf("Unable to create the file reference json.")
+							r.Logger.Log(jsonErr)
+						}
+
+						err = r.StorageConfig.Uploader.Upload(fileReference, contents)
+						if err != nil {
+							// Create error message
+							r.Logger.LogMessage.Msg = fmt.Sprintf("Error uploading to storage for file reference [%s]", fileReference.File)
+							r.Logger.Log(err)
+						}
+
+						r.Metrics.DataBytesOutputCounter.WithLabelValues(r.Metrics.DeploymentLabel,
+							r.Metrics.PipelineLabel,
+							r.Metrics.ComponentLabel,
+							r.Metrics.AlgoLabel,
+							r.Metrics.AlgoVersionLabel,
+							r.Metrics.AlgoIndexLabel,
+							output.Name).Add(float64(binary.Size(contents)))
+
+						r.Producer.ProduceOutputMessage(traceID, fileName.String(), outputTopic, output.Name, jsonBytes)
+
 					}
 
 					return nil

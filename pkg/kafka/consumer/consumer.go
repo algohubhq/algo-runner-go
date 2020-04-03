@@ -7,6 +7,7 @@ import (
 	"algo-runner-go/pkg/metrics"
 	"algo-runner-go/pkg/openapi"
 	"algo-runner-go/pkg/runner"
+	"algo-runner-go/pkg/storage"
 	"algo-runner-go/pkg/types"
 	"encoding/binary"
 	"encoding/json"
@@ -31,7 +32,7 @@ type Consumer struct {
 	HealthyChan   chan<- bool
 	Config        *openapi.AlgoRunnerConfig
 	Producer      *kafkaproducer.Producer
-	StorageConfig *types.StorageConfig
+	StorageConfig *storage.Storage
 	Logger        *logging.Logger
 	Metrics       *metrics.Metrics
 	InstanceName  string
@@ -43,24 +44,19 @@ type Consumer struct {
 func NewConsumer(healthyChan chan<- bool,
 	config *openapi.AlgoRunnerConfig,
 	producer *kafkaproducer.Producer,
-	storageConfig *types.StorageConfig,
+	storageConfig *storage.Storage,
 	instanceName string,
 	kafkaBrokers string,
 	logger *logging.Logger,
 	metrics *metrics.Metrics) Consumer {
 
-	var r runner.Runner
-
-	if config.Executor == openapi.EXECUTORS_EXECUTABLE ||
-		config.Executor == openapi.EXECUTORS_DELEGATED {
-		r = runner.NewRunner(config,
-			producer,
-			storageConfig,
-			instanceName,
-			kafkaBrokers,
-			logger,
-			metrics)
-	}
+	r := runner.NewRunner(config,
+		producer,
+		storageConfig,
+		instanceName,
+		kafkaBrokers,
+		logger,
+		metrics)
 
 	return Consumer{
 		HealthyChan:   healthyChan,
@@ -77,7 +73,7 @@ func NewConsumer(healthyChan chan<- bool,
 
 type topicInputs map[string]*openapi.AlgoInputModel
 
-func (c *Consumer) StartConsumers() {
+func (c *Consumer) StartConsumers() error {
 
 	topicInputs := make(topicInputs)
 	var topics []string
@@ -120,7 +116,7 @@ func (c *Consumer) StartConsumers() {
 
 	}
 
-	groupID := fmt.Sprintf("algorun-%s-%s-%s-%s-%d",
+	groupID := fmt.Sprintf("algorun-%s-%s-%s-%s-%d-new",
 		c.Config.DeploymentOwnerUserName,
 		c.Config.DeploymentName,
 		c.Config.AlgoOwnerUserName,
@@ -151,13 +147,20 @@ func (c *Consumer) StartConsumers() {
 		c.HealthyChan <- false
 		c.Logger.LogMessage.Msg = fmt.Sprintf("Failed to create consumer.")
 		c.Logger.Log(err)
-
-		os.Exit(1)
+		return err
 	}
 
 	err = kc.SubscribeTopics(topics, nil)
+	if err != nil {
+		c.HealthyChan <- false
+		c.Logger.LogMessage.Msg = fmt.Sprintf("Failed to subscribe to topics.")
+		c.Logger.Log(err)
+		return err
+	}
 
 	c.waitForMessages(kc, topicInputs)
+
+	return nil
 
 }
 
@@ -206,6 +209,7 @@ func (c *Consumer) waitForMessages(kc *kafka.Consumer, topicInputs topicInputs) 
 			case *kafka.Message:
 
 				c.HealthyChan <- true
+				c.Logger.LogMessage.TraceId = nil
 
 				startTime := time.Now()
 
@@ -331,6 +335,8 @@ func (c *Consumer) processMessage(msg *kafka.Message,
 		traceID = strings.Replace(uuidTraceID.String(), "-", "", -1)
 	}
 
+	c.Logger.LogMessage.TraceId = &traceID
+
 	// If the content type is empty, use the first accepted content type
 	if contentType == "" {
 		if len(input.ContentTypes) > 0 {
@@ -387,6 +393,9 @@ func (c *Consumer) processMessage(msg *kafka.Message,
 				c.Logger.Log(err)
 			}
 
+			inputData.MsgSize = float64(binary.Size(msg.Value))
+			inputData.DataSize = float64(binary.Size(objectBytes))
+
 			inputData.IsFileReference = false
 			inputData.Data = objectBytes
 
@@ -440,6 +449,15 @@ func (c *Consumer) processMessage(msg *kafka.Message,
 				c.Logger.Log(err)
 			}
 
+			objStat, err := object.Stat()
+			if err != nil {
+				c.Logger.LogMessage.Msg = fmt.Sprintf("Failed to Stat the file object to get file size. [%v]", fileReference)
+				c.Logger.Log(err)
+			}
+
+			inputData.MsgSize = float64(binary.Size(msg.Value))
+			inputData.DataSize = float64(objStat.Size)
+
 			inputData.FileReference = &fileReference
 
 		} else {
@@ -462,17 +480,13 @@ func (c *Consumer) processMessage(msg *kafka.Message,
 				c.Logger.Log(err)
 			}
 
+			inputData.MsgSize = float64(binary.Size(msg.Value))
+			inputData.DataSize = float64(binary.Size(msg.Value))
+
 			inputData.FileReference = &fileReference
 
 		}
 	}
-
-	c.Metrics.BytesInputCounter.WithLabelValues(c.Metrics.DeploymentLabel,
-		c.Metrics.PipelineLabel,
-		c.Metrics.ComponentLabel,
-		c.Metrics.AlgoLabel,
-		c.Metrics.AlgoVersionLabel,
-		c.Metrics.AlgoIndexLabel).Add(float64(binary.Size(msg.Value)))
 
 	return
 
