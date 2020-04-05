@@ -13,8 +13,8 @@ package openapi
 type DataConnectorOptionModel struct {
 	SortOrder *int32 `json:"sortOrder,omitempty"`
 	Required bool `json:"required,omitempty"`
-	Name *string `json:"name,omitempty"`
+	Name string `json:"name,omitempty"`
 	Description *string `json:"description,omitempty"`
-	Value *string `json:"value,omitempty"`
+	Value string `json:"value,omitempty"`
 	DataType DataTypeModel `json:"dataType,omitempty"`
 }

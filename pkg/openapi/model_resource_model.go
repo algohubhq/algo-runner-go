@@ -11,14 +11,14 @@
 package openapi
 // ResourceModel struct for ResourceModel
 type ResourceModel struct {
-	MemoryRequestBytes *int64 `json:"memoryRequestBytes,omitempty"`
-	MemoryLimitBytes *int64 `json:"memoryLimitBytes,omitempty"`
-	CpuRequestMillicores *int64 `json:"cpuRequestMillicores,omitempty"`
-	CpuLimitMillicores *int64 `json:"cpuLimitMillicores,omitempty"`
-	GpuLimitMillicores *int64 `json:"gpuLimitMillicores,omitempty"`
+	MemoryRequestBytes int64 `json:"memoryRequestBytes,omitempty"`
+	MemoryLimitBytes int64 `json:"memoryLimitBytes,omitempty"`
+	CpuRequestMillicores int64 `json:"cpuRequestMillicores,omitempty"`
+	CpuLimitMillicores int64 `json:"cpuLimitMillicores,omitempty"`
+	GpuLimitMillicores int64 `json:"gpuLimitMillicores,omitempty"`
 	Instances int32 `json:"instances,omitempty"`
 	AutoScale bool `json:"autoScale,omitempty"`
-	MinInstances *int32 `json:"minInstances,omitempty"`
-	MaxInstances *int32 `json:"maxInstances,omitempty"`
-	ScaleMetrics *[]ScaleMetricModel `json:"scaleMetrics,omitempty"`
+	MinInstances int32 `json:"minInstances,omitempty"`
+	MaxInstances int32 `json:"maxInstances,omitempty"`
+	ScaleMetrics []ScaleMetricModel `json:"scaleMetrics,omitempty"`
 }

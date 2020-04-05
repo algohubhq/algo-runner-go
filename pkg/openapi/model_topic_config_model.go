@@ -20,4 +20,6 @@ type TopicConfigModel struct {
 	TopicPartitions int32 `json:"topicPartitions,omitempty"`
 	TopicReplicationFactor int32 `json:"topicReplicationFactor,omitempty"`
 	TopicParams []TopicParamModel `json:"topicParams,omitempty"`
+	OverrideRetryStrategy bool `json:"overrideRetryStrategy,omitempty"`
+	RetryStrategy TopicRetryStrategyModel `json:"retryStrategy,omitempty"`
 }

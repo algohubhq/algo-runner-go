@@ -13,6 +13,8 @@ cp ./algorun-go-client/model_scale_metric_model.go ./pkg/openapi/
 cp ./algorun-go-client/model_algo_param_model.go ./pkg/openapi/
 cp ./algorun-go-client/model_topic_config_model.go ./pkg/openapi/
 cp ./algorun-go-client/model_topic_param_model.go ./pkg/openapi/
+cp ./algorun-go-client/model_topic_retry_strategy_model.go ./pkg/openapi/
+cp ./algorun-go-client/model_topic_retry_step_model.go ./pkg/openapi/
 cp ./algorun-go-client/model_data_type_model.go ./pkg/openapi/
 cp ./algorun-go-client/model_data_type_option_model.go ./pkg/openapi/
 cp ./algorun-go-client/model_content_type_model.go ./pkg/openapi/
@@ -28,6 +30,8 @@ cp ./algorun-go-client/model_log_entry_model.go ./pkg/openapi/
 cp ./algorun-go-client/model_file_reference.go ./pkg/openapi/
 cp ./algorun-go-client/model_config_mount_model.go ./pkg/openapi/
 
+cp ./algorun-go-client/model_duration.go ./pkg/openapi/
+cp ./algorun-go-client/model_retry_strategies.go ./pkg/openapi/
 cp ./algorun-go-client/model_log_levels.go ./pkg/openapi/
 cp ./algorun-go-client/model_log_types.go ./pkg/openapi/
 cp ./algorun-go-client/model_executors.go ./pkg/openapi/

@@ -11,7 +11,7 @@
 package openapi
 // ConfigMountModel struct for ConfigMountModel
 type ConfigMountModel struct {
-	Name *string `json:"name"`
-	MountPath *string `json:"mountPath"`
-	Data *string `json:"data"`
+	Name string `json:"name"`
+	MountPath string `json:"mountPath"`
+	Data string `json:"data"`
 }

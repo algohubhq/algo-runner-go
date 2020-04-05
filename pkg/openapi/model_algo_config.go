@@ -12,8 +12,8 @@ package openapi
 // AlgoConfig struct for AlgoConfig
 type AlgoConfig struct {
 	Applied bool `json:"applied,omitempty"`
-	DeploymentOwnerUserName string `json:"deploymentOwnerUserName"`
-	DeploymentName string `json:"deploymentName"`
+	DeploymentOwnerUserName string `json:"deploymentOwnerUserName,omitempty"`
+	DeploymentName string `json:"deploymentName,omitempty"`
 	AlgoOwnerUserName string `json:"algoOwnerUserName"`
 	AlgoName string `json:"algoName"`
 	AlgoVersionTag string `json:"algoVersionTag"`
@@ -31,8 +31,8 @@ type AlgoConfig struct {
 	GpuEnabled bool `json:"gpuEnabled,omitempty"`
 	TimeoutSeconds int32 `json:"timeoutSeconds,omitempty"`
 	Resource ResourceModel `json:"resource,omitempty"`
-	AlgoRunnerImage *string `json:"algoRunnerImage,omitempty"`
-	AlgoRunnerImageTag *string `json:"algoRunnerImageTag,omitempty"`
+	AlgoRunnerImage string `json:"algoRunnerImage,omitempty"`
+	AlgoRunnerImageTag string `json:"algoRunnerImageTag,omitempty"`
 	LivenessInitialDelaySeconds int32 `json:"livenessInitialDelaySeconds,omitempty"`
 	LivenessTimeoutSeconds int32 `json:"livenessTimeoutSeconds,omitempty"`
 	LivenessPeriodSeconds int32 `json:"livenessPeriodSeconds,omitempty"`

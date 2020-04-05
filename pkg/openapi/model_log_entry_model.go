@@ -9,22 +9,20 @@
  */
 
 package openapi
-
 import (
 	"time"
 )
-
 // LogEntryModel struct for LogEntryModel
 type LogEntryModel struct {
-	Version string                 `json:"version,omitempty"`
-	Level   LogLevels              `json:"level,omitempty"`
-	Type    LogTypes               `json:"type,omitempty"`
-	Caller  *string                `json:"caller,omitempty"`
-	Logger  *string                `json:"logger,omitempty"`
-	Ts      time.Time              `json:"ts,omitempty"`
-	TraceId *string                `json:"traceId,omitempty"`
-	Msg     string                 `json:"msg"`
-	IsError bool                   `json:"isError,omitempty"`
-	Error   string                 `json:"error"`
-	Data    map[string]interface{} `json:"data,omitempty"`
+	Version string `json:"version,omitempty"`
+	Level LogLevels `json:"level,omitempty"`
+	Type LogTypes `json:"type,omitempty"`
+	Caller *string `json:"caller,omitempty"`
+	Logger *string `json:"logger,omitempty"`
+	Ts time.Time `json:"ts,omitempty"`
+	TraceId *string `json:"traceId,omitempty"`
+	Msg string `json:"msg"`
+	IsError bool `json:"isError,omitempty"`
+	Error string `json:"error"`
+	Data map[string]interface{} `json:"data,omitempty"`
 }

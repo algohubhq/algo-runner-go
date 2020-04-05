@@ -11,6 +11,6 @@
 package openapi
 // TopicParamModel struct for TopicParamModel
 type TopicParamModel struct {
-	Name *string `json:"name,omitempty"`
-	Value *string `json:"value,omitempty"`
+	Name string `json:"name,omitempty"`
+	Value string `json:"value,omitempty"`
 }
