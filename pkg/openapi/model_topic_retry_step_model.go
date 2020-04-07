@@ -12,6 +12,6 @@ package openapi
 // TopicRetryStepModel struct for TopicRetryStepModel
 type TopicRetryStepModel struct {
 	Index int32 `json:"index,omitempty"`
-	BackoffDuration Duration `json:"backoffDuration,omitempty"`
+	BackoffDuration string `json:"backoffDuration,omitempty"`
 	Repeat int32 `json:"repeat,omitempty"`
 }

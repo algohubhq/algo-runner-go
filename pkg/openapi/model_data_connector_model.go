@@ -11,17 +11,17 @@
 package openapi
 // DataConnectorModel struct for DataConnectorModel
 type DataConnectorModel struct {
-	ApiVersion *string `json:"apiVersion,omitempty"`
-	Kind *string `json:"kind,omitempty"`
+	ApiVersion string `json:"apiVersion,omitempty"`
+	Kind string `json:"kind,omitempty"`
 	Id int32 `json:"id,omitempty"`
-	DataConnectorType DataConnectorTypes `json:"dataConnectorType,omitempty"`
-	Name *string `json:"name,omitempty"`
-	IconUrl *string `json:"iconUrl,omitempty"`
-	Author *string `json:"author,omitempty"`
-	Description *string `json:"description,omitempty"`
-	Versions *[]DataConnectorVersionModel `json:"versions"`
-	Url *string `json:"url,omitempty"`
-	ConnectorClass *string `json:"connectorClass,omitempty"`
+	DataConnectorType *DataConnectorTypes `json:"dataConnectorType,omitempty"`
+	Name string `json:"name,omitempty"`
+	IconUrl string `json:"iconUrl,omitempty"`
+	Author string `json:"author,omitempty"`
+	Description string `json:"description,omitempty"`
+	Versions []DataConnectorVersionModel `json:"versions"`
+	Url string `json:"url,omitempty"`
+	ConnectorClass string `json:"connectorClass,omitempty"`
 	TasksMax int32 `json:"tasksMax,omitempty"`
-	Options *[]DataConnectorOptionModel `json:"options,omitempty"`
+	Options []DataConnectorOptionModel `json:"options,omitempty"`
 }

@@ -28,7 +28,7 @@ func NewLogger(logMessage *openapi.LogEntryModel, metrics *metrics.Metrics) Logg
 
 func (l *Logger) Log(errLog error) {
 
-	zapLog, err := newLogger(string(l.LogMessage.Type))
+	zapLog, err := newLogger(string(*l.LogMessage.Type))
 	if err != nil {
 		panic(fmt.Sprintf("Failed to create logger! [%v]", err))
 	}
@@ -38,7 +38,7 @@ func (l *Logger) Log(errLog error) {
 	if errLog != nil {
 
 		// Increment the error metric
-		switch logType := strings.ToLower(string(l.LogMessage.Type)); logType {
+		switch logType := strings.ToLower(string(*l.LogMessage.Type)); logType {
 		case "algo":
 			if l.Metrics != nil {
 				l.Metrics.AlgoErrorCounter.WithLabelValues(l.Metrics.DeploymentLabel,

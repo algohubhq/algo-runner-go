@@ -11,11 +11,11 @@
 package openapi
 // AlgoParamModel struct for AlgoParamModel
 type AlgoParamModel struct {
-	SortOrder *int32 `json:"sortOrder,omitempty"`
+	SortOrder int32 `json:"sortOrder,omitempty"`
 	Required bool `json:"required,omitempty"`
 	Name string `json:"name"`
 	Value string `json:"value,omitempty"`
 	Description string `json:"description,omitempty"`
-	DataType DataTypeModel `json:"dataType,omitempty"`
+	DataType *DataTypeModel `json:"dataType,omitempty"`
 	Options []DataTypeOptionModel `json:"options,omitempty"`
 }

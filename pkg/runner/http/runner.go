@@ -78,7 +78,7 @@ func (r *HTTPRunner) Run(traceID string,
 		var output openapi.AlgoOutputModel
 		// get the httpresponse output
 		for _, o := range r.Config.Outputs {
-			if o.OutputDeliveryType == openapi.OUTPUTDELIVERYTYPES_HTTP_RESPONSE &&
+			if *o.OutputDeliveryType == openapi.OUTPUTDELIVERYTYPES_HTTP_RESPONSE &&
 				strings.ToLower(o.Name) == strings.ToLower(input.Name) {
 				output = o
 				outputTopic = strings.ToLower(fmt.Sprintf("algorun.%s.%s.algo.%s.%s.%d.output.%s",
@@ -96,17 +96,17 @@ func (r *HTTPRunner) Run(traceID string,
 		// Check to see if there are any mapped routes for this output and get the message data type
 		for i := range r.Config.Pipes {
 			if r.Config.Pipes[i].SourceName == algoName {
-				outputMessageDataType = r.Config.Pipes[i].SourceOutputMessageDataType
+				outputMessageDataType = *r.Config.Pipes[i].SourceOutputMessageDataType
 				break
 			}
 		}
 
 		u, _ := url.Parse("localhost")
-		u.Scheme = strings.ToLower(string(input.InputDeliveryType))
+		u.Scheme = strings.ToLower(string(*input.InputDeliveryType))
 		if input.HttpPort > 0 {
 			u.Host = fmt.Sprintf("localhost:%d", input.HttpPort)
 		}
-		u.Path = *input.HttpPath
+		u.Path = input.HttpPath
 
 		// Include the endpoint params as querystring parameters
 		endpointQuery, err := url.ParseQuery(endpointParams)
@@ -134,7 +134,7 @@ func (r *HTTPRunner) Run(traceID string,
 		for _, data := range inputData {
 
 			startTime := time.Now()
-			request, reqErr := http.NewRequest(strings.ToUpper(*input.HttpVerb), u.String(), bytes.NewReader(data.Data))
+			request, reqErr := http.NewRequest(strings.ToUpper(input.HttpVerb), u.String(), bytes.NewReader(data.Data))
 			if data.ContentType != "" {
 				request.Header.Set("Content-Type", data.ContentType)
 			}

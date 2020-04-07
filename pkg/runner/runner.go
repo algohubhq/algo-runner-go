@@ -34,13 +34,13 @@ func NewRunner(config *openapi.AlgoRunnerConfig,
 		Metrics: metrics,
 	}
 
-	if config.Executor == openapi.EXECUTORS_EXECUTABLE ||
-		config.Executor == openapi.EXECUTORS_DELEGATED {
+	if *config.Executor == openapi.EXECUTORS_EXECUTABLE ||
+		*config.Executor == openapi.EXECUTORS_DELEGATED {
 		execRunner := execrunner.NewExecRunner(config, producer, storageConfig, instanceName, logger, metrics)
 		run.ExecRunner = execRunner
 	}
 
-	if config.Executor == openapi.EXECUTORS_HTTP {
+	if *config.Executor == openapi.EXECUTORS_HTTP {
 		httpRunner := httprunner.NewHTTPRunner(config, producer, storageConfig, instanceName, logger, metrics)
 		run.HTTPRunner = httpRunner
 	}
@@ -52,7 +52,7 @@ func (r *Runner) Run(traceID string,
 	endpointParams string,
 	inputMap map[*openapi.AlgoInputModel][]types.InputData) (err error) {
 
-	switch executor := r.Config.Executor; executor {
+	switch executor := *r.Config.Executor; executor {
 	case openapi.EXECUTORS_EXECUTABLE, openapi.EXECUTORS_DELEGATED:
 		err = r.ExecRunner.Run(traceID,
 			endpointParams,

@@ -13,8 +13,8 @@ package openapi
 type ContentTypeModel struct {
 	Title string `json:"title,omitempty"`
 	Name string `json:"name,omitempty"`
-	GroupName *string `json:"groupName,omitempty"`
-	SubTypeName *string `json:"subTypeName,omitempty"`
-	FileExtension *string `json:"fileExtension,omitempty"`
-	IconClass *string `json:"iconClass,omitempty"`
+	GroupName string `json:"groupName,omitempty"`
+	SubTypeName string `json:"subTypeName,omitempty"`
+	FileExtension string `json:"fileExtension,omitempty"`
+	IconClass string `json:"iconClass,omitempty"`
 }

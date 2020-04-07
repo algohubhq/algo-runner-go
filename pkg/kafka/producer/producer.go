@@ -4,8 +4,10 @@ import (
 	"algo-runner-go/pkg/logging"
 	"algo-runner-go/pkg/metrics"
 	"algo-runner-go/pkg/openapi"
+	"algo-runner-go/pkg/types"
 	"encoding/binary"
 	"fmt"
+	"strconv"
 
 	k "algo-runner-go/pkg/kafka"
 
@@ -14,13 +16,13 @@ import (
 )
 
 type Producer struct {
-	HealthyChan  chan<- bool
-	Config       *openapi.AlgoRunnerConfig
-	Logger       *logging.Logger
-	Metrics      *metrics.Metrics
-	InstanceName string
-	KafkaBrokers string
-	Producer     *kafka.Producer
+	HealthyChan   chan<- bool
+	Config        *openapi.AlgoRunnerConfig
+	Logger        *logging.Logger
+	Metrics       *metrics.Metrics
+	InstanceName  string
+	KafkaBrokers  string
+	KafkaProducer *kafka.Producer
 }
 
 // NewProducer returns a new Producer struct
@@ -54,13 +56,13 @@ func NewProducer(healthyChan chan<- bool,
 	}
 
 	producer = &Producer{
-		HealthyChan:  healthyChan,
-		Config:       config,
-		Logger:       logger,
-		Metrics:      metrics,
-		InstanceName: instanceName,
-		KafkaBrokers: kafkaBrokers,
-		Producer:     kp,
+		HealthyChan:   healthyChan,
+		Config:        config,
+		Logger:        logger,
+		Metrics:       metrics,
+		InstanceName:  instanceName,
+		KafkaBrokers:  kafkaBrokers,
+		KafkaProducer: kp,
 	}
 
 	go producer.producerEventsHandler()
@@ -70,7 +72,7 @@ func NewProducer(healthyChan chan<- bool,
 }
 
 func (p *Producer) producerEventsHandler() {
-	for e := range p.Producer.Events() {
+	for e := range p.KafkaProducer.Events() {
 		switch ev := e.(type) {
 		case *kafka.Message:
 			m := ev
@@ -114,7 +116,7 @@ func (p *Producer) producerEventsHandler() {
 		}
 	}
 
-	close(p.Producer.Events())
+	close(p.KafkaProducer.Events())
 
 }
 
@@ -127,8 +129,9 @@ func (p *Producer) ProduceOutputMessage(traceID string,
 	// Create the headers
 	var headers []kafka.Header
 	headers = append(headers, kafka.Header{Key: "fileName", Value: []byte(fileName)})
+	headers = append(headers, kafka.Header{Key: "traceID", Value: []byte(traceID)})
 
-	p.Producer.ProduceChannel() <- &kafka.Message{TopicPartition: kafka.TopicPartition{Topic: &topic, Partition: kafka.PartitionAny},
+	p.KafkaProducer.ProduceChannel() <- &kafka.Message{TopicPartition: kafka.TopicPartition{Topic: &topic, Partition: kafka.PartitionAny},
 		Key: []byte(traceID), Value: data}
 
 	p.Metrics.MsgBytesOutputCounter.WithLabelValues(p.Metrics.DeploymentLabel,
@@ -138,6 +141,36 @@ func (p *Producer) ProduceOutputMessage(traceID string,
 		p.Metrics.AlgoVersionLabel,
 		p.Metrics.AlgoIndexLabel,
 		outputName).Add(float64(binary.Size(data)))
+
+}
+
+func (p *Producer) ProduceRetryMessage(processedMsg *types.ProcessedMsg,
+	rawMessage *kafka.Message,
+	topic string) {
+
+	// Create the headers
+	var headers []kafka.Header
+	headers = append(headers, kafka.Header{Key: "traceID", Value: []byte(processedMsg.TraceID)})
+	headers = append(headers, kafka.Header{Key: "contentType", Value: []byte(processedMsg.ContentType)})
+	headers = append(headers, kafka.Header{Key: "fileName", Value: []byte(processedMsg.FileName)})
+	headers = append(headers, kafka.Header{Key: "messageDataType", Value: []byte(processedMsg.MessageDataType)})
+	headers = append(headers, kafka.Header{Key: "endpointParams", Value: []byte(processedMsg.EndpointParams)})
+	headers = append(headers, kafka.Header{Key: "run", Value: []byte(strconv.FormatBool(processedMsg.Run))})
+
+	headers = append(headers, kafka.Header{Key: "retryStepIndex", Value: []byte(string(processedMsg.RetryStepIndex))})
+	headers = append(headers, kafka.Header{Key: "retryNum", Value: []byte(string(processedMsg.RetryNum))})
+	headers = append(headers, kafka.Header{Key: "retryTimestamp", Value: []byte(string(processedMsg.RetryTimestamp.Unix()))})
+
+	p.KafkaProducer.ProduceChannel() <- &kafka.Message{TopicPartition: kafka.TopicPartition{Topic: &topic, Partition: kafka.PartitionAny},
+		Key: []byte(processedMsg.TraceID), Value: rawMessage.Value}
+
+	// p.Metrics.MsgBytesOutputCounter.WithLabelValues(p.Metrics.DeploymentLabel,
+	// 	p.Metrics.PipelineLabel,
+	// 	p.Metrics.ComponentLabel,
+	// 	p.Metrics.AlgoLabel,
+	// 	p.Metrics.AlgoVersionLabel,
+	// 	p.Metrics.AlgoIndexLabel,
+	// 	outputName).Add(float64(binary.Size(data)))
 
 }
 

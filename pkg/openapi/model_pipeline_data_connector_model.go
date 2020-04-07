@@ -11,13 +11,13 @@
 package openapi
 // PipelineDataConnectorModel struct for PipelineDataConnectorModel
 type PipelineDataConnectorModel struct {
-	DataConnector DataConnectorModel `json:"dataConnector,omitempty"`
-	FullName *string `json:"fullName,omitempty"`
-	DataConnectorVersionTag *string `json:"dataConnectorVersionTag,omitempty"`
-	Index *int32 `json:"index,omitempty"`
-	ConfigMounts *[]ConfigMountModel `json:"configMounts,omitempty"`
-	TopicConfigs *[]TopicConfigModel `json:"topicConfigs,omitempty"`
-	OptionOverrides *[]DataConnectorOptionModel `json:"optionOverrides,omitempty"`
+	DataConnector *DataConnectorModel `json:"dataConnector,omitempty"`
+	FullName string `json:"fullName,omitempty"`
+	DataConnectorVersionTag string `json:"dataConnectorVersionTag,omitempty"`
+	Index int32 `json:"index,omitempty"`
+	ConfigMounts []ConfigMountModel `json:"configMounts,omitempty"`
+	TopicConfigs []TopicConfigModel `json:"topicConfigs,omitempty"`
+	OptionOverrides []DataConnectorOptionModel `json:"optionOverrides,omitempty"`
 	PositionX float32 `json:"positionX,omitempty"`
 	PositionY float32 `json:"positionY,omitempty"`
 }

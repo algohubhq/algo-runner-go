@@ -11,11 +11,11 @@
 package openapi
 // PipeModel struct for PipeModel
 type PipeModel struct {
-	SourceComponentType ComponentTypes `json:"sourceComponentType,omitempty"`
+	SourceComponentType *ComponentTypes `json:"sourceComponentType,omitempty"`
 	SourceName string `json:"sourceName"`
 	SourceOutputName string `json:"sourceOutputName"`
-	SourceOutputMessageDataType MessageDataTypes `json:"sourceOutputMessageDataType,omitempty"`
-	DestComponentType ComponentTypes `json:"destComponentType,omitempty"`
+	SourceOutputMessageDataType *MessageDataTypes `json:"sourceOutputMessageDataType,omitempty"`
+	DestComponentType *ComponentTypes `json:"destComponentType,omitempty"`
 	DestName string `json:"destName"`
 	DestInputName string `json:"destInputName"`
 }

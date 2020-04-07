@@ -11,7 +11,7 @@
 package openapi
 // TopicRetryStrategyModel struct for TopicRetryStrategyModel
 type TopicRetryStrategyModel struct {
-	Strategy RetryStrategies `json:"strategy,omitempty"`
-	DeadLetterSuffix *string `json:"deadLetterSuffix,omitempty"`
+	Strategy *RetryStrategies `json:"strategy,omitempty"`
+	DeadLetterSuffix string `json:"deadLetterSuffix,omitempty"`
 	Steps []TopicRetryStepModel `json:"steps,omitempty"`
 }

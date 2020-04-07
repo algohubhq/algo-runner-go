@@ -2,6 +2,7 @@ package types
 
 import (
 	"algo-runner-go/pkg/openapi"
+	"time"
 )
 
 // IRunner is an interface to define the functions of a runner
@@ -19,4 +20,17 @@ type InputData struct {
 	Data            []byte
 	MsgSize         float64
 	DataSize        float64
+}
+
+type ProcessedMsg struct {
+	TraceID         string
+	ContentType     string
+	FileName        string
+	MessageDataType openapi.MessageDataTypes
+	InputData       InputData
+	Run             bool
+	EndpointParams  string
+	RetryStepIndex  int
+	RetryNum        int
+	RetryTimestamp  *time.Time
 }

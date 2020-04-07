@@ -66,15 +66,15 @@ func NewExecRunner(config *openapi.AlgoRunnerConfig,
 		for i := range config.Pipes {
 			if config.Pipes[i].SourceName == algoName {
 				handleOutput = true
-				outputMessageDataType = config.Pipes[i].SourceOutputMessageDataType
+				outputMessageDataType = *config.Pipes[i].SourceOutputMessageDataType
 				break
 			}
 		}
 
 		if handleOutput {
 
-			if output.OutputDeliveryType == openapi.OUTPUTDELIVERYTYPES_FILE_PARAMETER ||
-				output.OutputDeliveryType == openapi.OUTPUTDELIVERYTYPES_FOLDER_PARAMETER {
+			if *output.OutputDeliveryType == openapi.OUTPUTDELIVERYTYPES_FILE_PARAMETER ||
+				*output.OutputDeliveryType == openapi.OUTPUTDELIVERYTYPES_FOLDER_PARAMETER {
 
 				// Watch folder for changes.
 
@@ -88,15 +88,15 @@ func NewExecRunner(config *openapi.AlgoRunnerConfig,
 					}
 				}
 
-				if output.OutputDeliveryType == openapi.OUTPUTDELIVERYTYPES_FILE_PARAMETER {
+				if *output.OutputDeliveryType == openapi.OUTPUTDELIVERYTYPES_FILE_PARAMETER {
 					// Set the output folder name parameter
-					if *output.Parameter != "" {
-						fileParameters[*output.Parameter] = folder
+					if output.Parameter != "" {
+						fileParameters[output.Parameter] = folder
 					}
-				} else if output.OutputDeliveryType == openapi.OUTPUTDELIVERYTYPES_FOLDER_PARAMETER {
+				} else if *output.OutputDeliveryType == openapi.OUTPUTDELIVERYTYPES_FOLDER_PARAMETER {
 					// Set the output folder name parameter
-					if *output.Parameter != "" {
-						command = append(command, *output.Parameter)
+					if output.Parameter != "" {
+						command = append(command, output.Parameter)
 						command = append(command, folder)
 					}
 				}
@@ -107,7 +107,7 @@ func NewExecRunner(config *openapi.AlgoRunnerConfig,
 					outputHandler.Watch(folder, config.AlgoIndex, &output, outputMessageDataType)
 				}()
 
-			} else if output.OutputDeliveryType == openapi.OUTPUTDELIVERYTYPES_STD_OUT {
+			} else if *output.OutputDeliveryType == openapi.OUTPUTDELIVERYTYPES_STD_OUT {
 				sendStdout = true
 			}
 
@@ -134,11 +134,12 @@ func (r *ExecRunner) Run(traceID string,
 	inputMap map[*openapi.AlgoInputModel][]types.InputData) (err error) {
 
 	// Create the runner logger
+	notifType := openapi.LOGTYPES_ALGO
 	algoLogger := logging.NewLogger(
 		&openapi.LogEntryModel{
-			Type:    "Algo",
+			Type:    &notifType,
 			Version: "1",
-			Data: map[string]interface{}{
+			Data: &map[string]interface{}{
 				"TraceId":                 traceID,
 				"DeploymentOwnerUserName": r.Config.DeploymentOwnerUserName,
 				"DeploymentName":          r.Config.DeploymentName,
@@ -209,7 +210,7 @@ func (r *ExecRunner) Run(traceID string,
 	// Write the stdin data or set the arguments for the input
 	for input, inputData := range inputMap {
 
-		switch inputDeliveryType := input.InputDeliveryType; inputDeliveryType {
+		switch inputDeliveryType := *input.InputDeliveryType; inputDeliveryType {
 		case openapi.INPUTDELIVERYTYPES_STD_IN:
 
 			// get the writer for stdin
@@ -222,8 +223,8 @@ func (r *ExecRunner) Run(traceID string,
 
 		case openapi.INPUTDELIVERYTYPES_FILE_PARAMETER:
 
-			if *input.Parameter != "" {
-				targetCmd.Args = append(targetCmd.Args, *input.Parameter)
+			if input.Parameter != "" {
+				targetCmd.Args = append(targetCmd.Args, input.Parameter)
 			}
 			for _, data := range inputData {
 				targetCmd.Args = append(targetCmd.Args, path.Join("/input", data.FileReference.File))
@@ -231,14 +232,14 @@ func (r *ExecRunner) Run(traceID string,
 
 		case "delimitedparameter":
 
-			if *input.Parameter != "" {
-				targetCmd.Args = append(targetCmd.Args, *input.Parameter)
+			if input.Parameter != "" {
+				targetCmd.Args = append(targetCmd.Args, input.Parameter)
 			}
 			var buffer bytes.Buffer
 			for i := 0; i < len(inputData); i++ {
 				buffer.WriteString(path.Join("/input", inputData[i].FileReference.File))
 				if i != len(inputData)-1 {
-					buffer.WriteString(*input.ParameterDelimiter)
+					buffer.WriteString(input.ParameterDelimiter)
 				}
 			}
 			targetCmd.Args = append(targetCmd.Args, buffer.String())
@@ -313,7 +314,7 @@ func getCommand(config *openapi.AlgoRunnerConfig) []string {
 
 	for _, param := range config.AlgoParams {
 		cmd = append(cmd, param.Name)
-		if param.DataType.Name != "switch" {
+		if param.DataType != nil && *param.DataType.Name != openapi.DATATYPES_SWITCH {
 			cmd = append(cmd, param.Value)
 		}
 	}

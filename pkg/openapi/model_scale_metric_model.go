@@ -11,15 +11,15 @@
 package openapi
 // ScaleMetricModel struct for ScaleMetricModel
 type ScaleMetricModel struct {
-	SourceType MetricSourceTypes `json:"sourceType,omitempty"`
-	ObjectApiVersion *string `json:"objectApiVersion,omitempty"`
-	ObjectKind *string `json:"objectKind,omitempty"`
-	ObjectName *string `json:"objectName,omitempty"`
-	MetricName *string `json:"metricName,omitempty"`
-	ResourceName *string `json:"resourceName,omitempty"`
-	MetricSelector *string `json:"metricSelector,omitempty"`
-	TargetType MetricTargetTypes `json:"targetType,omitempty"`
-	AverageUtilization *int32 `json:"averageUtilization,omitempty"`
-	AverageValue *string `json:"averageValue,omitempty"`
-	Value *string `json:"value,omitempty"`
+	SourceType *MetricSourceTypes `json:"sourceType,omitempty"`
+	ObjectApiVersion string `json:"objectApiVersion,omitempty"`
+	ObjectKind string `json:"objectKind,omitempty"`
+	ObjectName string `json:"objectName,omitempty"`
+	MetricName string `json:"metricName,omitempty"`
+	ResourceName string `json:"resourceName,omitempty"`
+	MetricSelector string `json:"metricSelector,omitempty"`
+	TargetType *MetricTargetTypes `json:"targetType,omitempty"`
+	AverageUtilization int32 `json:"averageUtilization,omitempty"`
+	AverageValue string `json:"averageValue,omitempty"`
+	Value string `json:"value,omitempty"`
 }

@@ -11,9 +11,9 @@
 package openapi
 // DataTypeModel struct for DataTypeModel
 type DataTypeModel struct {
-	Name DataTypes `json:"name"`
-	Regex *string `json:"regex,omitempty"`
-	Precision *int32 `json:"precision,omitempty"`
-	Scale *int32 `json:"scale,omitempty"`
-	Mask *string `json:"mask,omitempty"`
+	Name *DataTypes `json:"name"`
+	Regex string `json:"regex,omitempty"`
+	Precision int32 `json:"precision,omitempty"`
+	Scale int32 `json:"scale,omitempty"`
+	Mask string `json:"mask,omitempty"`
 }

@@ -85,16 +85,23 @@
             "topicAutoPartition": true,
             "topicPartitions": 1,
             "topicReplicationFactor": 1
-        },
-        {
-            "componentType": "Endpoint",
-            "sourceName": "Endpoint",
-            "sourceOutputName": "a1.test",
-            "topicName": "a1.test",
-            "topicAutoPartition": true,
-            "topicPartitions": 1,
-            "topicReplicationFactor": 1
         }
     ],
+    "topicRetryEnabled": true,
+    "retryStrategy": {
+        "strategy": "Simple",
+        "steps": [
+            {
+                "index": 2,
+                "backoffDuration": "1m",
+                "repeat": 1
+            },
+            {
+                "index": 1,
+                "backoffDuration": "30s",
+                "repeat": 1
+            }
+        ]
+    },
     "timeoutSeconds": 60
 }

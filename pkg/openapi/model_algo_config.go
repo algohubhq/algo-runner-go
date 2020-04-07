@@ -21,16 +21,18 @@ type AlgoConfig struct {
 	ImageRepository string `json:"imageRepository"`
 	ImageTag string `json:"imageTag"`
 	Entrypoint string `json:"entrypoint,omitempty"`
-	Executor Executors `json:"executor,omitempty"`
+	Executor *Executors `json:"executor,omitempty"`
 	TopicConfigs []TopicConfigModel `json:"topicConfigs,omitempty"`
 	ConfigMounts []ConfigMountModel `json:"configMounts,omitempty"`
 	AlgoParams []AlgoParamModel `json:"algoParams,omitempty"`
 	Inputs []AlgoInputModel `json:"inputs,omitempty"`
 	Outputs []AlgoOutputModel `json:"outputs,omitempty"`
+	TopicRetryEnabled bool `json:"topicRetryEnabled,omitempty"`
+	RetryStrategy *TopicRetryStrategyModel `json:"retryStrategy,omitempty"`
 	WriteAllOutputs bool `json:"writeAllOutputs,omitempty"`
 	GpuEnabled bool `json:"gpuEnabled,omitempty"`
 	TimeoutSeconds int32 `json:"timeoutSeconds,omitempty"`
-	Resource ResourceModel `json:"resource,omitempty"`
+	Resource *ResourceModel `json:"resource,omitempty"`
 	AlgoRunnerImage string `json:"algoRunnerImage,omitempty"`
 	AlgoRunnerImageTag string `json:"algoRunnerImageTag,omitempty"`
 	LivenessInitialDelaySeconds int32 `json:"livenessInitialDelaySeconds,omitempty"`

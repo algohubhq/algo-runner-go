@@ -12,8 +12,8 @@ package openapi
 // AlgoOutputModel struct for AlgoOutputModel
 type AlgoOutputModel struct {
 	Name string `json:"name"`
-	Description *string `json:"description,omitempty"`
-	OutputDeliveryType OutputDeliveryTypes `json:"outputDeliveryType"`
-	Parameter *string `json:"parameter,omitempty"`
-	ContentType ContentTypeModel `json:"contentType"`
+	Description string `json:"description,omitempty"`
+	OutputDeliveryType *OutputDeliveryTypes `json:"outputDeliveryType"`
+	Parameter string `json:"parameter,omitempty"`
+	ContentType *ContentTypeModel `json:"contentType"`
 }

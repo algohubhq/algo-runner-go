@@ -29,9 +29,10 @@ var (
 func main() {
 
 	// Create the local logger
+	logType := openapi.LOGTYPES_RUNNER
 	localLogger := logging.NewLogger(
 		&openapi.LogEntryModel{
-			Type:    "Local",
+			Type:    &logType,
 			Version: "1",
 		},
 		nil)
@@ -113,9 +114,9 @@ func main() {
 	// Create the runner logger
 	runnerLogger := logging.NewLogger(
 		&openapi.LogEntryModel{
-			Type:    "Runner",
+			Type:    &logType,
 			Version: "1",
-			Data: map[string]interface{}{
+			Data: &map[string]interface{}{
 				"DeploymentOwnerUserName": config.DeploymentOwnerUserName,
 				"DeploymentName":          config.DeploymentName,
 				"AlgoOwnerUserName":       config.AlgoOwnerUserName,
@@ -141,7 +142,7 @@ func main() {
 
 	// Start Consumers
 	go func() {
-		consumer := kafkaconsumer.NewConsumer(healthyChan,
+		consumers, err := kafkaconsumer.NewConsumers(healthyChan,
 			&config,
 			producer,
 			storageConfig,
@@ -151,7 +152,7 @@ func main() {
 			&metrics)
 
 		if err == nil {
-			consumer.StartConsumers()
+			consumers.Start()
 		}
 	}()
 
@@ -159,7 +160,7 @@ func main() {
 		signal := <-sig
 		switch signal {
 		case syscall.SIGTERM, syscall.SIGINT:
-			producer.Producer.Close()
+			producer.KafkaProducer.Close()
 		}
 	}
 
