@@ -553,7 +553,7 @@ func (c *Consumer) setInputDataMetrics(status string, processedMsg *types.Proces
 		c.metrics.AlgoVersionLabel,
 		c.metrics.AlgoIndexLabel,
 		"",
-		status).Add(float64(binary.Size(processedMsg.InputData.DataSize)))
+		status).Add(float64(binary.Size(processedMsg.InputData.MsgSize)))
 
 	c.metrics.DataBytesInputCounter.WithLabelValues(c.metrics.DeploymentLabel,
 		c.metrics.PipelineLabel,
