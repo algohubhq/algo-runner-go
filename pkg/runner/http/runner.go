@@ -191,7 +191,8 @@ func (r *HTTPRunner) Run(traceID string,
 								r.Metrics.AlgoLabel,
 								r.Metrics.AlgoVersionLabel,
 								r.Metrics.AlgoIndexLabel,
-								output.Name).Add(float64(binary.Size(contents)))
+								output.Name,
+								"ok").Add(float64(binary.Size(contents)))
 
 							r.Producer.ProduceOutputMessage(traceID, fileName.String(), outputTopic, output.Name, contents)
 
@@ -232,7 +233,8 @@ func (r *HTTPRunner) Run(traceID string,
 							r.Metrics.AlgoLabel,
 							r.Metrics.AlgoVersionLabel,
 							r.Metrics.AlgoIndexLabel,
-							output.Name).Add(float64(binary.Size(contents)))
+							output.Name,
+							"ok").Add(float64(binary.Size(contents)))
 
 						r.Producer.ProduceOutputMessage(traceID, fileName.String(), outputTopic, output.Name, jsonBytes)
 

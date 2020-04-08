@@ -234,7 +234,8 @@ func (output *Output) start() {
 						output.Metrics.AlgoLabel,
 						output.Metrics.AlgoVersionLabel,
 						output.Metrics.AlgoIndexLabel,
-						output.algoOutput.Name).Add(float64(wm.Event.Size))
+						output.algoOutput.Name,
+						"ok").Add(float64(wm.Event.Size))
 
 					output.Producer.ProduceOutputMessage(traceID, wm.Event.Path, fileOutputTopic, output.algoOutput.Name, fileBytes)
 				}
@@ -281,7 +282,8 @@ func (output *Output) start() {
 						output.Metrics.AlgoLabel,
 						output.Metrics.AlgoVersionLabel,
 						output.Metrics.AlgoIndexLabel,
-						output.algoOutput.Name).Add(float64(mm.TotalSize))
+						output.algoOutput.Name,
+						"ok").Add(float64(mm.TotalSize))
 
 					output.Producer.ProduceOutputMessage(traceID, mm.Target, fileOutputTopic, output.algoOutput.Name, jsonBytes)
 				}
