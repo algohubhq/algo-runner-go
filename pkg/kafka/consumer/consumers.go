@@ -8,7 +8,9 @@ import (
 	"algo-runner-go/pkg/openapi"
 	"algo-runner-go/pkg/storage"
 	"fmt"
+	"sort"
 	"strings"
+	"time"
 
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 )
@@ -62,31 +64,6 @@ func (c *Consumers) createConsumers() error {
 
 	algoName := fmt.Sprintf("%s/%s:%s[%d]", c.Config.AlgoOwnerUserName, c.Config.AlgoName, c.Config.AlgoVersionTag, c.Config.AlgoIndex)
 
-	groupID := fmt.Sprintf("algorun-%s-%s-%s-%s-%d-dev",
-		c.Config.DeploymentOwnerUserName,
-		c.Config.DeploymentName,
-		c.Config.AlgoOwnerUserName,
-		c.Config.AlgoName,
-		c.Config.AlgoIndex,
-	)
-
-	kafkaConfig := kafka.ConfigMap{
-		"bootstrap.servers":        c.KafkaBrokers,
-		"group.id":                 groupID,
-		"client.id":                "algo-runner-go-client",
-		"enable.auto.commit":       false,
-		"enable.auto.offset.store": false,
-		"auto.offset.reset":        "earliest",
-	}
-
-	// Set the ssl c.Config if enabled
-	if k.CheckForKafkaTLS() {
-		kafkaConfig["security.protocol"] = "ssl"
-		kafkaConfig["ssl.ca.location"] = k.KafkaTLSCaLocation
-		kafkaConfig["ssl.certificate.location"] = k.KafkaTLSUserLocation
-		kafkaConfig["ssl.key.location"] = k.KafkaTLSKeyLocation
-	}
-
 	for _, pipe := range c.Config.Pipes {
 
 		if pipe.DestName == algoName {
@@ -115,11 +92,34 @@ func (c *Consumers) createConsumers() error {
 				retryStrategy = topicConfig.RetryStrategy
 			}
 
+			// Ensure the steps are sorted by index
+			var maxPollIntervalMs = int(300000)
+			if retryStrategy != nil && retryStrategy.Steps != nil {
+				sort.SliceStable(retryStrategy.Steps, func(i, j int) bool {
+					return retryStrategy.Steps[i].Index < retryStrategy.Steps[j].Index
+				})
+				// if simple retry strategy, get the max backoff duration
+				// This is used to increase the max.poll.interval.ms for the consumer
+				if *retryStrategy.Strategy == openapi.RETRYSTRATEGIES_SIMPLE {
+					for _, s := range retryStrategy.Steps {
+						d, err := time.ParseDuration(s.BackoffDuration)
+						if err != nil {
+							c.Logger.LogMessage.Msg = fmt.Sprintf("Error parsing backoff duration to calculate max.poll.interval.ms [%s]", s.BackoffDuration)
+							c.Logger.Log(err)
+						}
+						maxPollIntervalMs = Max(maxPollIntervalMs, int(d.Milliseconds())+300000)
+					}
+				}
+			}
+			mainKafkaConfig := c.getKafkaConfigMap()
+			// Set the max poll interval
+			mainKafkaConfig["max.poll.interval.ms"] = int(maxPollIntervalMs)
+
 			// Replace the deployment username and name in the topic string
 			topicName := strings.ToLower(strings.Replace(topicConfig.TopicName, "{deploymentownerusername}", c.Config.DeploymentOwnerUserName, -1))
 			topicName = strings.ToLower(strings.Replace(topicName, "{deploymentname}", c.Config.DeploymentName, -1))
 
-			kc, err := kafka.NewConsumer(&kafkaConfig)
+			kc, err := kafka.NewConsumer(&mainKafkaConfig)
 			if err != nil {
 				c.HealthyChan <- false
 				c.Logger.LogMessage.Msg = fmt.Sprintf("Failed to create consumer.")
@@ -145,11 +145,23 @@ func (c *Consumers) createConsumers() error {
 			c.Consumers = append(c.Consumers, &mainConsumer)
 
 			if c.Config.TopicRetryEnabled {
-				for _, step := range retryStrategy.Steps {
-					if *retryStrategy.Strategy == openapi.RETRYSTRATEGIES_RETRY_TOPICS {
+				if *retryStrategy.Strategy == openapi.RETRYSTRATEGIES_RETRY_TOPICS {
+					for _, step := range retryStrategy.Steps {
+
+						d, err := time.ParseDuration(step.BackoffDuration)
+						if err != nil {
+							c.Logger.LogMessage.Msg = fmt.Sprintf("Error parsing backoff duration to calculate max.poll.interval.ms [%s]", step.BackoffDuration)
+							c.Logger.Log(err)
+						}
+						maxPollIntervalMs = Max(maxPollIntervalMs, int(d.Milliseconds())+300000)
+
+						retryKafkaConfig := c.getKafkaConfigMap()
+						// Set the max poll interval
+						retryKafkaConfig["max.poll.interval.ms"] = maxPollIntervalMs
+
 						retryTopicName := strings.ToLower(fmt.Sprintf("%s.%s", topicName, step.BackoffDuration))
 
-						kc, err := kafka.NewConsumer(&kafkaConfig)
+						kc, err := kafka.NewConsumer(&retryKafkaConfig)
 						if err != nil {
 							c.HealthyChan <- false
 							c.Logger.LogMessage.Msg = fmt.Sprintf("Failed to create consumer.")
@@ -183,4 +195,42 @@ func (c *Consumers) createConsumers() error {
 
 	return nil
 
+}
+
+func (c *Consumers) getKafkaConfigMap() kafka.ConfigMap {
+
+	groupID := fmt.Sprintf("algorun-%s-%s-%s-%s-%d-dev",
+		c.Config.DeploymentOwnerUserName,
+		c.Config.DeploymentName,
+		c.Config.AlgoOwnerUserName,
+		c.Config.AlgoName,
+		c.Config.AlgoIndex,
+	)
+
+	kafkaConfig := kafka.ConfigMap{
+		"bootstrap.servers":        c.KafkaBrokers,
+		"group.id":                 groupID,
+		"client.id":                "algo-runner-go-client",
+		"enable.auto.commit":       false,
+		"enable.auto.offset.store": false,
+		"auto.offset.reset":        "earliest",
+	}
+
+	// Set the ssl c.Config if enabled
+	if k.CheckForKafkaTLS() {
+		kafkaConfig["security.protocol"] = "ssl"
+		kafkaConfig["ssl.ca.location"] = k.KafkaTLSCaLocation
+		kafkaConfig["ssl.certificate.location"] = k.KafkaTLSUserLocation
+		kafkaConfig["ssl.key.location"] = k.KafkaTLSKeyLocation
+	}
+
+	return kafkaConfig
+
+}
+
+func Max(x, y int) int {
+	if x < y {
+		return y
+	}
+	return x
 }

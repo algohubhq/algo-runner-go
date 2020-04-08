@@ -131,8 +131,12 @@ func (p *Producer) ProduceOutputMessage(traceID string,
 	headers = append(headers, kafka.Header{Key: "fileName", Value: []byte(fileName)})
 	headers = append(headers, kafka.Header{Key: "traceID", Value: []byte(traceID)})
 
-	p.KafkaProducer.ProduceChannel() <- &kafka.Message{TopicPartition: kafka.TopicPartition{Topic: &topic, Partition: kafka.PartitionAny},
-		Key: []byte(traceID), Value: data}
+	p.KafkaProducer.ProduceChannel() <- &kafka.Message{
+		TopicPartition: kafka.TopicPartition{Topic: &topic, Partition: kafka.PartitionAny},
+		Headers:        headers,
+		Key:            []byte(traceID),
+		Value:          data,
+	}
 
 	p.Metrics.MsgBytesOutputCounter.WithLabelValues(p.Metrics.DeploymentLabel,
 		p.Metrics.PipelineLabel,
@@ -157,12 +161,16 @@ func (p *Producer) ProduceRetryMessage(processedMsg *types.ProcessedMsg,
 	headers = append(headers, kafka.Header{Key: "endpointParams", Value: []byte(processedMsg.EndpointParams)})
 	headers = append(headers, kafka.Header{Key: "run", Value: []byte(strconv.FormatBool(processedMsg.Run))})
 
-	headers = append(headers, kafka.Header{Key: "retryStepIndex", Value: []byte(string(processedMsg.RetryStepIndex))})
-	headers = append(headers, kafka.Header{Key: "retryNum", Value: []byte(string(processedMsg.RetryNum))})
-	headers = append(headers, kafka.Header{Key: "retryTimestamp", Value: []byte(string(processedMsg.RetryTimestamp.Unix()))})
+	headers = append(headers, kafka.Header{Key: "retryStepIndex", Value: []byte(strconv.Itoa(processedMsg.RetryStepIndex))})
+	headers = append(headers, kafka.Header{Key: "retryNum", Value: []byte(strconv.Itoa(processedMsg.RetryNum))})
+	headers = append(headers, kafka.Header{Key: "retryTimestamp", Value: []byte(strconv.Itoa(int(processedMsg.RetryTimestamp.Unix())))})
 
-	p.KafkaProducer.ProduceChannel() <- &kafka.Message{TopicPartition: kafka.TopicPartition{Topic: &topic, Partition: kafka.PartitionAny},
-		Key: []byte(processedMsg.TraceID), Value: rawMessage.Value}
+	p.KafkaProducer.ProduceChannel() <- &kafka.Message{
+		TopicPartition: kafka.TopicPartition{Topic: &topic, Partition: kafka.PartitionAny},
+		Headers:        headers,
+		Key:            []byte(processedMsg.TraceID),
+		Value:          rawMessage.Value,
+	}
 
 	// p.Metrics.MsgBytesOutputCounter.WithLabelValues(p.Metrics.DeploymentLabel,
 	// 	p.Metrics.PipelineLabel,

@@ -89,7 +89,7 @@
     ],
     "topicRetryEnabled": true,
     "retryStrategy": {
-        "strategy": "Simple",
+        "strategy": "RetryTopics",
         "steps": [
             {
                 "index": 2,

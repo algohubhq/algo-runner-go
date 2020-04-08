@@ -17,7 +17,6 @@ import (
 	"os"
 	"os/signal"
 	"path"
-	"sort"
 	"strconv"
 	"strings"
 	"syscall"
@@ -84,7 +83,7 @@ func NewConsumer(healthyChan chan<- bool,
 		metrics:           metrics,
 		instanceName:      instanceName,
 		kafkaBrokers:      kafkaBrokers,
-		baseTopic:         topic,
+		baseTopic:         baseTopic,
 		topic:             topic,
 		runner:            &r,
 	}
@@ -115,13 +114,6 @@ func (c *Consumer) pollForMessages() {
 
 	sigchan := make(chan os.Signal, 1)
 	signal.Notify(sigchan, syscall.SIGINT, syscall.SIGTERM)
-
-	// Ensure the steps are sorted by index
-	if c.retryStrategy != nil && c.retryStrategy.Steps != nil {
-		sort.SliceStable(c.retryStrategy.Steps, func(i, j int) bool {
-			return c.retryStrategy.Steps[i].Index < c.retryStrategy.Steps[j].Index
-		})
-	}
 
 	data := make(map[string]map[*openapi.AlgoInputModel][]types.InputData)
 
@@ -181,36 +173,33 @@ func (c *Consumer) pollForMessages() {
 					// TODO: iterate over inputs to be sure at least one has data!
 					// Can check to be sure all required inputs are fulfilled as well
 
-					runError := c.run(processedMsg, e, data[processedMsg.TraceID])
-					if runError == nil {
+					c.run(processedMsg, e, data[processedMsg.TraceID])
 
-						// Increment the offset
-						// Store the offset and commit
-						offsetCommit := kafka.TopicPartition{
-							Topic:     e.TopicPartition.Topic,
-							Partition: e.TopicPartition.Partition,
-							Offset:    e.TopicPartition.Offset + 1,
-						}
-
-						c.offsets[processedMsg.TraceID] = offsetCommit
-
-						_, offsetErr := c.KafkaConsumer.StoreOffsets([]kafka.TopicPartition{c.offsets[processedMsg.TraceID]})
-						if offsetErr != nil {
-							c.logger.LogMessage.Msg = fmt.Sprintf("Failed to store offsets for [%v]",
-								[]kafka.TopicPartition{c.offsets[processedMsg.TraceID]})
-							c.logger.Log(offsetErr)
-						}
-
-						_, commitErr := c.KafkaConsumer.Commit()
-						if commitErr != nil {
-							c.logger.LogMessage.Msg = fmt.Sprintf("Failed to commit offsets.")
-							c.logger.Log(commitErr)
-						}
-
-						delete(data, processedMsg.TraceID)
-						delete(c.offsets, processedMsg.TraceID)
-
+					// Increment the offset
+					// Store the offset and commit
+					offsetCommit := kafka.TopicPartition{
+						Topic:     e.TopicPartition.Topic,
+						Partition: e.TopicPartition.Partition,
+						Offset:    e.TopicPartition.Offset + 1,
 					}
+
+					c.offsets[processedMsg.TraceID] = offsetCommit
+
+					_, offsetErr := c.KafkaConsumer.StoreOffsets([]kafka.TopicPartition{c.offsets[processedMsg.TraceID]})
+					if offsetErr != nil {
+						c.logger.LogMessage.Msg = fmt.Sprintf("Failed to store offsets for [%v]",
+							[]kafka.TopicPartition{c.offsets[processedMsg.TraceID]})
+						c.logger.Log(offsetErr)
+					}
+
+					_, commitErr := c.KafkaConsumer.Commit()
+					if commitErr != nil {
+						c.logger.LogMessage.Msg = fmt.Sprintf("Failed to commit offsets.")
+						c.logger.Log(commitErr)
+					}
+
+					delete(data, processedMsg.TraceID)
+					delete(c.offsets, processedMsg.TraceID)
 
 					reqDuration := time.Since(startTime)
 					c.metrics.RunnerRuntimeHistogram.WithLabelValues(c.metrics.DeploymentLabel,
@@ -251,20 +240,30 @@ func (c *Consumer) pollForMessages() {
 
 func (c *Consumer) run(processedMsg *types.ProcessedMsg,
 	rawMessage *kafka.Message,
-	inputData map[*openapi.AlgoInputModel][]types.InputData) error {
+	inputData map[*openapi.AlgoInputModel][]types.InputData) {
+
+	if c.config.TopicRetryEnabled &&
+		c.config.RetryStrategy != nil &&
+		*c.config.RetryStrategy.Strategy == openapi.RETRYSTRATEGIES_RETRY_TOPICS &&
+		processedMsg.RetryTimestamp != nil {
+		// Sleep for the message timestamp duration as this a retry consumer
+
+		sleepTime := -time.Since(*processedMsg.RetryTimestamp)
+		// Sleep the thread for the duration
+		time.Sleep(sleepTime)
+
+	}
 
 	runError := c.runner.Run(processedMsg.TraceID, processedMsg.EndpointParams, inputData)
 	if runError != nil {
 		if c.config.TopicRetryEnabled {
-			c.logger.LogMessage.Msg = "Failed to run algo. Attempting Retry..."
-			c.logger.Log(runError)
 			c.retry(processedMsg, rawMessage, inputData)
 		} else {
 			c.logger.LogMessage.Msg = "Failed to run algo. Retries Disabled."
 			c.logger.Log(runError)
 		}
 	}
-	return runError
+
 }
 
 func (c *Consumer) retry(processedMsg *types.ProcessedMsg,
@@ -311,6 +310,9 @@ func (c *Consumer) retry(processedMsg *types.ProcessedMsg,
 		timestamp := time.Now().Add(d)
 		processedMsg.RetryTimestamp = &timestamp
 
+		c.logger.LogMessage.Msg = fmt.Sprintf("Attempting Retry with backoff duration [%s]", step.BackoffDuration)
+		c.logger.Log(nil)
+
 		switch strategy := *c.retryStrategy.Strategy; strategy {
 		case openapi.RETRYSTRATEGIES_SIMPLE:
 			// Sleep the thread for the duration
@@ -328,6 +330,15 @@ func (c *Consumer) retry(processedMsg *types.ProcessedMsg,
 	} else {
 		c.logger.LogMessage.Msg = "All retries attempted. Adding to Dead Letter Queue"
 		c.logger.Log(nil)
+
+		var dlqTopicName string
+		if c.retryStrategy.DeadLetterSuffix != "" {
+			dlqTopicName = fmt.Sprintf("%s.%s", c.baseTopic, c.retryStrategy.DeadLetterSuffix)
+		} else {
+			dlqTopicName = fmt.Sprintf("%s.dlq", c.baseTopic)
+		}
+		// Produce to the retry topic
+		c.Producer.ProduceRetryMessage(processedMsg, rawMessage, dlqTopicName)
 	}
 
 }
@@ -359,11 +370,8 @@ func (c *Consumer) processMessage(msg *kafka.Message,
 			retryNum, _ := strconv.Atoi(string(header.Value))
 			processedMsg.RetryNum = retryNum
 		case "retryTimestamp":
-			i, err := strconv.ParseInt(string(header.Value), 10, 64)
-			if err != nil {
-				panic(err)
-			}
-			tm := time.Unix(i, 0)
+			i, _ := strconv.Atoi(string(header.Value))
+			tm := time.Unix(int64(i), 0)
 			processedMsg.RetryTimestamp = &tm
 		case "run":
 			b, _ := strconv.ParseBool(string(header.Value))
