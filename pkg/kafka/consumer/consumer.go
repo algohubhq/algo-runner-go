@@ -256,6 +256,7 @@ func (c *Consumer) run(processedMsg *types.ProcessedMsg,
 
 	runError := c.runner.Run(processedMsg.TraceID, processedMsg.EndpointParams, inputData)
 	if runError != nil {
+		c.setInputDataMetrics("error", processedMsg)
 		if c.config.TopicRetryEnabled {
 			c.retry(processedMsg, rawMessage, inputData)
 		} else {
@@ -263,6 +264,8 @@ func (c *Consumer) run(processedMsg *types.ProcessedMsg,
 			c.logger.Log(runError)
 		}
 	}
+
+	c.setInputDataMetrics("ok", processedMsg)
 
 }
 
@@ -538,5 +541,27 @@ func (c *Consumer) processMessage(msg *kafka.Message,
 	}
 
 	return
+
+}
+
+func (c *Consumer) setInputDataMetrics(status string, processedMsg *types.ProcessedMsg) {
+
+	c.metrics.MsgBytesInputCounter.WithLabelValues(c.metrics.DeploymentLabel,
+		c.metrics.PipelineLabel,
+		c.metrics.ComponentLabel,
+		c.metrics.AlgoLabel,
+		c.metrics.AlgoVersionLabel,
+		c.metrics.AlgoIndexLabel,
+		"",
+		status).Add(float64(binary.Size(processedMsg.InputData.DataSize)))
+
+	c.metrics.DataBytesInputCounter.WithLabelValues(c.metrics.DeploymentLabel,
+		c.metrics.PipelineLabel,
+		c.metrics.ComponentLabel,
+		c.metrics.AlgoLabel,
+		c.metrics.AlgoVersionLabel,
+		c.metrics.AlgoIndexLabel,
+		"",
+		status).Add(float64(binary.Size(processedMsg.InputData.DataSize)))
 
 }

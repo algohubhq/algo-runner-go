@@ -144,7 +144,8 @@ func (p *Producer) ProduceOutputMessage(traceID string,
 		p.Metrics.AlgoLabel,
 		p.Metrics.AlgoVersionLabel,
 		p.Metrics.AlgoIndexLabel,
-		outputName).Add(float64(binary.Size(data)))
+		outputName,
+		"ok").Add(float64(binary.Size(data)))
 
 }
 
@@ -172,13 +173,23 @@ func (p *Producer) ProduceRetryMessage(processedMsg *types.ProcessedMsg,
 		Value:          rawMessage.Value,
 	}
 
-	// p.Metrics.MsgBytesOutputCounter.WithLabelValues(p.Metrics.DeploymentLabel,
-	// 	p.Metrics.PipelineLabel,
-	// 	p.Metrics.ComponentLabel,
-	// 	p.Metrics.AlgoLabel,
-	// 	p.Metrics.AlgoVersionLabel,
-	// 	p.Metrics.AlgoIndexLabel,
-	// 	outputName).Add(float64(binary.Size(data)))
+	p.Metrics.MsgBytesOutputCounter.WithLabelValues(p.Metrics.DeploymentLabel,
+		p.Metrics.PipelineLabel,
+		p.Metrics.ComponentLabel,
+		p.Metrics.AlgoLabel,
+		p.Metrics.AlgoVersionLabel,
+		p.Metrics.AlgoIndexLabel,
+		"",
+		"retry").Add(float64(binary.Size(rawMessage.Value)))
+
+	p.Metrics.DataBytesOutputCounter.WithLabelValues(p.Metrics.DeploymentLabel,
+		p.Metrics.PipelineLabel,
+		p.Metrics.ComponentLabel,
+		p.Metrics.AlgoLabel,
+		p.Metrics.AlgoVersionLabel,
+		p.Metrics.AlgoIndexLabel,
+		"",
+		"retry").Add(float64(binary.Size(rawMessage.Value)))
 
 }
 

@@ -126,7 +126,7 @@ var (
 	msgBytesOutputCounter = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "algorunner_msg_bytes_output_total",
 		Help: "The total number of bytes output from the runner from messages. (Kafka)",
-	}, []string{"deployment", "pipeline", "component", "name", "version", "index", "output"})
+	}, []string{"deployment", "pipeline", "component", "name", "version", "index", "output", "status"})
 
 	dataBytesInputCounter = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "algorunner_data_bytes_input_total",
@@ -136,7 +136,7 @@ var (
 	dataBytesOutputCounter = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "algorunner_data_bytes_output_total",
 		Help: "The total number of bytes output from the runner including file data",
-	}, []string{"deployment", "pipeline", "component", "name", "version", "index", "output"})
+	}, []string{"deployment", "pipeline", "component", "name", "version", "index", "output", "status"})
 
 	algoErrorCounter = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "algorunner_algo_error",
