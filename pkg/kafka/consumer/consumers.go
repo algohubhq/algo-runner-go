@@ -104,8 +104,7 @@ func (c *Consumers) createConsumers() error {
 					for _, s := range retryStrategy.Steps {
 						d, err := time.ParseDuration(s.BackoffDuration)
 						if err != nil {
-							c.Logger.LogMessage.Msg = fmt.Sprintf("Error parsing backoff duration to calculate max.poll.interval.ms [%s]", s.BackoffDuration)
-							c.Logger.Log(err)
+							c.Logger.Error(fmt.Sprintf("Error parsing backoff duration to calculate max.poll.interval.ms [%s]", s.BackoffDuration), err)
 						}
 						maxPollIntervalMs = Max(maxPollIntervalMs, int(d.Milliseconds())+300000)
 					}
@@ -122,8 +121,7 @@ func (c *Consumers) createConsumers() error {
 			kc, err := kafka.NewConsumer(&mainKafkaConfig)
 			if err != nil {
 				c.HealthyChan <- false
-				c.Logger.LogMessage.Msg = fmt.Sprintf("Failed to create consumer.")
-				c.Logger.Log(err)
+				c.Logger.Error("Failed to create consumer.", err)
 				return err
 			}
 
@@ -150,8 +148,7 @@ func (c *Consumers) createConsumers() error {
 
 						d, err := time.ParseDuration(step.BackoffDuration)
 						if err != nil {
-							c.Logger.LogMessage.Msg = fmt.Sprintf("Error parsing backoff duration to calculate max.poll.interval.ms [%s]", step.BackoffDuration)
-							c.Logger.Log(err)
+							c.Logger.Error(fmt.Sprintf("Error parsing backoff duration to calculate max.poll.interval.ms [%s]", step.BackoffDuration), err)
 						}
 						maxPollIntervalMs = Max(maxPollIntervalMs, int(d.Milliseconds())+300000)
 
@@ -164,8 +161,7 @@ func (c *Consumers) createConsumers() error {
 						kc, err := kafka.NewConsumer(&retryKafkaConfig)
 						if err != nil {
 							c.HealthyChan <- false
-							c.Logger.LogMessage.Msg = fmt.Sprintf("Failed to create consumer.")
-							c.Logger.Log(err)
+							c.Logger.Error("Failed to create consumer.", err)
 							return err
 						}
 						consumer := NewConsumer(c.HealthyChan,

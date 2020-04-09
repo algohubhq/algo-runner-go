@@ -94,13 +94,11 @@ func (c *Consumer) Start() error {
 	err := c.KafkaConsumer.Subscribe(c.topic, nil)
 	if err != nil {
 		c.HealthyChan <- false
-		c.logger.LogMessage.Msg = fmt.Sprintf("Failed to subscribe to topics.")
-		c.logger.Log(err)
+		c.logger.Error("Failed to subscribe to topics", err)
 		return err
 	}
 
-	c.logger.LogMessage.Msg = fmt.Sprintf("Listening to topic %s", c.topic)
-	c.logger.Log(nil)
+	c.logger.Info(fmt.Sprintf("Listening to topic %s", c.topic))
 
 	go c.pollForMessages()
 
@@ -126,8 +124,7 @@ func (c *Consumer) pollForMessages() {
 		select {
 		case sig := <-sigchan:
 
-			c.logger.LogMessage.Msg = fmt.Sprintf("Caught signal %v: terminating the Kafka Consumer process.", sig)
-			c.logger.Log(errors.New("Terminating"))
+			c.logger.Warn(fmt.Sprintf("Caught signal %v: terminating the Kafka Consumer process.", sig), errors.New("Terminating"))
 
 			c.HealthyChan <- false
 			waiting = false
@@ -157,8 +154,7 @@ func (c *Consumer) pollForMessages() {
 
 				startTime := time.Now()
 
-				c.logger.LogMessage.Msg = fmt.Sprintf("Kafka Message received on %s", e.TopicPartition)
-				c.logger.Log(nil)
+				c.logger.Debug(fmt.Sprintf("Kafka Message received on %s", e.TopicPartition))
 
 				processedMsg := c.processMessage(e, c.input)
 
@@ -187,15 +183,13 @@ func (c *Consumer) pollForMessages() {
 
 					_, offsetErr := c.KafkaConsumer.StoreOffsets([]kafka.TopicPartition{c.offsets[processedMsg.TraceID]})
 					if offsetErr != nil {
-						c.logger.LogMessage.Msg = fmt.Sprintf("Failed to store offsets for [%v]",
-							[]kafka.TopicPartition{c.offsets[processedMsg.TraceID]})
-						c.logger.Log(offsetErr)
+						c.logger.Error(fmt.Sprintf("Failed to store offsets for [%v]",
+							[]kafka.TopicPartition{c.offsets[processedMsg.TraceID]}), offsetErr)
 					}
 
 					_, commitErr := c.KafkaConsumer.Commit()
 					if commitErr != nil {
-						c.logger.LogMessage.Msg = fmt.Sprintf("Failed to commit offsets.")
-						c.logger.Log(commitErr)
+						c.logger.Error("Failed to commit offsets.", commitErr)
 					}
 
 					delete(data, processedMsg.TraceID)
@@ -217,16 +211,13 @@ func (c *Consumer) pollForMessages() {
 
 			case kafka.AssignedPartitions:
 				c.HealthyChan <- true
-				c.logger.LogMessage.Msg = fmt.Sprintf("%v", e)
-				c.logger.Log(nil)
+				c.logger.Info(fmt.Sprintf("%v", e))
 				c.KafkaConsumer.Assign(e.Partitions)
 			case kafka.RevokedPartitions:
-				c.logger.LogMessage.Msg = fmt.Sprintf("%v", e)
-				c.logger.Log(nil)
+				c.logger.Info(fmt.Sprintf("%v", e))
 				c.KafkaConsumer.Unassign()
 			case kafka.Error:
-				c.logger.LogMessage.Msg = fmt.Sprintf("Kafka Error: %v", e)
-				c.logger.Log(nil)
+				c.logger.Error("Kafka Error Event", e)
 				c.HealthyChan <- false
 				waiting = false
 
@@ -260,8 +251,7 @@ func (c *Consumer) run(processedMsg *types.ProcessedMsg,
 		if c.config.TopicRetryEnabled {
 			c.retry(processedMsg, rawMessage, inputData)
 		} else {
-			c.logger.LogMessage.Msg = "Failed to run algo. Retries Disabled."
-			c.logger.Log(runError)
+			c.logger.Error("Failed to run Algo. Retries Disabled.", runError)
 		}
 	}
 
@@ -305,16 +295,14 @@ func (c *Consumer) retry(processedMsg *types.ProcessedMsg,
 		// Calculate the duration, set the timestamp and retryNum
 		d, err := time.ParseDuration(step.BackoffDuration)
 		if err != nil {
-			c.logger.LogMessage.Msg = fmt.Sprintf("Error parsing backoff duration [%s]", step.BackoffDuration)
-			c.logger.Log(err)
+			c.logger.Error(fmt.Sprintf("Error parsing backoff duration [%s]", step.BackoffDuration), err)
 		}
 		processedMsg.RetryStepIndex = int(step.Index)
 		processedMsg.RetryNum = processedMsg.RetryNum + 1
 		timestamp := time.Now().Add(d)
 		processedMsg.RetryTimestamp = &timestamp
 
-		c.logger.LogMessage.Msg = fmt.Sprintf("Attempting Retry with backoff duration [%s]", step.BackoffDuration)
-		c.logger.Log(nil)
+		c.logger.Debug(fmt.Sprintf("Attempting Retry with backoff duration [%s]", step.BackoffDuration))
 
 		switch strategy := *c.retryStrategy.Strategy; strategy {
 		case openapi.RETRYSTRATEGIES_SIMPLE:
@@ -331,8 +319,8 @@ func (c *Consumer) retry(processedMsg *types.ProcessedMsg,
 
 		}
 	} else {
-		c.logger.LogMessage.Msg = "All retries attempted. Adding to Dead Letter Queue"
-		c.logger.Log(nil)
+
+		c.logger.Info("All retries attempted. Adding to Dead Letter Queue")
 
 		var dlqTopicName string
 		if c.retryStrategy.DeadLetterSuffix != "" {
@@ -419,8 +407,7 @@ func (c *Consumer) processMessage(msg *kafka.Message,
 			jsonErr := json.Unmarshal(msg.Value, &fileReference)
 
 			if jsonErr != nil {
-				c.logger.LogMessage.Msg = fmt.Sprintf("Failed to parse the FileReference json.")
-				c.logger.Log(jsonErr)
+				c.logger.Error(fmt.Sprintf("Failed to parse the FileReference json."), jsonErr)
 			}
 
 			// Read the file from storage
@@ -430,19 +417,16 @@ func (c *Consumer) processMessage(msg *kafka.Message,
 				c.storageConfig.SecretAccessKey,
 				c.storageConfig.UseSSL)
 			if err != nil {
-				c.logger.LogMessage.Msg = fmt.Sprintf("Failed to create minio client.")
-				c.logger.Log(err)
+				c.logger.Error(fmt.Sprintf("Failed to create minio client."), err)
 			}
 			object, err := minioClient.GetObject(fileReference.Bucket, fileReference.File, minio.GetObjectOptions{})
 			if err != nil {
-				c.logger.LogMessage.Msg = fmt.Sprintf("Failed to get file reference object from storage. [%v]", fileReference)
-				c.logger.Log(err)
+				c.logger.Error(fmt.Sprintf("Failed to get file reference object from storage. [%v]", fileReference), err)
 			}
 
 			objectBytes, err := ioutil.ReadAll(object)
 			if err != nil {
-				c.logger.LogMessage.Msg = fmt.Sprintf("Failed to read file reference bytes from storage. [%v]", fileReference)
-				c.logger.Log(err)
+				c.logger.Error(fmt.Sprintf("Failed to read file reference bytes from storage. [%v]", fileReference), err)
 			}
 
 			processedMsg.InputData.MsgSize = float64(binary.Size(msg.Value))
@@ -470,8 +454,7 @@ func (c *Consumer) processMessage(msg *kafka.Message,
 			jsonErr := json.Unmarshal(msg.Value, &fileReference)
 
 			if jsonErr != nil {
-				c.logger.LogMessage.Msg = fmt.Sprintf("Failed to parse the FileReference json.")
-				c.logger.Log(jsonErr)
+				c.logger.Error("Failed to parse the FileReference json.", jsonErr)
 			}
 
 			// Read the file from storage
@@ -481,30 +464,25 @@ func (c *Consumer) processMessage(msg *kafka.Message,
 				c.storageConfig.SecretAccessKey,
 				c.storageConfig.UseSSL)
 			if err != nil {
-				c.logger.LogMessage.Msg = fmt.Sprintf("Failed to create minio client.")
-				c.logger.Log(err)
+				c.logger.Error("Failed to create minio client.", err)
 			}
 			object, err := minioClient.GetObject(fileReference.Bucket, fileReference.File, minio.GetObjectOptions{})
 			if err != nil {
-				c.logger.LogMessage.Msg = fmt.Sprintf("Failed to get file reference object from storage. [%v]", fileReference)
-				c.logger.Log(err)
+				c.logger.Error(fmt.Sprintf("Failed to get file reference object from storage. [%v]", fileReference), err)
 			}
 
 			filePath := path.Join("/input", fileReference.File)
 			localFile, err := os.Create(filePath)
 			if err != nil {
-				c.logger.LogMessage.Msg = fmt.Sprintf("Failed to create local file from reference object. [%v]", fileReference)
-				c.logger.Log(err)
+				c.logger.Error(fmt.Sprintf("Failed to create local file from reference object. [%v]", fileReference), err)
 			}
 			if _, err = io.Copy(localFile, object); err != nil {
-				c.logger.LogMessage.Msg = fmt.Sprintf("Failed to copy byte stream from reference object to local file. [%v]", fileReference)
-				c.logger.Log(err)
+				c.logger.Error(fmt.Sprintf("Failed to copy byte stream from reference object to local file. [%v]", fileReference), err)
 			}
 
 			objStat, err := object.Stat()
 			if err != nil {
-				c.logger.LogMessage.Msg = fmt.Sprintf("Failed to Stat the file object to get file size. [%v]", fileReference)
-				c.logger.Log(err)
+				c.logger.Error(fmt.Sprintf("Failed to Stat the file object to get file size. [%v]", fileReference), err)
 			}
 
 			processedMsg.InputData.MsgSize = float64(binary.Size(msg.Value))
@@ -528,8 +506,7 @@ func (c *Consumer) processMessage(msg *kafka.Message,
 
 			err := ioutil.WriteFile(fullPathFile, msg.Value, 0644)
 			if err != nil {
-				c.logger.LogMessage.Msg = fmt.Sprintf("Unable to write the embedded data to file [%s]", fullPathFile)
-				c.logger.Log(err)
+				c.logger.Error(fmt.Sprintf("Unable to write the embedded data to file [%s]", fullPathFile), err)
 			}
 
 			processedMsg.InputData.MsgSize = float64(binary.Size(msg.Value))

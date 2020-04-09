@@ -49,8 +49,7 @@ func NewProducer(healthyChan chan<- bool,
 	kp, err := kafka.NewProducer(&kafkaConfig)
 
 	if err != nil {
-		logger.LogMessage.Msg = "Failed to create Kafka message producer."
-		logger.Log(err)
+		logger.Error("Failed to create Kafka message producer.", err)
 
 		return nil, err
 	}
@@ -80,24 +79,20 @@ func (p *Producer) producerEventsHandler() {
 				p.Metrics.MsgNOK.With(prometheus.Labels{
 					"topic": *m.TopicPartition.Topic,
 					"error": m.TopicPartition.Error.Error()}).Inc()
-				p.Logger.LogMessage.Msg = fmt.Sprintf("Delivery failed for output: %v", m.TopicPartition.Topic)
-				p.Logger.Log(m.TopicPartition.Error)
+				p.Logger.Error(fmt.Sprintf("Delivery failed for output: %v", m.TopicPartition.Topic), m.TopicPartition.Error)
 				// TODO: producer retry logic here
 
 			} else {
 				p.Metrics.MsgOK.With(prometheus.Labels{"topic": *m.TopicPartition.Topic}).Inc()
-				p.Logger.LogMessage.Msg = fmt.Sprintf("Delivered message to topic %s [%d] at offset %v",
-					*m.TopicPartition.Topic, m.TopicPartition.Partition, m.TopicPartition.Offset)
-				p.Logger.Log(nil)
+				p.Logger.Debug(fmt.Sprintf("Delivered message to topic %s [%d] at offset %v",
+					*m.TopicPartition.Topic, m.TopicPartition.Partition, m.TopicPartition.Offset))
 			}
 		case kafka.Error:
 
 			if ev.Code() == kafka.ErrAllBrokersDown {
-				p.Logger.LogMessage.Msg = "All kafka brokers are down"
-				p.Logger.Log(ev)
+				p.Logger.Error("All kafka brokers are down", ev)
 			} else {
-				p.Logger.LogMessage.Msg = "Kafka producer error"
-				p.Logger.Log(ev)
+				p.Logger.Error("Kafka producer error", ev)
 				p.HealthyChan <- false
 			}
 
@@ -106,12 +101,10 @@ func (p *Producer) producerEventsHandler() {
 		case *kafka.Stats:
 			err := p.Metrics.PopulateRDKafkaMetrics(ev.String())
 			if err != nil {
-				p.Logger.LogMessage.Msg = "Could not populate librdkafka metrics"
-				p.Logger.Log(err)
+				p.Logger.Error("Could not populate librdkafka metrics.", err)
 			}
 		default:
-			p.Logger.LogMessage.Msg = fmt.Sprintf("Ignored message: %v", ev)
-			p.Logger.Log(nil)
+			p.Logger.Info(fmt.Sprintf("Ignored message: %v", ev))
 			p.Metrics.EventIgnored.Inc()
 		}
 	}

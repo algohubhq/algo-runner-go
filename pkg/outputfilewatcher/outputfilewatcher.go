@@ -153,10 +153,8 @@ func (o *OutputFileWatcher) newCmd(src string, outputMessageDataType openapi.Mes
 				o.Config.DeploymentName))
 			cmd.Args = append(cmd.Args, "mirror", "--json", "--quiet", "-w", src, destBucket)
 		} else {
-			o.Logger.LogMessage.Msg = "The storage connection string is required for any file replication. Shutting down..."
-			o.Logger.Log(errors.New("S3 connection string missing"))
-
-			os.Exit(1)
+			o.Logger.Error("The storage connection string is missing. It is required for any file replication.",
+				errors.New("S3 connection string missing"))
 		}
 
 	}
@@ -174,14 +172,12 @@ func (output *Output) start() {
 	go func() {
 		sig := <-sigchan
 
-		output.Logger.LogMessage.Msg = fmt.Sprintf("Caught signal %v. Killing mc process: mc\n", sig)
-		output.Logger.Log(nil)
+		output.Logger.Warn(fmt.Sprintf("Caught signal %v. Killing mc process: mc\n", sig), nil)
 
 		if output.execCmd != nil && output.execCmd.Process != nil {
 			val := output.execCmd.Process.Kill()
 			if val != nil {
-				output.Logger.LogMessage.Msg = fmt.Sprintf("Killed server process: mc - error %s\n", val.Error())
-				output.Logger.Log(nil)
+				output.Logger.Warn(fmt.Sprintf("Killed server process: mc - error %s\n", val.Error()), nil)
 			}
 		}
 	}()
@@ -211,8 +207,7 @@ func (output *Output) start() {
 					if wm.Status != "" {
 						var em errorMessage
 						_ = json.Unmarshal(m, &em)
-						output.Logger.LogMessage.Msg = fmt.Sprintf("mc watch command error. [%s]", em.Error)
-						output.Logger.Log(em.Error.Cause.Error)
+						output.Logger.Error(fmt.Sprintf("mc watch command error. [%s]", em.Error), em.Error.Cause.Error)
 					}
 				}
 
@@ -220,8 +215,7 @@ func (output *Output) start() {
 					// Send contents of the file to kafka
 					fileBytes, err := ioutil.ReadFile(wm.Event.Path)
 					if err != nil {
-						output.Logger.LogMessage.Msg = fmt.Sprintf("Output watcher unable to read the file [%s] from disk.", wm.Event.Path)
-						output.Logger.Log(err)
+						output.Logger.Error(fmt.Sprintf("Output watcher unable to read the file [%s] from disk.", wm.Event.Path), err)
 					}
 
 					// TODO: Figure out how to get the traceID from the filename
@@ -250,8 +244,7 @@ func (output *Output) start() {
 					if mm.Status != "" {
 						var em errorMessage
 						_ = json.Unmarshal(m, &em)
-						output.Logger.LogMessage.Msg = fmt.Sprintf("mc mirror command error. [%s]", em.Error)
-						output.Logger.Log(em.Error.Cause.Error)
+						output.Logger.Error(fmt.Sprintf("mc mirror command error. [%s]", em.Error), em.Error.Cause.Error)
 					}
 
 				} else {
@@ -268,8 +261,7 @@ func (output *Output) start() {
 					jsonBytes, jsonErr := json.Marshal(fileReference)
 
 					if jsonErr != nil {
-						output.Logger.LogMessage.Msg = fmt.Sprintf("Unable to create the file reference json.")
-						output.Logger.Log(jsonErr)
+						output.Logger.Error("Unable to create the file reference json.", jsonErr)
 					}
 
 					// TODO: Figure out how to get the traceID from the filename
@@ -298,31 +290,26 @@ func (output *Output) start() {
 		scanner := bufio.NewScanner(stderrIn)
 		for scanner.Scan() {
 			m := scanner.Text()
-			output.Logger.LogMessage.Msg = fmt.Sprintf("mc command stderr. [%s]", m)
-			output.Logger.Log(nil)
+			output.Logger.Error(fmt.Sprintf("mc command stderr. [%s]", m), nil)
 		}
 	}()
 
 	err := output.execCmd.Start()
 
 	if err != nil {
-		output.Logger.LogMessage.Msg = fmt.Sprintf("mc start failed with error '%s'\n", err)
-		output.Logger.Log(err)
+		output.Logger.Error("mc start failed with error", err)
 	} else {
-		output.Logger.LogMessage.Msg = fmt.Sprintf("mc started with command '%s'\n", output.execCmd.String())
-		output.Logger.Log(nil)
+		output.Logger.Info(fmt.Sprintf("mc started with command '%s'\n", output.execCmd.String()))
 	}
 
 	errWait := output.execCmd.Wait()
 
 	if errWait != nil {
-		output.Logger.LogMessage.Msg = fmt.Sprintf("mc start failed with %s\n", errWait)
-		output.Logger.Log(errWait)
+		output.Logger.Error("mc start failed", errWait)
 	}
 
 	// If this is reached, the mc command has terminated (bad)
-	output.Logger.LogMessage.Msg = fmt.Sprintf("mc Terminated unexpectedly!")
-	output.Logger.Log(nil)
+	output.Logger.Error("mc Terminated unexpectedly!", nil)
 
 	os.Exit(1)
 

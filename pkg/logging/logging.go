@@ -9,68 +9,122 @@ import (
 	"path"
 	"strings"
 
+	"github.com/go-logr/logr"
 	"github.com/go-logr/zapr"
+	"github.com/prometheus/common/log"
 	"go.uber.org/zap"
 )
 
 type Logger struct {
 	LogMessage *openapi.LogEntryModel
 	Metrics    *metrics.Metrics
+	log        *logr.Logger
 }
 
 // NewLogger returns a new Logger struct
 func NewLogger(logMessage *openapi.LogEntryModel, metrics *metrics.Metrics) Logger {
-	return Logger{
-		LogMessage: logMessage,
-		Metrics:    metrics,
-	}
-}
 
-func (l *Logger) Log(errLog error) {
-
-	zapLog, err := newLogger(string(*l.LogMessage.Type))
+	zapLog, err := newLogger(string(*logMessage.Type))
 	if err != nil {
 		panic(fmt.Sprintf("Failed to create logger! [%v]", err))
 	}
 	log := zapr.NewLogger(zapLog)
 
-	// Send to local console and file
+	return Logger{
+		LogMessage: logMessage,
+		Metrics:    metrics,
+		log:        &log,
+	}
+}
+
+func (l *Logger) Info(msg string) {
+
+	log.Info(l.LogMessage.Msg,
+		"version", l.LogMessage.Version,
+		"type", l.LogMessage.Type,
+		"level", openapi.LOGLEVELS_INFO,
+		"traceId", l.LogMessage.TraceId,
+		"data", l.LogMessage.Data)
+
+}
+
+func (l *Logger) Debug(msg string) {
+
+	log.Debug(l.LogMessage.Msg,
+		"version", l.LogMessage.Version,
+		"type", l.LogMessage.Type,
+		"level", openapi.LOGLEVELS_DEBUG,
+		"traceId", l.LogMessage.TraceId,
+		"data", l.LogMessage.Data)
+
+}
+
+func (l *Logger) Error(msg string, errLog error) {
+
 	if errLog != nil {
-
-		// Increment the error metric
-		switch logType := strings.ToLower(string(*l.LogMessage.Type)); logType {
-		case "algo":
-			if l.Metrics != nil {
-				l.Metrics.AlgoErrorCounter.WithLabelValues(l.Metrics.DeploymentLabel,
-					l.Metrics.PipelineLabel,
-					l.Metrics.ComponentLabel,
-					l.Metrics.AlgoLabel,
-					l.Metrics.AlgoVersionLabel,
-					l.Metrics.AlgoIndexLabel).Inc()
-			}
-		case "runner":
-			if l.Metrics != nil {
-				l.Metrics.RunnerErrorCounter.WithLabelValues(l.Metrics.DeploymentLabel,
-					l.Metrics.PipelineLabel,
-					l.Metrics.ComponentLabel,
-					l.Metrics.AlgoLabel,
-					l.Metrics.AlgoVersionLabel,
-					l.Metrics.AlgoIndexLabel).Inc()
-			}
-		}
-
+		l.incrementError()
 		log.Error(errLog,
 			l.LogMessage.Msg,
 			"version", l.LogMessage.Version,
 			"type", l.LogMessage.Type,
+			"level", openapi.LOGLEVELS_ERROR,
 			"traceId", l.LogMessage.TraceId,
 			"data", l.LogMessage.Data)
 	} else {
-		log.Info(l.LogMessage.Msg,
+		log.Error(l.LogMessage.Msg,
 			"version", l.LogMessage.Version,
 			"type", l.LogMessage.Type,
+			"level", openapi.LOGLEVELS_ERROR,
 			"traceId", l.LogMessage.TraceId,
 			"data", l.LogMessage.Data)
+	}
+
+}
+
+func (l *Logger) Warn(msg string, errLog error) {
+
+	if errLog != nil {
+		l.incrementError()
+		log.Warn(errLog,
+			l.LogMessage.Msg,
+			"version", l.LogMessage.Version,
+			"type", l.LogMessage.Type,
+			"level", openapi.LOGLEVELS_WARNING,
+			"traceId", l.LogMessage.TraceId,
+			"data", l.LogMessage.Data)
+	} else {
+		log.Warn(l.LogMessage.Msg,
+			"version", l.LogMessage.Version,
+			"type", l.LogMessage.Type,
+			"level", openapi.LOGLEVELS_WARNING,
+			"traceId", l.LogMessage.TraceId,
+			"data", l.LogMessage.Data)
+	}
+
+}
+
+func (l *Logger) incrementError() {
+
+	// Increment the error metric
+	switch logType := strings.ToLower(string(*l.LogMessage.Type)); logType {
+	case "algo":
+		if l.Metrics != nil {
+			l.Metrics.AlgoErrorCounter.WithLabelValues(l.Metrics.DeploymentLabel,
+				l.Metrics.PipelineLabel,
+				l.Metrics.ComponentLabel,
+				l.Metrics.AlgoLabel,
+				l.Metrics.AlgoVersionLabel,
+				l.Metrics.AlgoIndexLabel).Inc()
+		}
+	case "runner":
+		if l.Metrics != nil {
+			l.Metrics.RunnerErrorCounter.WithLabelValues(l.Metrics.DeploymentLabel,
+				l.Metrics.PipelineLabel,
+				l.Metrics.ComponentLabel,
+				l.Metrics.AlgoLabel,
+				l.Metrics.AlgoVersionLabel,
+				l.Metrics.AlgoIndexLabel).Inc()
+		}
 	}
 
 }

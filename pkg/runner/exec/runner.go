@@ -83,8 +83,7 @@ func NewExecRunner(config *openapi.AlgoRunnerConfig,
 				if _, err := os.Stat(folder); os.IsNotExist(err) {
 					err = os.MkdirAll(folder, os.ModePerm)
 					if err != nil {
-						logger.LogMessage.Msg = fmt.Sprintf("Failed to create output folder: %s\n", folder)
-						logger.Log(err)
+						logger.Error(fmt.Sprintf("Failed to create output folder: %s\n", folder), err)
 					}
 				}
 
@@ -162,22 +161,19 @@ func (r *ExecRunner) Run(traceID string,
 	go func() {
 		sig := <-sigchan
 
-		r.Logger.LogMessage.Msg = fmt.Sprintf("Caught signal %v. Killing algo process: %s", sig, r.Config.Entrypoint)
-		r.Logger.Log(nil)
+		r.Logger.Warn(fmt.Sprintf("Caught signal %v. Killing algo process: %s", sig, r.Config.Entrypoint), nil)
 
 		if targetCmd != nil && targetCmd.Process != nil {
-			val := targetCmd.Process.Kill()
-			if val != nil {
-				algoLogger.LogMessage.Msg = fmt.Sprintf("Killed algo process: %s", r.Config.Entrypoint)
-				algoLogger.Log(val)
+			err := targetCmd.Process.Kill()
+			if err != nil {
+				algoLogger.Error(fmt.Sprintf("Killed algo process: %s", r.Config.Entrypoint), err)
 			}
 		}
 	}()
 
 	// Write to the topic as error if no value
 	if inputMap == nil {
-		r.Logger.LogMessage.Msg = "Attempted to run but input data is empty."
-		r.Logger.Log(errors.New("Input data was empty"))
+		r.Logger.Error("Attempted to run but input data is empty.", errors.New("Input data was empty"))
 
 		return
 	}
@@ -191,14 +187,12 @@ func (r *ExecRunner) Run(traceID string,
 		go func() {
 			<-timer.C
 
-			r.Logger.LogMessage.Msg = fmt.Sprintf("Algo timed out. Timeout value: %d seconds", r.Config.TimeoutSeconds)
-			r.Logger.Log(nil)
+			r.Logger.Warn(fmt.Sprintf("Algo timed out. Timeout value: %d seconds", r.Config.TimeoutSeconds), nil)
 
 			if targetCmd != nil && targetCmd.Process != nil {
-				val := targetCmd.Process.Kill()
-				if val != nil {
-					r.Logger.LogMessage.Msg = fmt.Sprintf("Killed algo process due to timeout: %s", r.Config.Entrypoint)
-					r.Logger.Log(val)
+				err := targetCmd.Process.Kill()
+				if err != nil {
+					r.Logger.Error(fmt.Sprintf("Killed algo process due to timeout: %s", r.Config.Entrypoint), err)
 				}
 			}
 		}()
@@ -280,10 +274,7 @@ func (r *ExecRunner) Run(traceID string,
 	}
 
 	if cmdErr != nil {
-
-		r.Logger.LogMessage.Msg = fmt.Sprintf("Stdout: %s | Stderr: %s", stdout, stderr)
-		r.Logger.Log(cmdErr)
-
+		r.Logger.Error("Erro occurred running Algo", cmdErr)
 	}
 
 	// Reminder: Successful outputs are handled by the output file watcher

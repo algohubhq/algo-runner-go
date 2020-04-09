@@ -111,8 +111,7 @@ func (r *HTTPRunner) Run(traceID string,
 		// Include the endpoint params as querystring parameters
 		endpointQuery, err := url.ParseQuery(endpointParams)
 		if err != nil {
-			r.Logger.LogMessage.Msg = fmt.Sprintf("Error parsing endpoint parameters from query string")
-			r.Logger.Log(err)
+			r.Logger.Error(fmt.Sprintf("Error parsing endpoint parameters from query string"), err)
 			continue
 		}
 
@@ -139,15 +138,13 @@ func (r *HTTPRunner) Run(traceID string,
 				request.Header.Set("Content-Type", data.ContentType)
 			}
 			if reqErr != nil {
-				r.Logger.LogMessage.Msg = fmt.Sprintf("Error building request")
-				r.Logger.Log(reqErr)
+				r.Logger.Error("Error building http request.", reqErr)
 				continue
 			}
 			response, errReq := netClient.Do(request)
 
 			if errReq != nil {
-				r.Logger.LogMessage.Msg = fmt.Sprintf("Error getting response from http server.")
-				r.Logger.Log(errReq)
+				r.Logger.Error("Error getting response from http server.", errReq)
 
 				reqDuration := time.Since(startTime)
 				r.Metrics.AlgoRuntimeHistogram.WithLabelValues(r.Metrics.DeploymentLabel,
@@ -165,8 +162,7 @@ func (r *HTTPRunner) Run(traceID string,
 				// For example if multipart-form, get each file and load into kafka separately
 				contents, errRead := ioutil.ReadAll(response.Body)
 				if errRead != nil {
-					r.Logger.LogMessage.Msg = fmt.Sprintf("Error reading response from http server")
-					r.Logger.Log(errRead)
+					r.Logger.Error("Error reading response from http server", errRead)
 					continue
 				}
 
@@ -197,8 +193,8 @@ func (r *HTTPRunner) Run(traceID string,
 							r.Producer.ProduceOutputMessage(traceID, fileName.String(), outputTopic, output.Name, contents)
 
 						} else {
-							r.Logger.LogMessage.Msg = fmt.Sprintf("No output topic with outputDeliveryType as HttpResponse for input that is an http request")
-							r.Logger.Log(nil)
+							r.Logger.Error("No output topic with outputDeliveryType as HttpResponse for input that is an http request",
+								errors.New("No output topic"))
 							return nil
 						}
 					} else {
@@ -216,15 +212,13 @@ func (r *HTTPRunner) Run(traceID string,
 						}
 						jsonBytes, jsonErr := json.Marshal(fileReference)
 						if jsonErr != nil {
-							r.Logger.LogMessage.Msg = fmt.Sprintf("Unable to create the file reference json.")
-							r.Logger.Log(jsonErr)
+							r.Logger.Error("Unable to create the file reference json.", jsonErr)
 						}
 
 						err = r.StorageConfig.Uploader.Upload(fileReference, contents)
 						if err != nil {
 							// Create error message
-							r.Logger.LogMessage.Msg = fmt.Sprintf("Error uploading to storage for file reference [%s]", fileReference.File)
-							r.Logger.Log(err)
+							r.Logger.Error(fmt.Sprintf("Error uploading to storage for file reference [%s]", fileReference.File), err)
 						}
 
 						r.Metrics.DataBytesOutputCounter.WithLabelValues(r.Metrics.DeploymentLabel,
@@ -244,8 +238,7 @@ func (r *HTTPRunner) Run(traceID string,
 				}
 
 				// Produce the error to the log
-				r.Logger.LogMessage.Msg = fmt.Sprintf("Server returned non-success http status code: %d", response.StatusCode)
-				r.Logger.Log(errors.New(string(contents)))
+				r.Logger.Error(fmt.Sprintf("Server returned non-success http status code: %d", response.StatusCode), errors.New(string(contents)))
 
 				return errors.New(r.Logger.LogMessage.Msg)
 

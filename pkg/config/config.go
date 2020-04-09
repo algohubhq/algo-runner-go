@@ -23,16 +23,14 @@ func (cl *ConfigLoader) LoadConfigFromFile(fileName string) openapi.AlgoRunnerCo
 
 	raw, err := ioutil.ReadFile(fileName)
 	if err != nil {
-		cl.Logger.LogMessage.Msg = fmt.Sprintf("Unable to read the config file [%s].", fileName)
-		cl.Logger.Log(err)
+		cl.Logger.Error(fmt.Sprintf("Unable to read the config file [%s].", fileName), err)
 	}
 
 	var c openapi.AlgoRunnerConfig
 	jsonErr := json.Unmarshal(raw, &c)
 
 	if jsonErr != nil {
-		cl.Logger.LogMessage.Msg = fmt.Sprintf("Unable to deserialize the config file [%s].", fileName)
-		cl.Logger.Log(jsonErr)
+		cl.Logger.Error(fmt.Sprintf("Unable to deserialize the config file [%s].", fileName), jsonErr)
 	}
 
 	return c
@@ -45,8 +43,7 @@ func (cl *ConfigLoader) LoadConfigFromString(jsonConfig string) openapi.AlgoRunn
 	jsonErr := json.Unmarshal([]byte(jsonConfig), &c)
 
 	if jsonErr != nil {
-		cl.Logger.LogMessage.Msg = fmt.Sprintf("Unable to deserialize the config from string [%s].", jsonConfig)
-		cl.Logger.Log(jsonErr)
+		cl.Logger.Error(fmt.Sprintf("Unable to deserialize the config from string [%s].", jsonConfig), jsonErr)
 	}
 
 	return c

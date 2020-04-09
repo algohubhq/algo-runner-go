@@ -40,8 +40,7 @@ func NewStorage(healthyChan chan<- bool,
 
 	host, accessKey, secret, err := storage.ParseEnvURLStr(connectionString)
 	if err != nil {
-		logger.LogMessage.Msg = "S3 Connection String is not valid. [] Shutting down..."
-		logger.Log(errors.New("S3 Connection String is not valid"))
+		logger.Error(fmt.Sprintf("S3 Connection String is not valid. [%s]", connectionString), errors.New("S3 Connection String malformed"))
 	}
 
 	storage.ConnectionString = connectionString
@@ -69,26 +68,7 @@ func (s *Storage) newUploader(config *openapi.AlgoRunnerConfig,
 		storageConfig.SecretAccessKey,
 		storageConfig.UseSSL)
 	if err != nil {
-		logger.LogMessage.Msg = "Error initializing minio client"
-		logger.Log(err)
-	}
-
-	destBucket := strings.ToLower(fmt.Sprintf("algorun.%s.%s",
-		config.DeploymentOwnerUserName,
-		config.DeploymentName))
-	// location := "us-east-1"
-
-	// err = minioClient.MakeBucket(destBucket, "")
-	if err != nil {
-		// Check to see if we already own this bucket (which happens if you run this twice)
-		exists, errBucketExists := minioClient.BucketExists(destBucket)
-		if errBucketExists != nil && !exists {
-			logger.LogMessage.Msg = fmt.Sprintf("Error making bucket. [%s]", destBucket)
-			logger.Log(err)
-		}
-	} else {
-		logger.LogMessage.Msg = fmt.Sprintf("Successfully created bucket. [%s]", destBucket)
-		logger.Log(nil)
+		logger.Error("Error initializing minio client", err)
 	}
 
 	uploader := &Uploader{
@@ -98,7 +78,29 @@ func (s *Storage) newUploader(config *openapi.AlgoRunnerConfig,
 		Logger:      logger,
 	}
 
+	go s.createBucket(uploader)
+
 	return uploader
+
+}
+
+func (s *Storage) createBucket(u *Uploader) {
+
+	destBucket := strings.ToLower(fmt.Sprintf("algorun.%s.%s",
+		u.Config.DeploymentOwnerUserName,
+		u.Config.DeploymentName))
+	// location := "us-east-1"
+
+	err := u.client.MakeBucket(destBucket, "")
+	if err != nil {
+		// Check to see if we already own this bucket (which happens if you run this twice)
+		exists, errBucketExists := u.client.BucketExists(destBucket)
+		if errBucketExists != nil && !exists {
+			u.Logger.Error(fmt.Sprintf("Error making bucket. [%s]", destBucket), err)
+		}
+	} else {
+		u.Logger.Info(fmt.Sprintf("Successfully created bucket. [%s]", destBucket))
+	}
 
 }
 
@@ -109,14 +111,12 @@ func (u *Uploader) Upload(fileReference openapi.FileReference, byteData []byte) 
 	// Upload file with PutObject
 	n, err := u.client.PutObject(fileReference.Bucket, fileReference.File, dataReader, int64(len(byteData)), minio.PutObjectOptions{})
 	if err != nil {
-		u.Logger.LogMessage.Msg = fmt.Sprintf("Error uploading file [%s]", fileReference.File)
-		u.Logger.Log(err)
+		u.Logger.Error(fmt.Sprintf("Error uploading file [%s]", fileReference.File), err)
 		u.HealthyChan <- false
 		return err
 	}
 
-	u.Logger.LogMessage.Msg = fmt.Sprintf("Successfully uploaded %s of size %d", fileReference.File, n)
-	u.Logger.Log(nil)
+	u.Logger.Debug(fmt.Sprintf("Successfully uploaded %s of size %d", fileReference.File, n))
 
 	return err
 

@@ -17,4 +17,5 @@ const (
 	LOGLEVELS_ERROR LogLevels = "Error"
 	LOGLEVELS_WARNING LogLevels = "Warning"
 	LOGLEVELS_INFO LogLevels = "Info"
+	LOGLEVELS_DEBUG LogLevels = "Debug"
 )

@@ -58,8 +58,8 @@ func main() {
 		if configEnv != "" {
 			config = configLoader.LoadConfigFromString(configEnv)
 		} else {
-			localLogger.LogMessage.Msg = "Missing the config file path argument and no environment variable ALGO-RUNNER-CONFIG exists. ( --config=./config.json ) Shutting down..."
-			localLogger.Log(errors.New("ALGO-RUNNER-CONFIG missing"))
+			localLogger.Error("Missing the config file path argument and no environment variable ALGO-RUNNER-CONFIG exists. ( --config=./config.json ) Shutting down...",
+				errors.New("ALGO-RUNNER-CONFIG missing"))
 
 			os.Exit(1)
 		}
@@ -74,8 +74,8 @@ func main() {
 		if kafkaBrokersEnv != "" {
 			kafkaBrokers = kafkaBrokersEnv
 		} else {
-			localLogger.LogMessage.Msg = "Missing the Kafka Brokers argument and no environment variable KAFKA-BROKERS exists. ( --kafka-brokers={broker1,broker2} ) Shutting down..."
-			localLogger.Log(errors.New("KAFKA_BROKERS missing"))
+			localLogger.Error("Missing the Kafka Brokers argument and no environment variable KAFKA-BROKERS exists. ( --kafka-brokers={broker1,broker2} ) Shutting down...",
+				errors.New("KAFKA_BROKERS missing"))
 
 			os.Exit(1)
 		}
@@ -90,8 +90,8 @@ func main() {
 		if storageEnv != "" {
 			storageConnectionString = storageEnv
 		} else {
-			localLogger.LogMessage.Msg = "Missing the S3 Storage Connection String argument and no environment variable MC_HOST_algorun exists."
-			localLogger.Log(errors.New("MC_HOST_algorun missing"))
+			localLogger.Error("Missing the S3 Storage Connection String argument and no environment variable MC_HOST_algorun exists.",
+				errors.New("MC_HOST_algorun missing"))
 		}
 	}
 
@@ -133,8 +133,8 @@ func main() {
 	storageConfig := storage.NewStorage(healthyChan, &config, storageConnectionString, &runnerLogger)
 	producer, err := kafkaproducer.NewProducer(healthyChan, &config, instanceName, kafkaBrokers, &runnerLogger, &metrics)
 	if err != nil {
-		localLogger.LogMessage.Msg = "Failed to create Kafka Producer... Shutting down..."
-		localLogger.Log(errors.New("Failed to create Kafka Producer"))
+		localLogger.Error("Failed to create Kafka Producer... Shutting down...",
+			errors.New("Failed to create Kafka Producer"))
 		os.Exit(1)
 	}
 
@@ -160,6 +160,7 @@ func main() {
 		signal := <-sig
 		switch signal {
 		case syscall.SIGTERM, syscall.SIGINT:
+			// Try to gracefully shutdown
 			producer.KafkaProducer.Close()
 		}
 	}
