@@ -261,10 +261,10 @@ var (
 
 func registerMetrics(config *openapi.AlgoRunnerConfig) {
 
-	deploymentLabel = fmt.Sprintf("%s/%s", config.DeploymentOwnerUserName, config.DeploymentName)
-	pipelineLabel = fmt.Sprintf("%s/%s", config.PipelineOwnerUserName, config.PipelineName)
+	deploymentLabel = fmt.Sprintf("%s/%s", config.DeploymentOwner, config.DeploymentName)
+	pipelineLabel = fmt.Sprintf("%s/%s", config.PipelineOwner, config.PipelineName)
 	componentLabel = "algo"
-	algoLabel = fmt.Sprintf("%s/%s", config.AlgoOwnerUserName, config.AlgoName)
+	algoLabel = fmt.Sprintf("%s/%s", config.AlgoOwner, config.AlgoName)
 	algoVersionLabel = config.AlgoVersionTag
 	algoIndexLabel = strconv.Itoa(int(config.AlgoIndex))
 

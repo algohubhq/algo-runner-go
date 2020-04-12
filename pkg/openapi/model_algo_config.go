@@ -12,33 +12,27 @@ package openapi
 // AlgoConfig struct for AlgoConfig
 type AlgoConfig struct {
 	Applied bool `json:"applied,omitempty"`
-	DeploymentOwnerUserName string `json:"deploymentOwnerUserName,omitempty"`
+	DeploymentOwner string `json:"deploymentOwner,omitempty"`
 	DeploymentName string `json:"deploymentName,omitempty"`
-	AlgoOwnerUserName string `json:"algoOwnerUserName"`
+	AlgoOwner string `json:"algoOwner"`
 	AlgoName string `json:"algoName"`
 	AlgoVersionTag string `json:"algoVersionTag"`
 	AlgoIndex int32 `json:"algoIndex"`
-	ImageRepository string `json:"imageRepository"`
-	ImageTag string `json:"imageTag"`
+	Image *ContainerImageModel `json:"image"`
 	Entrypoint string `json:"entrypoint,omitempty"`
 	Executor *Executors `json:"executor,omitempty"`
-	TopicConfigs []TopicConfigModel `json:"topicConfigs,omitempty"`
+	Topics []TopicConfigModel `json:"topics,omitempty"`
 	ConfigMounts []ConfigMountModel `json:"configMounts,omitempty"`
-	AlgoParams []AlgoParamModel `json:"algoParams,omitempty"`
+	Parameters []AlgoParamModel `json:"parameters,omitempty"`
 	Inputs []AlgoInputModel `json:"inputs,omitempty"`
 	Outputs []AlgoOutputModel `json:"outputs,omitempty"`
-	TopicRetryEnabled bool `json:"topicRetryEnabled,omitempty"`
+	RetryEnabled bool `json:"retryEnabled,omitempty"`
 	RetryStrategy *TopicRetryStrategyModel `json:"retryStrategy,omitempty"`
 	WriteAllOutputs bool `json:"writeAllOutputs,omitempty"`
 	GpuEnabled bool `json:"gpuEnabled,omitempty"`
 	TimeoutSeconds int32 `json:"timeoutSeconds,omitempty"`
 	Resource *ResourceModel `json:"resource,omitempty"`
-	AlgoRunnerImage string `json:"algoRunnerImage,omitempty"`
-	AlgoRunnerImageTag string `json:"algoRunnerImageTag,omitempty"`
-	LivenessInitialDelaySeconds int32 `json:"livenessInitialDelaySeconds,omitempty"`
-	LivenessTimeoutSeconds int32 `json:"livenessTimeoutSeconds,omitempty"`
-	LivenessPeriodSeconds int32 `json:"livenessPeriodSeconds,omitempty"`
-	ReadinessInitialDelaySeconds int32 `json:"readinessInitialDelaySeconds,omitempty"`
-	ReadinessTimeoutSeconds int32 `json:"readinessTimeoutSeconds,omitempty"`
-	ReadinessPeriodSeconds int32 `json:"readinessPeriodSeconds,omitempty"`
+	AlgoRunnerImage *ContainerImageModel `json:"algoRunnerImage,omitempty"`
+	LivenessProbe *ProbeModel `json:"livenessProbe,omitempty"`
+	ReadinessProbe *ProbeModel `json:"readinessProbe,omitempty"`
 }

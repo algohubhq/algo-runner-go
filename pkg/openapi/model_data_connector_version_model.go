@@ -12,6 +12,5 @@ package openapi
 // DataConnectorVersionModel struct for DataConnectorVersionModel
 type DataConnectorVersionModel struct {
 	VersionTag string `json:"versionTag,omitempty"`
-	ImageRepository string `json:"imageRepository,omitempty"`
-	ImageTag string `json:"imageTag,omitempty"`
+	Image *ContainerImageModel `json:"image"`
 }

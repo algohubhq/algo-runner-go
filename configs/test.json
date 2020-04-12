@@ -1,9 +1,9 @@
 {
-    "deploymentOwnerUserName": "local",
+    "deploymentOwner": "local",
     "deploymentName": "test-deployment",
-    "pipelineOwnerUserName": "local",
+    "pipelineOwner": "local",
     "pipelineName": "test-pipeline",
-    "algoOwnerUserName": "tests",
+    "algoOwner": "tests",
     "algoName": "test-text-transform-http",
     "algoVersionTag": "latest",
     "algoIndex": 1,

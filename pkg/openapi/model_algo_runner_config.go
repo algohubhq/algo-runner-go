@@ -11,23 +11,23 @@
 package openapi
 // AlgoRunnerConfig struct for AlgoRunnerConfig
 type AlgoRunnerConfig struct {
-	DeploymentOwnerUserName string `json:"deploymentOwnerUserName"`
+	DeploymentOwner string `json:"deploymentOwner"`
 	DeploymentName string `json:"deploymentName"`
-	PipelineOwnerUserName string `json:"pipelineOwnerUserName"`
+	PipelineOwner string `json:"pipelineOwner"`
 	PipelineName string `json:"pipelineName"`
-	AlgoOwnerUserName string `json:"algoOwnerUserName"`
+	AlgoOwner string `json:"algoOwner"`
 	AlgoName string `json:"algoName"`
 	AlgoVersionTag string `json:"algoVersionTag"`
 	AlgoIndex int32 `json:"algoIndex"`
 	Entrypoint string `json:"entrypoint,omitempty"`
 	Executor *Executors `json:"executor,omitempty"`
-	AlgoParams []AlgoParamModel `json:"algoParams,omitempty"`
+	Parameters []AlgoParamModel `json:"parameters,omitempty"`
 	Inputs []AlgoInputModel `json:"inputs,omitempty"`
 	Outputs []AlgoOutputModel `json:"outputs,omitempty"`
 	WriteAllOutputs bool `json:"writeAllOutputs,omitempty"`
 	Pipes []PipeModel `json:"pipes,omitempty"`
-	TopicConfigs []TopicConfigModel `json:"topicConfigs,omitempty"`
-	TopicRetryEnabled bool `json:"topicRetryEnabled,omitempty"`
+	Topics []TopicConfigModel `json:"topics,omitempty"`
+	RetryEnabled bool `json:"retryEnabled,omitempty"`
 	RetryStrategy *TopicRetryStrategyModel `json:"retryStrategy,omitempty"`
 	GpuEnabled bool `json:"gpuEnabled,omitempty"`
 	TimeoutSeconds int32 `json:"timeoutSeconds,omitempty"`

@@ -70,7 +70,7 @@ func (r *HTTPRunner) Run(traceID string,
 		netClient.Timeout = time.Second * time.Duration(r.Config.TimeoutSeconds)
 	}
 
-	algoName := fmt.Sprintf("%s/%s:%s[%d]", r.Config.AlgoOwnerUserName, r.Config.AlgoName, r.Config.AlgoVersionTag, r.Config.AlgoIndex)
+	algoName := fmt.Sprintf("%s/%s:%s[%d]", r.Config.AlgoOwner, r.Config.AlgoName, r.Config.AlgoVersionTag, r.Config.AlgoIndex)
 
 	for input, inputData := range inputMap {
 
@@ -82,9 +82,9 @@ func (r *HTTPRunner) Run(traceID string,
 				strings.ToLower(o.Name) == strings.ToLower(input.Name) {
 				output = o
 				outputTopic = strings.ToLower(fmt.Sprintf("algorun.%s.%s.algo.%s.%s.%d.output.%s",
-					r.Config.DeploymentOwnerUserName,
+					r.Config.DeploymentOwner,
 					r.Config.DeploymentName,
-					r.Config.AlgoOwnerUserName,
+					r.Config.AlgoOwner,
 					r.Config.AlgoName,
 					r.Config.AlgoIndex,
 					o.Name))
@@ -116,7 +116,7 @@ func (r *HTTPRunner) Run(traceID string,
 		}
 
 		q := u.Query()
-		for _, param := range r.Config.AlgoParams {
+		for _, param := range r.Config.Parameters {
 			q.Set(param.Name, param.Value)
 			// overwrite any parameters passed from the endpoint
 			for endpointParam, endpointValSlice := range endpointQuery {
@@ -203,7 +203,7 @@ func (r *HTTPRunner) Run(traceID string,
 						// Try to create the json
 						fileName, _ := uuid.NewV4()
 						bucketName := fmt.Sprintf("%s.%s",
-							strings.ToLower(r.Config.DeploymentOwnerUserName),
+							strings.ToLower(r.Config.DeploymentOwner),
 							strings.ToLower(r.Config.DeploymentName))
 						fileReference := openapi.FileReference{
 							Host:   r.StorageConfig.Host,

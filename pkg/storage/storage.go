@@ -87,7 +87,7 @@ func (s *Storage) newUploader(config *openapi.AlgoRunnerConfig,
 func (s *Storage) createBucket(u *Uploader) {
 
 	destBucket := strings.ToLower(fmt.Sprintf("algorun.%s.%s",
-		u.Config.DeploymentOwnerUserName,
+		u.Config.DeploymentOwner,
 		u.Config.DeploymentName))
 	// location := "us-east-1"
 

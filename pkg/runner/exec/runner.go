@@ -50,7 +50,7 @@ func NewExecRunner(config *openapi.AlgoRunnerConfig,
 		//targetCmd.Env = envs
 	}
 
-	algoName := fmt.Sprintf("%s/%s:%s[%d]", config.AlgoOwnerUserName, config.AlgoName, config.AlgoVersionTag, config.AlgoIndex)
+	algoName := fmt.Sprintf("%s/%s:%s[%d]", config.AlgoOwner, config.AlgoName, config.AlgoVersionTag, config.AlgoIndex)
 
 	outputHandler := ofw.NewOutputFileWatcher(config, producer, storageConfig, metrics, instanceName, logger)
 	var sendStdout bool
@@ -139,14 +139,14 @@ func (r *ExecRunner) Run(traceID string,
 			Type:    &notifType,
 			Version: "1",
 			Data: &map[string]interface{}{
-				"TraceId":                 traceID,
-				"DeploymentOwnerUserName": r.Config.DeploymentOwnerUserName,
-				"DeploymentName":          r.Config.DeploymentName,
-				"AlgoOwnerUserName":       r.Config.AlgoOwnerUserName,
-				"AlgoName":                r.Config.AlgoName,
-				"AlgoVersionTag":          r.Config.AlgoVersionTag,
-				"AlgoIndex":               r.Config.AlgoIndex,
-				"AlgoInstanceName":        r.InstanceName,
+				"TraceId":          traceID,
+				"DeploymentOwner":  r.Config.DeploymentOwner,
+				"DeploymentName":   r.Config.DeploymentName,
+				"AlgoOwner":        r.Config.AlgoOwner,
+				"AlgoName":         r.Config.AlgoName,
+				"AlgoVersionTag":   r.Config.AlgoVersionTag,
+				"AlgoIndex":        r.Config.AlgoIndex,
+				"AlgoInstanceName": r.InstanceName,
 			},
 		},
 		r.Metrics)
@@ -303,7 +303,7 @@ func getCommand(config *openapi.AlgoRunnerConfig) []string {
 
 	cmd := strings.Split(config.Entrypoint, " ")
 
-	for _, param := range config.AlgoParams {
+	for _, param := range config.Parameters {
 		cmd = append(cmd, param.Name)
 		if param.DataType != nil && *param.DataType.Name != openapi.DATATYPES_SWITCH {
 			cmd = append(cmd, param.Value)

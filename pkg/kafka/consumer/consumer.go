@@ -233,7 +233,7 @@ func (c *Consumer) run(processedMsg *types.ProcessedMsg,
 	rawMessage *kafka.Message,
 	inputData map[*openapi.AlgoInputModel][]types.InputData) {
 
-	if c.config.TopicRetryEnabled &&
+	if c.config.RetryEnabled &&
 		c.config.RetryStrategy != nil &&
 		*c.config.RetryStrategy.Strategy == openapi.RETRYSTRATEGIES_RETRY_TOPICS &&
 		processedMsg.RetryTimestamp != nil {
@@ -248,7 +248,7 @@ func (c *Consumer) run(processedMsg *types.ProcessedMsg,
 	runError := c.runner.Run(processedMsg.TraceID, processedMsg.EndpointParams, inputData)
 	if runError != nil {
 		c.setInputDataMetrics("error", processedMsg)
-		if c.config.TopicRetryEnabled {
+		if c.config.RetryEnabled {
 			c.retry(processedMsg, rawMessage, inputData)
 		} else {
 			c.logger.Error("Failed to run Algo. Retries Disabled.", runError)

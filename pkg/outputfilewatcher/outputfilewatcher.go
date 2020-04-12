@@ -149,7 +149,7 @@ func (o *OutputFileWatcher) newCmd(src string, outputMessageDataType openapi.Mes
 		// Ensure the envvar exists
 		if o.StorageConfig.ConnectionString != "" {
 			destBucket := strings.ToLower(fmt.Sprintf("algorun/%s.%s",
-				o.Config.DeploymentOwnerUserName,
+				o.Config.DeploymentOwner,
 				o.Config.DeploymentName))
 			cmd.Args = append(cmd.Args, "mirror", "--json", "--quiet", "-w", src, destBucket)
 		} else {
@@ -188,9 +188,9 @@ func (output *Output) start() {
 	go func() {
 
 		fileOutputTopic := strings.ToLower(fmt.Sprintf("algorun.%s.%s.algo.%s.%s.%d.output.%s",
-			output.Config.DeploymentOwnerUserName,
+			output.Config.DeploymentOwner,
 			output.Config.DeploymentName,
-			output.Config.AlgoOwnerUserName,
+			output.Config.AlgoOwner,
 			output.Config.AlgoName,
 			output.algoIndex,
 			output.algoOutput.Name))
@@ -251,7 +251,7 @@ func (output *Output) start() {
 					// Send the file reference to Kafka
 					// Try to create the json
 					bucketName := fmt.Sprintf("%s.%s",
-						strings.ToLower(output.Config.DeploymentOwnerUserName),
+						strings.ToLower(output.Config.DeploymentOwner),
 						strings.ToLower(output.Config.DeploymentName))
 					fileReference := openapi.FileReference{
 						Host:   output.StorageConfig.Host,

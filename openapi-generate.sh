@@ -9,6 +9,8 @@ java -jar ./openapi-generator-cli-4.2.3.jar generate -i http://localhost:5000/sw
 
 mkdir -p ./pkg/openapi/
 cp ./algorun-go-client/model_algo_runner_config.go ./pkg/openapi/
+cp ./algorun-go-client/model_container_image_model.go ./pkg/openapi/
+cp ./algorun-go-client/model_probe_model.go ./pkg/openapi/
 cp ./algorun-go-client/model_resource_model.go ./pkg/openapi/
 cp ./algorun-go-client/model_scale_metric_model.go ./pkg/openapi/
 cp ./algorun-go-client/model_algo_param_model.go ./pkg/openapi/
@@ -31,6 +33,7 @@ cp ./algorun-go-client/model_log_entry_model.go ./pkg/openapi/
 cp ./algorun-go-client/model_file_reference.go ./pkg/openapi/
 cp ./algorun-go-client/model_config_mount_model.go ./pkg/openapi/
 
+cp ./algorun-go-client/model_image_pull_policies.go ./pkg/openapi/
 cp ./algorun-go-client/model_retry_strategies.go ./pkg/openapi/
 cp ./algorun-go-client/model_log_levels.go ./pkg/openapi/
 cp ./algorun-go-client/model_log_types.go ./pkg/openapi/

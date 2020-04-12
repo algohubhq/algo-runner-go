@@ -62,7 +62,7 @@ func (c *Consumers) Start() {
 
 func (c *Consumers) createConsumers() error {
 
-	algoName := fmt.Sprintf("%s/%s:%s[%d]", c.Config.AlgoOwnerUserName, c.Config.AlgoName, c.Config.AlgoVersionTag, c.Config.AlgoIndex)
+	algoName := fmt.Sprintf("%s/%s:%s[%d]", c.Config.AlgoOwner, c.Config.AlgoName, c.Config.AlgoVersionTag, c.Config.AlgoIndex)
 
 	for _, pipe := range c.Config.Pipes {
 
@@ -79,10 +79,10 @@ func (c *Consumers) createConsumers() error {
 
 			var topicConfig openapi.TopicConfigModel
 			// Get the topic c.Config associated with this route
-			for x := range c.Config.TopicConfigs {
-				if c.Config.TopicConfigs[x].SourceName == pipe.SourceName &&
-					c.Config.TopicConfigs[x].SourceOutputName == pipe.SourceOutputName {
-					topicConfig = c.Config.TopicConfigs[x]
+			for x := range c.Config.Topics {
+				if c.Config.Topics[x].SourceName == pipe.SourceName &&
+					c.Config.Topics[x].SourceOutputName == pipe.SourceOutputName {
+					topicConfig = c.Config.Topics[x]
 					break
 				}
 			}
@@ -115,7 +115,7 @@ func (c *Consumers) createConsumers() error {
 			mainKafkaConfig["max.poll.interval.ms"] = int(maxPollIntervalMs)
 
 			// Replace the deployment username and name in the topic string
-			topicName := strings.ToLower(strings.Replace(topicConfig.TopicName, "{deploymentownerusername}", c.Config.DeploymentOwnerUserName, -1))
+			topicName := strings.ToLower(strings.Replace(topicConfig.TopicName, "{deploymentownerusername}", c.Config.DeploymentOwner, -1))
 			topicName = strings.ToLower(strings.Replace(topicName, "{deploymentname}", c.Config.DeploymentName, -1))
 
 			kc, err := kafka.NewConsumer(&mainKafkaConfig)
@@ -142,7 +142,7 @@ func (c *Consumers) createConsumers() error {
 
 			c.Consumers = append(c.Consumers, &mainConsumer)
 
-			if c.Config.TopicRetryEnabled {
+			if c.Config.RetryEnabled {
 				if *retryStrategy.Strategy == openapi.RETRYSTRATEGIES_RETRY_TOPICS {
 					for _, step := range retryStrategy.Steps {
 
@@ -196,9 +196,9 @@ func (c *Consumers) createConsumers() error {
 func (c *Consumers) getKafkaConfigMap() kafka.ConfigMap {
 
 	groupID := fmt.Sprintf("algorun-%s-%s-%s-%s-%d-dev",
-		c.Config.DeploymentOwnerUserName,
+		c.Config.DeploymentOwner,
 		c.Config.DeploymentName,
-		c.Config.AlgoOwnerUserName,
+		c.Config.AlgoOwner,
 		c.Config.AlgoName,
 		c.Config.AlgoIndex,
 	)
