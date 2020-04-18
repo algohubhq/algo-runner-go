@@ -9,10 +9,9 @@
  */
 
 package openapi
-// AlgoInputModel struct for AlgoInputModel
-type AlgoInputModel struct {
+// AlgoInputSpec struct for AlgoInputSpec
+type AlgoInputSpec struct {
 	Name string `json:"name"`
-	Description string `json:"description,omitempty"`
 	IsRequired bool `json:"isRequired,omitempty"`
 	InputDeliveryType *InputDeliveryTypes `json:"inputDeliveryType"`
 	Parameter string `json:"parameter,omitempty"`
@@ -22,5 +21,5 @@ type AlgoInputModel struct {
 	HttpPort int32 `json:"httpPort,omitempty"`
 	HttpPath string `json:"httpPath,omitempty"`
 	HttpHeaders string `json:"httpHeaders,omitempty"`
-	ContentTypes []ContentTypeModel `json:"contentTypes"`
+	ContentTypes []string `json:"contentTypes"`
 }

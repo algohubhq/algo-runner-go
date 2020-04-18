@@ -116,13 +116,13 @@ func main() {
 		&openapi.LogEntryModel{
 			Type:    &logType,
 			Version: "1",
-			Data: &map[string]interface{}{
+			Data: map[string]interface{}{
 				"DeploymentOwner":  config.DeploymentOwner,
 				"DeploymentName":   config.DeploymentName,
-				"AlgoOwner":        config.AlgoOwner,
-				"AlgoName":         config.AlgoName,
-				"AlgoVersionTag":   config.AlgoVersionTag,
-				"AlgoIndex":        config.AlgoIndex,
+				"AlgoOwner":        config.Owner,
+				"AlgoName":         config.Name,
+				"AlgoVersionTag":   config.Version,
+				"AlgoIndex":        config.Index,
 				"AlgoInstanceName": instanceName,
 			},
 		},

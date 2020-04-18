@@ -24,5 +24,5 @@ type LogEntryModel struct {
 	Msg string `json:"msg"`
 	IsError bool `json:"isError,omitempty"`
 	Error string `json:"error"`
-	Data *map[string]interface{} `json:"data,omitempty"`
+	Data map[string]interface{} `json:"data,omitempty"`
 }

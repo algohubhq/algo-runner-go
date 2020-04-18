@@ -50,7 +50,7 @@ func NewRunner(config *openapi.AlgoRunnerConfig,
 
 func (r *Runner) Run(traceID string,
 	endpointParams string,
-	inputMap map[*openapi.AlgoInputModel][]types.InputData) (err error) {
+	inputMap map[*openapi.AlgoInputSpec][]types.InputData) (err error) {
 
 	switch executor := *r.Config.Executor; executor {
 	case openapi.EXECUTORS_EXECUTABLE, openapi.EXECUTORS_DELEGATED:
@@ -72,7 +72,7 @@ func (r *Runner) Run(traceID string,
 }
 
 func (r *Runner) addInputBytesMetrics(runError error,
-	inputMap map[*openapi.AlgoInputModel][]types.InputData) {
+	inputMap map[*openapi.AlgoInputSpec][]types.InputData) {
 
 	// Set the total input bytes processed
 	status := "ok"

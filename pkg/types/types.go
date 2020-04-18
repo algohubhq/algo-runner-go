@@ -9,7 +9,7 @@ import (
 type IRunner interface {
 	Run(traceID string,
 		endpointParams string,
-		inputMap map[*openapi.AlgoInputModel][]InputData) error
+		inputMap map[*openapi.AlgoInputSpec][]InputData) error
 }
 
 // InputData contains either the byte slice of raw data or the file name and path to the saved data

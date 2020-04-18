@@ -50,7 +50,7 @@ func NewExecRunner(config *openapi.AlgoRunnerConfig,
 		//targetCmd.Env = envs
 	}
 
-	algoName := fmt.Sprintf("%s/%s:%s[%d]", config.AlgoOwner, config.AlgoName, config.AlgoVersionTag, config.AlgoIndex)
+	algoName := fmt.Sprintf("%s/%s:%s[%d]", config.Owner, config.Name, config.Version, config.Index)
 
 	outputHandler := ofw.NewOutputFileWatcher(config, producer, storageConfig, metrics, instanceName, logger)
 	var sendStdout bool
@@ -103,7 +103,7 @@ func NewExecRunner(config *openapi.AlgoRunnerConfig,
 				// Watch a folder folder
 				// start a mc exec command
 				go func() {
-					outputHandler.Watch(folder, config.AlgoIndex, &output, outputMessageDataType)
+					outputHandler.Watch(folder, config.Index, &output, outputMessageDataType)
 				}()
 
 			} else if *output.OutputDeliveryType == openapi.OUTPUTDELIVERYTYPES_STD_OUT {
@@ -130,7 +130,7 @@ func NewExecRunner(config *openapi.AlgoRunnerConfig,
 // Run starts the Executable
 func (r *ExecRunner) Run(traceID string,
 	endpointParams string,
-	inputMap map[*openapi.AlgoInputModel][]types.InputData) (err error) {
+	inputMap map[*openapi.AlgoInputSpec][]types.InputData) (err error) {
 
 	// Create the runner logger
 	notifType := openapi.LOGTYPES_ALGO
@@ -138,14 +138,14 @@ func (r *ExecRunner) Run(traceID string,
 		&openapi.LogEntryModel{
 			Type:    &notifType,
 			Version: "1",
-			Data: &map[string]interface{}{
+			Data: map[string]interface{}{
 				"TraceId":          traceID,
 				"DeploymentOwner":  r.Config.DeploymentOwner,
 				"DeploymentName":   r.Config.DeploymentName,
-				"AlgoOwner":        r.Config.AlgoOwner,
-				"AlgoName":         r.Config.AlgoName,
-				"AlgoVersionTag":   r.Config.AlgoVersionTag,
-				"AlgoIndex":        r.Config.AlgoIndex,
+				"AlgoOwner":        r.Config.Owner,
+				"AlgoName":         r.Config.Name,
+				"AlgoVersion":      r.Config.Version,
+				"AlgoIndex":        r.Config.Index,
 				"AlgoInstanceName": r.InstanceName,
 			},
 		},
@@ -161,7 +161,7 @@ func (r *ExecRunner) Run(traceID string,
 	go func() {
 		sig := <-sigchan
 
-		r.Logger.Warn(fmt.Sprintf("Caught signal %v. Killing algo process: %s", sig, r.Config.Entrypoint), nil)
+		r.Logger.Error(fmt.Sprintf("Caught signal %v. Killing algo process: %s", sig, r.Config.Entrypoint), nil)
 
 		if targetCmd != nil && targetCmd.Process != nil {
 			err := targetCmd.Process.Kill()
@@ -187,7 +187,7 @@ func (r *ExecRunner) Run(traceID string,
 		go func() {
 			<-timer.C
 
-			r.Logger.Warn(fmt.Sprintf("Algo timed out. Timeout value: %d seconds", r.Config.TimeoutSeconds), nil)
+			r.Logger.Error(fmt.Sprintf("Algo timed out. Timeout value: %d seconds", r.Config.TimeoutSeconds), nil)
 
 			if targetCmd != nil && targetCmd.Process != nil {
 				err := targetCmd.Process.Kill()
@@ -305,7 +305,7 @@ func getCommand(config *openapi.AlgoRunnerConfig) []string {
 
 	for _, param := range config.Parameters {
 		cmd = append(cmd, param.Name)
-		if param.DataType != nil && *param.DataType.Name != openapi.DATATYPES_SWITCH {
+		if param.Value != "" {
 			cmd = append(cmd, param.Value)
 		}
 	}

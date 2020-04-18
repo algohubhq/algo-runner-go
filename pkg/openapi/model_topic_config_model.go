@@ -11,14 +11,12 @@
 package openapi
 // TopicConfigModel struct for TopicConfigModel
 type TopicConfigModel struct {
-	ComponentType *ComponentTypes `json:"componentType,omitempty"`
-	SourceName string `json:"sourceName"`
-	SourceOutputName string `json:"sourceOutputName"`
-	TopicAutoName bool `json:"topicAutoName,omitempty"`
+	OutputName string `json:"outputName"`
+	AutoName bool `json:"autoName,omitempty"`
 	TopicName string `json:"topicName,omitempty"`
-	TopicAutoPartition bool `json:"topicAutoPartition,omitempty"`
-	TopicPartitions int32 `json:"topicPartitions,omitempty"`
-	TopicReplicationFactor int32 `json:"topicReplicationFactor,omitempty"`
+	AutoPartition bool `json:"autoPartition,omitempty"`
+	Partitions int32 `json:"partitions,omitempty"`
+	ReplicationFactor int32 `json:"replicationFactor,omitempty"`
 	TopicParams []TopicParamModel `json:"topicParams,omitempty"`
 	OverrideRetryStrategy bool `json:"overrideRetryStrategy,omitempty"`
 	RetryStrategy *TopicRetryStrategyModel `json:"retryStrategy,omitempty"`

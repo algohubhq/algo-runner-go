@@ -15,18 +15,18 @@ type AlgoRunnerConfig struct {
 	DeploymentName string `json:"deploymentName"`
 	PipelineOwner string `json:"pipelineOwner"`
 	PipelineName string `json:"pipelineName"`
-	AlgoOwner string `json:"algoOwner"`
-	AlgoName string `json:"algoName"`
-	AlgoVersionTag string `json:"algoVersionTag"`
-	AlgoIndex int32 `json:"algoIndex"`
+	Owner string `json:"owner"`
+	Name string `json:"name"`
+	Version string `json:"version"`
+	Index int32 `json:"index"`
 	Entrypoint string `json:"entrypoint,omitempty"`
 	Executor *Executors `json:"executor,omitempty"`
-	Parameters []AlgoParamModel `json:"parameters,omitempty"`
-	Inputs []AlgoInputModel `json:"inputs,omitempty"`
-	Outputs []AlgoOutputModel `json:"outputs,omitempty"`
+	Parameters []AlgoParamSpec `json:"parameters,omitempty"`
+	Inputs []AlgoInputSpec `json:"inputs,omitempty"`
+	Outputs []AlgoOutputSpec `json:"outputs,omitempty"`
 	WriteAllOutputs bool `json:"writeAllOutputs,omitempty"`
 	Pipes []PipeModel `json:"pipes,omitempty"`
-	Topics []TopicConfigModel `json:"topics,omitempty"`
+	Topics map[string]TopicConfigModel `json:"topics,omitempty"`
 	RetryEnabled bool `json:"retryEnabled,omitempty"`
 	RetryStrategy *TopicRetryStrategyModel `json:"retryStrategy,omitempty"`
 	GpuEnabled bool `json:"gpuEnabled,omitempty"`

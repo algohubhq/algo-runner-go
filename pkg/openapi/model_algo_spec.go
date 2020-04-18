@@ -9,30 +9,28 @@
  */
 
 package openapi
-// AlgoConfig struct for AlgoConfig
-type AlgoConfig struct {
-	Applied bool `json:"applied,omitempty"`
-	DeploymentOwner string `json:"deploymentOwner,omitempty"`
-	DeploymentName string `json:"deploymentName,omitempty"`
-	AlgoOwner string `json:"algoOwner"`
-	AlgoName string `json:"algoName"`
-	AlgoVersionTag string `json:"algoVersionTag"`
-	AlgoIndex int32 `json:"algoIndex"`
+// AlgoSpec struct for AlgoSpec
+type AlgoSpec struct {
+	Owner string `json:"owner"`
+	Name string `json:"name"`
+	Version string `json:"version"`
+	Index int32 `json:"index"`
 	Image *ContainerImageModel `json:"image"`
 	Entrypoint string `json:"entrypoint,omitempty"`
 	Executor *Executors `json:"executor,omitempty"`
-	Topics []TopicConfigModel `json:"topics,omitempty"`
 	ConfigMounts []ConfigMountModel `json:"configMounts,omitempty"`
-	Parameters []AlgoParamModel `json:"parameters,omitempty"`
-	Inputs []AlgoInputModel `json:"inputs,omitempty"`
-	Outputs []AlgoOutputModel `json:"outputs,omitempty"`
+	Parameters []AlgoParamSpec `json:"parameters,omitempty"`
+	Inputs []AlgoInputSpec `json:"inputs,omitempty"`
+	Outputs []AlgoOutputSpec `json:"outputs,omitempty"`
 	RetryEnabled bool `json:"retryEnabled,omitempty"`
 	RetryStrategy *TopicRetryStrategyModel `json:"retryStrategy,omitempty"`
 	WriteAllOutputs bool `json:"writeAllOutputs,omitempty"`
 	GpuEnabled bool `json:"gpuEnabled,omitempty"`
 	TimeoutSeconds int32 `json:"timeoutSeconds,omitempty"`
-	Resource *ResourceModel `json:"resource,omitempty"`
+	Replicas int32 `json:"replicas,omitempty"`
+	Resources *ResourceRequirementsV1 `json:"resources,omitempty"`
+	Autoscaling *AutoScalingSpec `json:"autoscaling,omitempty"`
 	AlgoRunnerImage *ContainerImageModel `json:"algoRunnerImage,omitempty"`
-	LivenessProbe *ProbeModel `json:"livenessProbe,omitempty"`
-	ReadinessProbe *ProbeModel `json:"readinessProbe,omitempty"`
+	LivenessProbe *ProbeV1 `json:"livenessProbe,omitempty"`
+	ReadinessProbe *ProbeV1 `json:"readinessProbe,omitempty"`
 }

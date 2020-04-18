@@ -53,7 +53,7 @@ func NewHTTPRunner(config *openapi.AlgoRunnerConfig,
 
 func (r *HTTPRunner) Run(traceID string,
 	endpointParams string,
-	inputMap map[*openapi.AlgoInputModel][]types.InputData) (err error) {
+	inputMap map[*openapi.AlgoInputSpec][]types.InputData) (err error) {
 
 	// TODO: Write to the topic as error if no value
 	if inputMap == nil {
@@ -70,12 +70,12 @@ func (r *HTTPRunner) Run(traceID string,
 		netClient.Timeout = time.Second * time.Duration(r.Config.TimeoutSeconds)
 	}
 
-	algoName := fmt.Sprintf("%s/%s:%s[%d]", r.Config.AlgoOwner, r.Config.AlgoName, r.Config.AlgoVersionTag, r.Config.AlgoIndex)
+	algoName := fmt.Sprintf("%s/%s:%s[%d]", r.Config.Owner, r.Config.Name, r.Config.Version, r.Config.Index)
 
 	for input, inputData := range inputMap {
 
 		var outputTopic string
-		var output openapi.AlgoOutputModel
+		var output openapi.AlgoOutputSpec
 		// get the httpresponse output
 		for _, o := range r.Config.Outputs {
 			if *o.OutputDeliveryType == openapi.OUTPUTDELIVERYTYPES_HTTP_RESPONSE &&
@@ -84,9 +84,9 @@ func (r *HTTPRunner) Run(traceID string,
 				outputTopic = strings.ToLower(fmt.Sprintf("algorun.%s.%s.algo.%s.%s.%d.output.%s",
 					r.Config.DeploymentOwner,
 					r.Config.DeploymentName,
-					r.Config.AlgoOwner,
-					r.Config.AlgoName,
-					r.Config.AlgoIndex,
+					r.Config.Owner,
+					r.Config.Name,
+					r.Config.Index,
 					o.Name))
 			}
 		}

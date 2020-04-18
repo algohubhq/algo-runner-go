@@ -84,7 +84,7 @@ func (p *Producer) producerEventsHandler() {
 
 			} else {
 				p.Metrics.MsgOK.With(prometheus.Labels{"topic": *m.TopicPartition.Topic}).Inc()
-				p.Logger.Debug(fmt.Sprintf("Delivered message to topic %s [%d] at offset %v",
+				p.Logger.Info(fmt.Sprintf("Delivered message to topic %s [%d] at offset %v",
 					*m.TopicPartition.Topic, m.TopicPartition.Partition, m.TopicPartition.Offset))
 			}
 		case kafka.Error:

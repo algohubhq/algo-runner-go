@@ -7,6 +7,7 @@ import (
 	"algo-runner-go/pkg/metrics"
 	"algo-runner-go/pkg/openapi"
 	"algo-runner-go/pkg/storage"
+	"errors"
 	"fmt"
 	"sort"
 	"strings"
@@ -62,13 +63,13 @@ func (c *Consumers) Start() {
 
 func (c *Consumers) createConsumers() error {
 
-	algoName := fmt.Sprintf("%s/%s:%s[%d]", c.Config.AlgoOwner, c.Config.AlgoName, c.Config.AlgoVersionTag, c.Config.AlgoIndex)
+	algoName := fmt.Sprintf("%s/%s:%s[%d]", c.Config.Owner, c.Config.Name, c.Config.Version, c.Config.Index)
 
 	for _, pipe := range c.Config.Pipes {
 
 		if pipe.DestName == algoName {
 
-			var input openapi.AlgoInputModel
+			var input openapi.AlgoInputSpec
 			// Get the input associated with this route
 			for i := range c.Config.Inputs {
 				if c.Config.Inputs[i].Name == pipe.DestInputName {
@@ -77,15 +78,8 @@ func (c *Consumers) createConsumers() error {
 				}
 			}
 
-			var topicConfig openapi.TopicConfigModel
-			// Get the topic c.Config associated with this route
-			for x := range c.Config.Topics {
-				if c.Config.Topics[x].SourceName == pipe.SourceName &&
-					c.Config.Topics[x].SourceOutputName == pipe.SourceOutputName {
-					topicConfig = c.Config.Topics[x]
-					break
-				}
-			}
+			// Get the topic Config associated with this route
+			topicConfig := c.Config.Topics[fmt.Sprintf("%s|%s", pipe.SourceName, pipe.SourceOutputName)]
 
 			retryStrategy := c.Config.RetryStrategy
 			if topicConfig.OverrideRetryStrategy {
@@ -115,8 +109,16 @@ func (c *Consumers) createConsumers() error {
 			mainKafkaConfig["max.poll.interval.ms"] = int(maxPollIntervalMs)
 
 			// Replace the deployment username and name in the topic string
-			topicName := strings.ToLower(strings.Replace(topicConfig.TopicName, "{deploymentownerusername}", c.Config.DeploymentOwner, -1))
+			topicName := strings.ToLower(strings.Replace(topicConfig.TopicName, "{deploymentowner}", c.Config.DeploymentOwner, -1))
 			topicName = strings.ToLower(strings.Replace(topicName, "{deploymentname}", c.Config.DeploymentName, -1))
+
+			if topicName == "" {
+				c.HealthyChan <- false
+				msg := fmt.Sprintf("No Topic config defined for output %s %s", pipe.SourceName, pipe.SourceOutputName)
+				err := errors.New("Missing Topic Config")
+				c.Logger.Error(msg, err)
+				return err
+			}
 
 			kc, err := kafka.NewConsumer(&mainKafkaConfig)
 			if err != nil {
@@ -195,12 +197,12 @@ func (c *Consumers) createConsumers() error {
 
 func (c *Consumers) getKafkaConfigMap() kafka.ConfigMap {
 
-	groupID := fmt.Sprintf("algorun-%s-%s-%s-%s-%d-dev",
+	groupID := fmt.Sprintf("algorun-%s-%s-%s-%s-%d",
 		c.Config.DeploymentOwner,
 		c.Config.DeploymentName,
-		c.Config.AlgoOwner,
-		c.Config.AlgoName,
-		c.Config.AlgoIndex,
+		c.Config.Owner,
+		c.Config.Name,
+		c.Config.Index,
 	)
 
 	kafkaConfig := kafka.ConfigMap{

@@ -9,11 +9,11 @@
  */
 
 package openapi
-// AlgoOutputModel struct for AlgoOutputModel
-type AlgoOutputModel struct {
+// AlgoOutputSpec struct for AlgoOutputSpec
+type AlgoOutputSpec struct {
 	Name string `json:"name"`
-	Description string `json:"description,omitempty"`
 	OutputDeliveryType *OutputDeliveryTypes `json:"outputDeliveryType"`
 	Parameter string `json:"parameter,omitempty"`
-	ContentType *ContentTypeModel `json:"contentType"`
+	ContentType string `json:"contentType"`
+	Topic *TopicConfigModel `json:"topic,omitempty"`
 }

@@ -116,7 +116,7 @@ func (u *Uploader) Upload(fileReference openapi.FileReference, byteData []byte) 
 		return err
 	}
 
-	u.Logger.Debug(fmt.Sprintf("Successfully uploaded %s of size %d", fileReference.File, n))
+	u.Logger.Info(fmt.Sprintf("Successfully uploaded %s of size %d", fileReference.File, n))
 
 	return err
 

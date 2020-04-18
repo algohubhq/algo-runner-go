@@ -11,14 +11,13 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/go-logr/zapr"
-	"github.com/prometheus/common/log"
 	"go.uber.org/zap"
 )
 
 type Logger struct {
 	LogMessage *openapi.LogEntryModel
 	Metrics    *metrics.Metrics
-	log        *logr.Logger
+	log        logr.Logger
 }
 
 // NewLogger returns a new Logger struct
@@ -33,27 +32,16 @@ func NewLogger(logMessage *openapi.LogEntryModel, metrics *metrics.Metrics) Logg
 	return Logger{
 		LogMessage: logMessage,
 		Metrics:    metrics,
-		log:        &log,
+		log:        log,
 	}
 }
 
 func (l *Logger) Info(msg string) {
 
-	log.Info(l.LogMessage.Msg,
+	l.log.Info(msg,
 		"version", l.LogMessage.Version,
 		"type", l.LogMessage.Type,
 		"level", openapi.LOGLEVELS_INFO,
-		"traceId", l.LogMessage.TraceId,
-		"data", l.LogMessage.Data)
-
-}
-
-func (l *Logger) Debug(msg string) {
-
-	log.Debug(l.LogMessage.Msg,
-		"version", l.LogMessage.Version,
-		"type", l.LogMessage.Type,
-		"level", openapi.LOGLEVELS_DEBUG,
 		"traceId", l.LogMessage.TraceId,
 		"data", l.LogMessage.Data)
 
@@ -63,40 +51,19 @@ func (l *Logger) Error(msg string, errLog error) {
 
 	if errLog != nil {
 		l.incrementError()
-		log.Error(errLog,
-			l.LogMessage.Msg,
+		l.log.Error(errLog,
+			msg,
 			"version", l.LogMessage.Version,
 			"type", l.LogMessage.Type,
 			"level", openapi.LOGLEVELS_ERROR,
 			"traceId", l.LogMessage.TraceId,
 			"data", l.LogMessage.Data)
 	} else {
-		log.Error(l.LogMessage.Msg,
+		l.log.Error(nil,
+			msg,
 			"version", l.LogMessage.Version,
 			"type", l.LogMessage.Type,
 			"level", openapi.LOGLEVELS_ERROR,
-			"traceId", l.LogMessage.TraceId,
-			"data", l.LogMessage.Data)
-	}
-
-}
-
-func (l *Logger) Warn(msg string, errLog error) {
-
-	if errLog != nil {
-		l.incrementError()
-		log.Warn(errLog,
-			l.LogMessage.Msg,
-			"version", l.LogMessage.Version,
-			"type", l.LogMessage.Type,
-			"level", openapi.LOGLEVELS_WARNING,
-			"traceId", l.LogMessage.TraceId,
-			"data", l.LogMessage.Data)
-	} else {
-		log.Warn(l.LogMessage.Msg,
-			"version", l.LogMessage.Version,
-			"type", l.LogMessage.Type,
-			"level", openapi.LOGLEVELS_WARNING,
 			"traceId", l.LogMessage.TraceId,
 			"data", l.LogMessage.Data)
 	}

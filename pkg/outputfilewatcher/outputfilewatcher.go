@@ -59,7 +59,7 @@ type Output struct {
 	Metrics               *metrics.Metrics
 	execCmd               *exec.Cmd
 	outputMessageDataType openapi.MessageDataTypes
-	algoOutput            *openapi.AlgoOutputModel
+	algoOutput            *openapi.AlgoOutputSpec
 	algoIndex             int32
 }
 
@@ -106,7 +106,7 @@ type errorMessage struct {
 	} `json:"error,omitempty"`
 }
 
-func (o *OutputFileWatcher) Watch(fileFolder string, algoIndex int32, algoOutput *openapi.AlgoOutputModel, outputMessageDataType openapi.MessageDataTypes) (err error) {
+func (o *OutputFileWatcher) Watch(fileFolder string, algoIndex int32, algoOutput *openapi.AlgoOutputSpec, outputMessageDataType openapi.MessageDataTypes) (err error) {
 
 	execCmd := o.newCmd(fileFolder, outputMessageDataType)
 	o.Outputs[fileFolder] = &Output{
@@ -172,12 +172,12 @@ func (output *Output) start() {
 	go func() {
 		sig := <-sigchan
 
-		output.Logger.Warn(fmt.Sprintf("Caught signal %v. Killing mc process: mc\n", sig), nil)
+		output.Logger.Error(fmt.Sprintf("Caught signal %v. Killing mc process: mc\n", sig), nil)
 
 		if output.execCmd != nil && output.execCmd.Process != nil {
 			val := output.execCmd.Process.Kill()
 			if val != nil {
-				output.Logger.Warn(fmt.Sprintf("Killed server process: mc - error %s\n", val.Error()), nil)
+				output.Logger.Error(fmt.Sprintf("Killed server process: mc - error %s\n", val.Error()), nil)
 			}
 		}
 	}()
@@ -190,8 +190,8 @@ func (output *Output) start() {
 		fileOutputTopic := strings.ToLower(fmt.Sprintf("algorun.%s.%s.algo.%s.%s.%d.output.%s",
 			output.Config.DeploymentOwner,
 			output.Config.DeploymentName,
-			output.Config.AlgoOwner,
-			output.Config.AlgoName,
+			output.Config.Owner,
+			output.Config.Name,
 			output.algoIndex,
 			output.algoOutput.Name))
 

@@ -264,9 +264,9 @@ func registerMetrics(config *openapi.AlgoRunnerConfig) {
 	deploymentLabel = fmt.Sprintf("%s/%s", config.DeploymentOwner, config.DeploymentName)
 	pipelineLabel = fmt.Sprintf("%s/%s", config.PipelineOwner, config.PipelineName)
 	componentLabel = "algo"
-	algoLabel = fmt.Sprintf("%s/%s", config.AlgoOwner, config.AlgoName)
-	algoVersionLabel = config.AlgoVersionTag
-	algoIndexLabel = strconv.Itoa(int(config.AlgoIndex))
+	algoLabel = fmt.Sprintf("%s/%s", config.Owner, config.Name)
+	algoVersionLabel = config.Version
+	algoIndexLabel = strconv.Itoa(int(config.Index))
 
 	prometheus.MustRegister(runnerRuntimeHistogram,
 		algoRuntimeHistogram,

@@ -40,7 +40,7 @@ type Consumer struct {
 	baseTopic         string
 	topic             string
 	runner            *runner.Runner
-	input             *openapi.AlgoInputModel
+	input             *openapi.AlgoInputSpec
 	retryStrategy     *openapi.TopicRetryStrategyModel
 	assignedRetryStep *openapi.TopicRetryStepModel
 	offsets           map[string]kafka.TopicPartition
@@ -50,7 +50,7 @@ type Consumer struct {
 func NewConsumer(healthyChan chan<- bool,
 	config *openapi.AlgoRunnerConfig,
 	kafkaConsumer *kafka.Consumer,
-	input *openapi.AlgoInputModel,
+	input *openapi.AlgoInputSpec,
 	retryStrategy *openapi.TopicRetryStrategyModel,
 	retryStep *openapi.TopicRetryStepModel,
 	producer *kafkaproducer.Producer,
@@ -113,7 +113,7 @@ func (c *Consumer) pollForMessages() {
 	sigchan := make(chan os.Signal, 1)
 	signal.Notify(sigchan, syscall.SIGINT, syscall.SIGTERM)
 
-	data := make(map[string]map[*openapi.AlgoInputModel][]types.InputData)
+	data := make(map[string]map[*openapi.AlgoInputSpec][]types.InputData)
 
 	c.offsets = make(map[string]kafka.TopicPartition)
 
@@ -124,7 +124,7 @@ func (c *Consumer) pollForMessages() {
 		select {
 		case sig := <-sigchan:
 
-			c.logger.Warn(fmt.Sprintf("Caught signal %v: terminating the Kafka Consumer process.", sig), errors.New("Terminating"))
+			c.logger.Error(fmt.Sprintf("Caught signal %v: terminating the Kafka Consumer process.", sig), errors.New("Terminating"))
 
 			c.HealthyChan <- false
 			waiting = false
@@ -154,12 +154,12 @@ func (c *Consumer) pollForMessages() {
 
 				startTime := time.Now()
 
-				c.logger.Debug(fmt.Sprintf("Kafka Message received on %s", e.TopicPartition))
+				c.logger.Info(fmt.Sprintf("Kafka Message received on %s", e.TopicPartition))
 
 				processedMsg := c.processMessage(e, c.input)
 
 				if data[processedMsg.TraceID] == nil {
-					data[processedMsg.TraceID] = make(map[*openapi.AlgoInputModel][]types.InputData)
+					data[processedMsg.TraceID] = make(map[*openapi.AlgoInputSpec][]types.InputData)
 				}
 
 				data[processedMsg.TraceID][c.input] = append(data[processedMsg.TraceID][c.input], processedMsg.InputData)
@@ -231,7 +231,7 @@ func (c *Consumer) pollForMessages() {
 
 func (c *Consumer) run(processedMsg *types.ProcessedMsg,
 	rawMessage *kafka.Message,
-	inputData map[*openapi.AlgoInputModel][]types.InputData) {
+	inputData map[*openapi.AlgoInputSpec][]types.InputData) {
 
 	if c.config.RetryEnabled &&
 		c.config.RetryStrategy != nil &&
@@ -261,7 +261,7 @@ func (c *Consumer) run(processedMsg *types.ProcessedMsg,
 
 func (c *Consumer) retry(processedMsg *types.ProcessedMsg,
 	rawMessage *kafka.Message,
-	inputData map[*openapi.AlgoInputModel][]types.InputData) {
+	inputData map[*openapi.AlgoInputSpec][]types.InputData) {
 
 	// Get the step duration
 	var step openapi.TopicRetryStepModel
@@ -302,7 +302,7 @@ func (c *Consumer) retry(processedMsg *types.ProcessedMsg,
 		timestamp := time.Now().Add(d)
 		processedMsg.RetryTimestamp = &timestamp
 
-		c.logger.Debug(fmt.Sprintf("Attempting Retry with backoff duration [%s]", step.BackoffDuration))
+		c.logger.Info(fmt.Sprintf("Attempting Retry with backoff duration [%s]", step.BackoffDuration))
 
 		switch strategy := *c.retryStrategy.Strategy; strategy {
 		case openapi.RETRYSTRATEGIES_SIMPLE:
@@ -335,7 +335,7 @@ func (c *Consumer) retry(processedMsg *types.ProcessedMsg,
 }
 
 func (c *Consumer) processMessage(msg *kafka.Message,
-	input *openapi.AlgoInputModel) (processedMsg *types.ProcessedMsg) {
+	input *openapi.AlgoInputSpec) (processedMsg *types.ProcessedMsg) {
 
 	processedMsg = &types.ProcessedMsg{}
 	// Default to run - if header is set to false, then don't run
@@ -380,7 +380,7 @@ func (c *Consumer) processMessage(msg *kafka.Message,
 	// If the content type is empty, use the first accepted content type
 	if processedMsg.ContentType == "" {
 		if len(input.ContentTypes) > 0 {
-			processedMsg.ContentType = input.ContentTypes[0].Name
+			processedMsg.ContentType = input.ContentTypes[0]
 		}
 	}
 
