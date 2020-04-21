@@ -10,6 +10,7 @@ import (
 	"algo-runner-go/pkg/storage"
 	"errors"
 	"flag"
+	"fmt"
 	"os"
 	"os/signal"
 	"strings"
@@ -54,12 +55,12 @@ func main() {
 
 	if *configFilePtr == "" {
 		// Try to load from environment variable
-		configEnv := os.Getenv("ALGO-RUNNER-CONFIG")
+		configEnv := os.Getenv("ALGO_RUNNER_CONFIG")
 		if configEnv != "" {
 			config = configLoader.LoadConfigFromString(configEnv)
 		} else {
-			localLogger.Error("Missing the config file path argument and no environment variable ALGO-RUNNER-CONFIG exists. ( --config=./config.json ) Shutting down...",
-				errors.New("ALGO-RUNNER-CONFIG missing"))
+			localLogger.Error("Missing the config file path argument and no environment variable ALGO_RUNNER_CONFIG exists. ( --config=./config.json ) Shutting down...",
+				errors.New("ALGO_RUNNER_CONFIG missing"))
 
 			os.Exit(1)
 		}
@@ -130,7 +131,21 @@ func main() {
 
 	metrics := metrics.NewMetrics(healthyChan, &config)
 
-	storageConfig := storage.NewStorage(healthyChan, &config, storageConnectionString, &runnerLogger)
+	var storageConfig *storage.Storage
+	if storageConnectionString != "" {
+		storageConfig = storage.NewStorage(healthyChan, &config, storageConnectionString, &runnerLogger)
+	} else {
+		// Check if there are any pipes with File Reference, which require a storage connection
+		for _, pipe := range config.Pipes {
+			if *pipe.SourceOutputMessageDataType == openapi.MESSAGEDATATYPES_FILE_REFERENCE {
+				localLogger.Error(
+					fmt.Sprintf("Pipe Message Data Type is set to file reference but there is no storage connection string. Pipe name: [%s/%s] Shutting down...", pipe.SourceName, pipe.SourceOutputName),
+					errors.New("Failed to setup storage connection"))
+				os.Exit(1)
+			}
+		}
+	}
+
 	producer, err := kafkaproducer.NewProducer(healthyChan, &config, instanceName, kafkaBrokers, &runnerLogger, &metrics)
 	if err != nil {
 		localLogger.Error("Failed to create Kafka Producer... Shutting down...",
