@@ -113,7 +113,8 @@ func (p *Producer) producerEventsHandler() {
 
 }
 
-func (p *Producer) ProduceOutputMessage(traceID string,
+func (p *Producer) ProduceOutputMessage(key string,
+	traceID string,
 	fileName string,
 	topic string,
 	outputName string,

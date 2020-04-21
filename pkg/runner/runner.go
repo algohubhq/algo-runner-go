@@ -48,17 +48,20 @@ func NewRunner(config *openapi.AlgoRunnerConfig,
 	return run
 }
 
-func (r *Runner) Run(traceID string,
+func (r *Runner) Run(key string,
+	traceID string,
 	endpointParams string,
 	inputMap map[*openapi.AlgoInputSpec][]types.InputData) (err error) {
 
 	switch executor := *r.Config.Executor; executor {
 	case openapi.EXECUTORS_EXECUTABLE, openapi.EXECUTORS_DELEGATED:
-		err = r.ExecRunner.Run(traceID,
+		err = r.ExecRunner.Run(key,
+			traceID,
 			endpointParams,
 			inputMap)
 	case openapi.EXECUTORS_HTTP:
-		err = r.HTTPRunner.Run(traceID,
+		err = r.HTTPRunner.Run(key,
+			traceID,
 			endpointParams,
 			inputMap)
 	default:

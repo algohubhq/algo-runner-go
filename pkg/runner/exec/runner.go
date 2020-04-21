@@ -128,7 +128,8 @@ func NewExecRunner(config *openapi.AlgoRunnerConfig,
 }
 
 // Run starts the Executable
-func (r *ExecRunner) Run(traceID string,
+func (r *ExecRunner) Run(key string,
+	traceID string,
 	endpointParams string,
 	inputMap map[*openapi.AlgoInputSpec][]types.InputData) (err error) {
 

@@ -17,7 +17,7 @@ import (
 	"strings"
 	"syscall"
 
-	uuid "github.com/nu7hatch/gouuid"
+	"github.com/google/uuid"
 )
 
 // New creates a new Output File Watcher.
@@ -219,8 +219,8 @@ func (output *Output) start() {
 					}
 
 					// TODO: Figure out how to get the traceID from the filename
-					uuidTraceID, _ := uuid.NewV4()
-					traceID := strings.Replace(uuidTraceID.String(), "-", "", -1)
+					msgKey := uuid.New().String()
+					traceID := uuid.New().String()
 
 					output.Metrics.DataBytesOutputCounter.WithLabelValues(output.Metrics.DeploymentLabel,
 						output.Metrics.PipelineLabel,
@@ -231,7 +231,7 @@ func (output *Output) start() {
 						output.algoOutput.Name,
 						"ok").Add(float64(wm.Event.Size))
 
-					output.Producer.ProduceOutputMessage(traceID, wm.Event.Path, fileOutputTopic, output.algoOutput.Name, fileBytes)
+					output.Producer.ProduceOutputMessage(msgKey, traceID, wm.Event.Path, fileOutputTopic, output.algoOutput.Name, fileBytes)
 				}
 
 			} else {
@@ -265,8 +265,8 @@ func (output *Output) start() {
 					}
 
 					// TODO: Figure out how to get the traceID from the filename
-					uuidTraceID, _ := uuid.NewV4()
-					traceID := strings.Replace(uuidTraceID.String(), "-", "", -1)
+					msgKey := uuid.New().String()
+					traceID := uuid.New().String()
 
 					output.Metrics.DataBytesOutputCounter.WithLabelValues(output.Metrics.DeploymentLabel,
 						output.Metrics.PipelineLabel,
@@ -277,7 +277,7 @@ func (output *Output) start() {
 						output.algoOutput.Name,
 						"ok").Add(float64(mm.TotalSize))
 
-					output.Producer.ProduceOutputMessage(traceID, mm.Target, fileOutputTopic, output.algoOutput.Name, jsonBytes)
+					output.Producer.ProduceOutputMessage(msgKey, traceID, mm.Target, fileOutputTopic, output.algoOutput.Name, jsonBytes)
 				}
 
 			}

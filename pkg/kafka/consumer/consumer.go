@@ -245,7 +245,7 @@ func (c *Consumer) run(processedMsg *types.ProcessedMsg,
 
 	}
 
-	runError := c.runner.Run(processedMsg.TraceID, processedMsg.EndpointParams, inputData)
+	runError := c.runner.Run(processedMsg.Key, processedMsg.TraceID, processedMsg.EndpointParams, inputData)
 	if runError != nil {
 		c.setInputDataMetrics("error", processedMsg)
 		if c.config.RetryEnabled {
@@ -357,12 +357,13 @@ func (c *Consumer) processMessage(msg *kafka.Message,
 	processedMsg = &types.ProcessedMsg{}
 	// Default to run - if header is set to false, then don't run
 	processedMsg.Run = true
-	// TraceID is the message key
-	processedMsg.TraceID = string(msg.Key)
+	processedMsg.Key = string(msg.Key)
 
 	// Parse the headers
 	for _, header := range msg.Headers {
 		switch header.Key {
+		case "traceID":
+			processedMsg.TraceID = string(header.Value)
 		case "contentType":
 			processedMsg.ContentType = string(header.Value)
 		case "fileName":

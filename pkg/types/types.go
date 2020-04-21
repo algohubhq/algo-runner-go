@@ -7,7 +7,8 @@ import (
 
 // IRunner is an interface to define the functions of a runner
 type IRunner interface {
-	Run(traceID string,
+	Run(key string,
+		traceID string,
 		endpointParams string,
 		inputMap map[*openapi.AlgoInputSpec][]InputData) error
 }
@@ -23,6 +24,7 @@ type InputData struct {
 }
 
 type ProcessedMsg struct {
+	Key             string
 	TraceID         string
 	ContentType     string
 	FileName        string

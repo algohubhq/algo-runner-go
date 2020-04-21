@@ -51,7 +51,8 @@ func NewHTTPRunner(config *openapi.AlgoRunnerConfig,
 
 }
 
-func (r *HTTPRunner) Run(traceID string,
+func (r *HTTPRunner) Run(key string,
+	traceID string,
 	endpointParams string,
 	inputMap map[*openapi.AlgoInputSpec][]types.InputData) (err error) {
 
@@ -190,7 +191,7 @@ func (r *HTTPRunner) Run(traceID string,
 								output.Name,
 								"ok").Add(float64(binary.Size(contents)))
 
-							r.Producer.ProduceOutputMessage(traceID, fileName.String(), outputTopic, output.Name, contents)
+							r.Producer.ProduceOutputMessage(key, traceID, fileName.String(), outputTopic, output.Name, contents)
 
 						} else {
 							r.Logger.Error("No output topic with outputDeliveryType as HttpResponse for input that is an http request",
@@ -230,7 +231,7 @@ func (r *HTTPRunner) Run(traceID string,
 							output.Name,
 							"ok").Add(float64(binary.Size(contents)))
 
-						r.Producer.ProduceOutputMessage(traceID, fileName.String(), outputTopic, output.Name, jsonBytes)
+						r.Producer.ProduceOutputMessage(key, traceID, fileName.String(), outputTopic, output.Name, jsonBytes)
 
 					}
 
