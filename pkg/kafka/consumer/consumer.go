@@ -304,6 +304,15 @@ func (c *Consumer) retry(processedMsg *types.ProcessedMsg,
 
 		c.logger.Info(fmt.Sprintf("Attempting Retry with backoff duration [%s]", step.BackoffDuration))
 
+		c.metrics.RetryCounter.WithLabelValues(c.metrics.DeploymentLabel,
+			c.metrics.PipelineLabel,
+			c.metrics.ComponentLabel,
+			c.metrics.AlgoLabel,
+			c.metrics.AlgoVersionLabel,
+			c.metrics.AlgoIndexLabel,
+			strconv.Itoa(processedMsg.RetryStepIndex),
+			strconv.Itoa(processedMsg.RetryNum)).Add(1)
+
 		switch strategy := *c.retryStrategy.Strategy; strategy {
 		case openapi.RETRYSTRATEGIES_SIMPLE:
 			// Sleep the thread for the duration
@@ -328,7 +337,15 @@ func (c *Consumer) retry(processedMsg *types.ProcessedMsg,
 		} else {
 			dlqTopicName = fmt.Sprintf("%s.dlq", c.baseTopic)
 		}
-		// Produce to the retry topic
+
+		c.metrics.DlqCounter.WithLabelValues(c.metrics.DeploymentLabel,
+			c.metrics.PipelineLabel,
+			c.metrics.ComponentLabel,
+			c.metrics.AlgoLabel,
+			c.metrics.AlgoVersionLabel,
+			c.metrics.AlgoIndexLabel).Add(1)
+
+		// Produce to the dlq topic
 		c.Producer.ProduceRetryMessage(processedMsg, rawMessage, dlqTopicName)
 	}
 

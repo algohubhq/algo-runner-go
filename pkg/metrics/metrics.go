@@ -19,6 +19,8 @@ type Metrics struct {
 	MsgBytesOutputCounter     *prometheus.CounterVec
 	DataBytesInputCounter     *prometheus.CounterVec
 	DataBytesOutputCounter    *prometheus.CounterVec
+	RetryCounter              *prometheus.CounterVec
+	DlqCounter                *prometheus.CounterVec
 	AlgoErrorCounter          *prometheus.CounterVec
 	RunnerErrorCounter        *prometheus.CounterVec
 	MsgOK                     *prometheus.CounterVec
@@ -62,6 +64,8 @@ func NewMetrics(healthyChan chan bool, config *openapi.AlgoRunnerConfig) Metrics
 		MsgBytesOutputCounter:     msgBytesOutputCounter,
 		DataBytesInputCounter:     dataBytesInputCounter,
 		DataBytesOutputCounter:    dataBytesOutputCounter,
+		RetryCounter:              retryCounter,
+		DlqCounter:                dlqCounter,
 		AlgoErrorCounter:          algoErrorCounter,
 		RunnerErrorCounter:        runnerErrorCounter,
 		MsgOK:                     msgOK,
@@ -137,6 +141,16 @@ var (
 		Name: "algorunner_data_bytes_output_total",
 		Help: "The total number of bytes output from the runner including file data",
 	}, []string{"deployment", "pipeline", "component", "name", "version", "index", "output", "status"})
+
+	retryCounter = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "algorunner_retry_total",
+		Help: "The total number of execution retries",
+	}, []string{"deployment", "pipeline", "component", "name", "version", "index", "step", "repeat"})
+
+	dlqCounter = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "algorunner_retry_total",
+		Help: "The total number of message",
+	}, []string{"deployment", "pipeline", "component", "name", "version", "index"})
 
 	algoErrorCounter = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "algorunner_algo_error",
@@ -274,6 +288,8 @@ func registerMetrics(config *openapi.AlgoRunnerConfig) {
 		msgBytesOutputCounter,
 		dataBytesInputCounter,
 		dataBytesOutputCounter,
+		retryCounter,
+		dlqCounter,
 		algoErrorCounter,
 		runnerErrorCounter,
 		msgOK,
