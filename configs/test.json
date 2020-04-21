@@ -1,0 +1,77 @@
+{
+    "deploymentOwner": "local",
+    "deploymentName": "test-deployment",
+    "pipelineOwner": "local",
+    "pipelineName": "test-pipeline",
+    "owner": "tests",
+    "name": "test-text-transform-http",
+    "version": "latest",
+    "index": 1,
+    "entrypoint": "/opt/algo-test-go/algo-test-go --input-type http",
+    "executor": "http",
+    "parameters": [
+        {
+            "sortOrder": 1,
+            "name": "transform",
+            "value": "toUpper"
+        }
+    ],
+    "inputs": [
+        {
+            "name": "Text",
+            "isRequired": true,
+            "inputDeliveryType": "Http",
+            "httpVerb": "POST",
+            "httpPort": 8080,
+            "httpPath": "/text",
+            "contentTypes": [
+                "text/any"
+            ]
+        }
+    ],
+    "outputs": [
+        {
+            "name": "Text",
+            "outputDeliveryType": "HttpResponse",
+            "contentType": "Text",
+            "topic": {
+                "outputName": "Text",
+                "autoName": true,
+                "topicName": "algorun.{deploymentowner}.{deploymentname}.algo.tests.test-text-transform-http.1.output.text",
+                "autoPartition": true,
+                "partitions": 1,
+                "replicationFactor": 1
+            }
+        }
+    ],
+    "pipes": [
+        {
+            "sourceComponentType": "Endpoint",
+            "sourceName": "Endpoint",
+            "sourceOutputName": "test_http",
+            "sourceOutputMessageDataType": "Embedded",
+            "destComponentType": "Algo",
+            "destName": "tests/test-text-transform-http:latest[1]",
+            "destInputName": "Text"
+        }
+    ],
+    "topics": {
+        "Endpoint|test_http": {
+            "outputName": "test_http",
+            "autoName": true,
+            "topicName": "algorun.{deploymentowner}.{deploymentname}.endpoint.test_http",
+            "autoPartition": true,
+            "partitions": 1,
+            "replicationFactor": 1
+        },
+        "tests/test-text-transform-http:latest[1]|Text": {
+            "outputName": "Text",
+            "autoName": true,
+            "topicName": "algorun.{deploymentowner}.{deploymentname}.algo.tests.test-text-transform-http.1.output.text",
+            "autoPartition": true,
+            "partitions": 1,
+            "replicationFactor": 1
+        }
+    },
+    "timeoutSeconds": 60
+}
