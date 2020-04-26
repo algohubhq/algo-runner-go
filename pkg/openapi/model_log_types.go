@@ -19,7 +19,7 @@ const (
 	LOGTYPES_ALGO LogTypes = "Algo"
 	LOGTYPES_DATA LogTypes = "Data"
 	LOGTYPES_OPERATOR LogTypes = "Operator"
-	LOGTYPES_HOOK LogTypes = "Hook"
+	LOGTYPES_EVENT_HOOK LogTypes = "EventHook"
 	LOGTYPES_DATA_CONNECTOR LogTypes = "DataConnector"
 	LOGTYPES_ENDPOINT LogTypes = "Endpoint"
 	LOGTYPES_PIPELINE LogTypes = "Pipeline"

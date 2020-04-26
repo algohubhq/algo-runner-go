@@ -17,5 +17,5 @@ const (
 	COMPONENTTYPES_ALGO ComponentTypes = "Algo"
 	COMPONENTTYPES_ENDPOINT ComponentTypes = "Endpoint"
 	COMPONENTTYPES_DATA_CONNECTOR ComponentTypes = "DataConnector"
-	COMPONENTTYPES_HOOK ComponentTypes = "Hook"
+	COMPONENTTYPES_EVENT_HOOK ComponentTypes = "EventHook"
 )

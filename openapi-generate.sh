@@ -21,7 +21,6 @@ cp ./algorun-go-client/model_topic_param_model.go ./pkg/openapi/
 cp ./algorun-go-client/model_topic_retry_strategy_model.go ./pkg/openapi/
 cp ./algorun-go-client/model_topic_retry_step_model.go ./pkg/openapi/
 cp ./algorun-go-client/model_data_type_model.go ./pkg/openapi/
-cp ./algorun-go-client/model_data_type_option_model.go ./pkg/openapi/
 cp ./algorun-go-client/model_content_type_model.go ./pkg/openapi/
 cp ./algorun-go-client/model_pipe_model.go ./pkg/openapi/
 cp ./algorun-go-client/model_pipeline_data_connector_model.go ./pkg/openapi/

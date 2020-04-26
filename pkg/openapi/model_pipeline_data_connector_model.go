@@ -18,6 +18,8 @@ type PipelineDataConnectorModel struct {
 	ConfigMounts []ConfigMountModel `json:"configMounts,omitempty"`
 	TopicConfigs []TopicConfigModel `json:"topicConfigs,omitempty"`
 	OptionOverrides []DataConnectorOptionModel `json:"optionOverrides,omitempty"`
+	LivenessProbe *ProbeV1 `json:"livenessProbe,omitempty"`
+	ReadinessProbe *ProbeV1 `json:"readinessProbe,omitempty"`
 	PositionX float32 `json:"positionX,omitempty"`
 	PositionY float32 `json:"positionY,omitempty"`
 }

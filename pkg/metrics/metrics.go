@@ -148,7 +148,7 @@ var (
 	}, []string{"deployment", "pipeline", "component", "name", "version", "index", "step", "repeat"})
 
 	dlqCounter = prometheus.NewCounterVec(prometheus.CounterOpts{
-		Name: "algorunner_retry_total",
+		Name: "algorunner_dlq_total",
 		Help: "The total number of message",
 	}, []string{"deployment", "pipeline", "component", "name", "version", "index"})
 

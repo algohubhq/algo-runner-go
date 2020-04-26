@@ -16,4 +16,5 @@ type DataTypeModel struct {
 	Precision int32 `json:"precision,omitempty"`
 	Scale int32 `json:"scale,omitempty"`
 	Mask string `json:"mask,omitempty"`
+	Options []string `json:"options,omitempty"`
 }
