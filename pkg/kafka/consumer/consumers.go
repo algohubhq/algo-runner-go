@@ -19,34 +19,34 @@ import (
 type Consumers struct {
 	HealthyChan   chan<- bool
 	Config        *openapi.AlgoRunnerConfig
+	kafkaConfig   *k.KafkaConfig
 	Producer      *kafkaproducer.Producer
 	StorageConfig *storage.Storage
 	Logger        *logging.Logger
 	Metrics       *metrics.Metrics
 	InstanceName  string
-	KafkaBrokers  string
 	Consumers     []*Consumer
 }
 
 // NewConsumers returns a new Consumer struct
 func NewConsumers(healthyChan chan<- bool,
 	config *openapi.AlgoRunnerConfig,
+	kafkaConfig *k.KafkaConfig,
 	producer *kafkaproducer.Producer,
 	storageConfig *storage.Storage,
 	instanceName string,
-	kafkaBrokers string,
 	logger *logging.Logger,
 	metrics *metrics.Metrics) (*Consumers, error) {
 
 	consumers := Consumers{
 		HealthyChan:   healthyChan,
 		Config:        config,
+		kafkaConfig:   kafkaConfig,
 		Producer:      producer,
 		StorageConfig: storageConfig,
 		Logger:        logger,
 		Metrics:       metrics,
 		InstanceName:  instanceName,
-		KafkaBrokers:  kafkaBrokers,
 	}
 
 	err := consumers.createConsumers()
@@ -104,7 +104,8 @@ func (c *Consumers) createConsumers() error {
 					}
 				}
 			}
-			mainKafkaConfig := c.getKafkaConfigMap()
+
+			mainKafkaConfig := c.kafkaConfig.KafkaConsumerConfig
 			// Set the max poll interval
 			mainKafkaConfig["max.poll.interval.ms"] = int(maxPollIntervalMs)
 
@@ -136,7 +137,6 @@ func (c *Consumers) createConsumers() error {
 				c.Producer,
 				c.StorageConfig,
 				c.InstanceName,
-				c.KafkaBrokers,
 				topicName,
 				topicName,
 				c.Logger,
@@ -154,7 +154,7 @@ func (c *Consumers) createConsumers() error {
 						}
 						maxPollIntervalMs = Max(maxPollIntervalMs, int(d.Milliseconds())+300000)
 
-						retryKafkaConfig := c.getKafkaConfigMap()
+						retryKafkaConfig := c.kafkaConfig.KafkaConsumerConfig
 						// Set the max poll interval
 						retryKafkaConfig["max.poll.interval.ms"] = maxPollIntervalMs
 
@@ -175,7 +175,6 @@ func (c *Consumers) createConsumers() error {
 							c.Producer,
 							c.StorageConfig,
 							c.InstanceName,
-							c.KafkaBrokers,
 							topicName,
 							retryTopicName,
 							c.Logger,
@@ -192,37 +191,6 @@ func (c *Consumers) createConsumers() error {
 	}
 
 	return nil
-
-}
-
-func (c *Consumers) getKafkaConfigMap() kafka.ConfigMap {
-
-	groupID := fmt.Sprintf("algorun-%s-%s-%s-%s-%d",
-		c.Config.DeploymentOwner,
-		c.Config.DeploymentName,
-		c.Config.Owner,
-		c.Config.Name,
-		c.Config.Index,
-	)
-
-	kafkaConfig := kafka.ConfigMap{
-		"bootstrap.servers":        c.KafkaBrokers,
-		"group.id":                 groupID,
-		"client.id":                "algo-runner-go-client",
-		"enable.auto.commit":       false,
-		"enable.auto.offset.store": false,
-		"auto.offset.reset":        "earliest",
-	}
-
-	// Set the ssl c.Config if enabled
-	if k.CheckForKafkaTLS() {
-		kafkaConfig["security.protocol"] = "ssl"
-		kafkaConfig["ssl.ca.location"] = k.KafkaTLSCaLocation
-		kafkaConfig["ssl.certificate.location"] = k.KafkaTLSUserLocation
-		kafkaConfig["ssl.key.location"] = k.KafkaTLSKeyLocation
-	}
-
-	return kafkaConfig
 
 }
 

@@ -16,8 +16,9 @@
                 "KAFKA_BROKERS": "localhost:32100",
                 "KAFKA_TLS": "true",
                 "KAFKA_TLS_CA_LOCATION": "/Users/mike/.ssh/kafka_ca.crt",
-                "KAFKA_TLS_USER_LOCATION": "/Users/mike/.ssh/kafka_user.crt",
-                "KAFKA_TLS_KEY_LOCATION": "/Users/mike/.ssh/kafka_user.key",
+                "KAFKA_AUTH_TYPE": "tls",
+                "KAFKA_AUTH_TLS_USER_LOCATION": "/Users/mike/.ssh/kafka_user.crt",
+                "KAFKA_AUTH_TLS_KEY_LOCATION": "/Users/mike/.ssh/kafka_user.key",
             },
             "args": [
                 "--config", "./configs/test.json",

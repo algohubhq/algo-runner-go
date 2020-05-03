@@ -36,7 +36,6 @@ type Consumer struct {
 	logger            *logging.Logger
 	metrics           *metrics.Metrics
 	instanceName      string
-	kafkaBrokers      string
 	baseTopic         string
 	topic             string
 	runner            *runner.Runner
@@ -56,7 +55,6 @@ func NewConsumer(healthyChan chan<- bool,
 	producer *kafkaproducer.Producer,
 	storageConfig *storage.Storage,
 	instanceName string,
-	kafkaBrokers string,
 	baseTopic string,
 	topic string,
 	logger *logging.Logger,
@@ -66,7 +64,6 @@ func NewConsumer(healthyChan chan<- bool,
 		producer,
 		storageConfig,
 		instanceName,
-		kafkaBrokers,
 		logger,
 		metrics)
 
@@ -82,7 +79,6 @@ func NewConsumer(healthyChan chan<- bool,
 		logger:            logger,
 		metrics:           metrics,
 		instanceName:      instanceName,
-		kafkaBrokers:      kafkaBrokers,
 		baseTopic:         baseTopic,
 		topic:             topic,
 		runner:            &r,

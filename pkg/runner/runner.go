@@ -25,7 +25,6 @@ func NewRunner(config *openapi.AlgoRunnerConfig,
 	producer *kafkaproducer.Producer,
 	storageConfig *storage.Storage,
 	instanceName string,
-	kafkaBrokers string,
 	logger *logging.Logger,
 	metrics *metrics.Metrics) Runner {
 

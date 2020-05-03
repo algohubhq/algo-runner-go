@@ -2,6 +2,7 @@ package main
 
 import (
 	configloader "algo-runner-go/pkg/config"
+	k "algo-runner-go/pkg/kafka"
 	kafkaconsumer "algo-runner-go/pkg/kafka/consumer"
 	kafkaproducer "algo-runner-go/pkg/kafka/producer"
 	"algo-runner-go/pkg/logging"
@@ -146,7 +147,9 @@ func main() {
 		}
 	}
 
-	producer, err := kafkaproducer.NewProducer(healthyChan, &config, instanceName, kafkaBrokers, &runnerLogger, &metrics)
+	kafkaConfig := k.NewKafkaConfig(&config, kafkaBrokers)
+
+	producer, err := kafkaproducer.NewProducer(healthyChan, &config, kafkaConfig, instanceName, &runnerLogger, &metrics)
 	if err != nil {
 		localLogger.Error("Failed to create Kafka Producer... Shutting down...",
 			errors.New("Failed to create Kafka Producer"))
@@ -159,10 +162,10 @@ func main() {
 	go func() {
 		consumers, err := kafkaconsumer.NewConsumers(healthyChan,
 			&config,
+			kafkaConfig,
 			producer,
 			storageConfig,
 			instanceName,
-			kafkaBrokers,
 			&runnerLogger,
 			&metrics)
 

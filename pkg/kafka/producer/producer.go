@@ -18,35 +18,22 @@ import (
 type Producer struct {
 	HealthyChan   chan<- bool
 	Config        *openapi.AlgoRunnerConfig
+	kafkaConfig   *k.KafkaConfig
 	Logger        *logging.Logger
 	Metrics       *metrics.Metrics
 	InstanceName  string
-	KafkaBrokers  string
 	KafkaProducer *kafka.Producer
 }
 
 // NewProducer returns a new Producer struct
 func NewProducer(healthyChan chan<- bool,
 	config *openapi.AlgoRunnerConfig,
+	kafkaConfig *k.KafkaConfig,
 	instanceName string,
-	kafkaBrokers string,
 	logger *logging.Logger,
 	metrics *metrics.Metrics) (producer *Producer, err error) {
 
-	kafkaConfig := kafka.ConfigMap{
-		"bootstrap.servers":      kafkaBrokers,
-		"statistics.interval.ms": 10000,
-	}
-
-	// Set the ssl config if enabled
-	if k.CheckForKafkaTLS() {
-		kafkaConfig["security.protocol"] = "ssl"
-		kafkaConfig["ssl.ca.location"] = k.KafkaTLSCaLocation
-		kafkaConfig["ssl.certificate.location"] = k.KafkaTLSUserLocation
-		kafkaConfig["ssl.key.location"] = k.KafkaTLSKeyLocation
-	}
-
-	kp, err := kafka.NewProducer(&kafkaConfig)
+	kp, err := kafka.NewProducer(&kafkaConfig.KafkaProducerConfig)
 
 	if err != nil {
 		logger.Error("Failed to create Kafka message producer.", err)
@@ -57,10 +44,10 @@ func NewProducer(healthyChan chan<- bool,
 	producer = &Producer{
 		HealthyChan:   healthyChan,
 		Config:        config,
+		kafkaConfig:   kafkaConfig,
 		Logger:        logger,
 		Metrics:       metrics,
 		InstanceName:  instanceName,
-		KafkaBrokers:  kafkaBrokers,
 		KafkaProducer: kp,
 	}
 
