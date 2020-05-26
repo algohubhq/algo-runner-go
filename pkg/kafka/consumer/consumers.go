@@ -109,11 +109,7 @@ func (c *Consumers) createConsumers() error {
 			// Set the max poll interval
 			mainKafkaConfig["max.poll.interval.ms"] = int(maxPollIntervalMs)
 
-			// Replace the deployment username and name in the topic string
-			topicName := strings.ToLower(strings.Replace(topicConfig.TopicName, "{deploymentowner}", c.Config.DeploymentOwner, -1))
-			topicName = strings.ToLower(strings.Replace(topicName, "{deploymentname}", c.Config.DeploymentName, -1))
-
-			if topicName == "" {
+			if topicConfig.TopicName == "" {
 				c.HealthyChan <- false
 				msg := fmt.Sprintf("No Topic config defined for output %s %s", pipe.SourceName, pipe.SourceOutputName)
 				err := errors.New("Missing Topic Config")
@@ -137,8 +133,8 @@ func (c *Consumers) createConsumers() error {
 				c.Producer,
 				c.StorageConfig,
 				c.InstanceName,
-				topicName,
-				topicName,
+				topicConfig.TopicName,
+				topicConfig.TopicName,
 				c.Logger,
 				c.Metrics)
 
@@ -158,7 +154,7 @@ func (c *Consumers) createConsumers() error {
 						// Set the max poll interval
 						retryKafkaConfig["max.poll.interval.ms"] = maxPollIntervalMs
 
-						retryTopicName := strings.ToLower(fmt.Sprintf("%s.%s", topicName, step.BackoffDuration))
+						retryTopicName := strings.ToLower(fmt.Sprintf("%s.%s", topicConfig.TopicName, step.BackoffDuration))
 
 						kc, err := kafka.NewConsumer(&retryKafkaConfig)
 						if err != nil {
@@ -175,7 +171,7 @@ func (c *Consumers) createConsumers() error {
 							c.Producer,
 							c.StorageConfig,
 							c.InstanceName,
-							topicName,
+							topicConfig.TopicName,
 							retryTopicName,
 							c.Logger,
 							c.Metrics)
